@@ -143,6 +143,7 @@ if (import.meta.env.DEV) {
     setPosition: (x: number, y: number, z: number) => player.collider.position.set(x, y, z),
     hasWon: () => hasWon,
     level: () => levelIndex,
+    startLevel,
   };
 }
 
