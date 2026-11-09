@@ -8,12 +8,13 @@ You walk around a level with standard FPS controls (WASD + mouse look, Space to 
 
 Gravity can point along any of the 6 axis-aligned directions. Every level starts in the orientation natural to its entrance (normal "down") and ends in whatever orientation its exit requires, so a level might use anywhere from zero extra switches (if entrance and exit already agree) up to a chain of them.
 
-Four chambers ship with the game, each ending in a different orientation than it starts:
+Five chambers ship with the game, each ending in a different orientation than it starts:
 
 1. **The Vault** (`-Y → +Z → +X`) — a hollow cube; drop through the hole in the final "floor".
 2. **The Shaft** (`-Y → +X → +Y`) — a 40-unit vertical shaft whose exit door is at the top, upside down.
 3. **The Divide** (`-Y → +X → +Z`) — a partition too tall to jump, but not too tall to walk around.
 4. **The Spiral** (`-Y → -X → +Y → +X`) — three shifts, each lever reachable only from the surface the last one put you on.
+5. **The Chimney** (`-Y → +Z`) — a long tunnel one lever turns into a 60-unit pit; steer mid-fall onto the ledge below the exit door, past a decoy that catches anyone who drops straight down.
 
 Each lever carries an arrow pointing the way "down" will be once it is thrown. **Shift** runs, **R** restarts the chamber, and clearing one shows your time and number of gravity shifts before moving on.
 
@@ -45,7 +46,8 @@ The engine supports gravity-driven crates, pressure plates and plate-controlled 
 
 - `src/gravity/GravitySystem.ts` — owns the single "which way is down" axis and notifies listeners when it changes.
 - `src/player/PlayerController.ts` — pointer-lock mouse look, WASD/jump input, and a kinematic body whose movement basis, ground checks, and camera orientation all derive from a smoothly-interpolated "up" vector, so a gravity flip reads as a coherent tumble into the new orientation rather than a snap.
-- `src/level/Level.ts` — data-driven level builders (`LEVELS`) on top of a small `Builder` with `slab` (wall with optional hole), `tube` (corridor/chamber) and `addSwitch` helpers; add a function to `LEVELS` to add a chamber.
+- `src/level/Builder.ts` — the `Builder` that chambers are written against: `slab` (wall with optional hole), `tube` (corridor/chamber), `box`, `addSwitch`, `addCrate`/`addPlate`/`addDoor`.
+- `src/level/chambers/` — one file per chamber; `index.ts` holds `LEVELS`, the play order. To add a chamber, add a file and list it there.
 - `src/physics/boxPhysics.ts` — dependency-free swept axis-aligned box physics used by crates.
 - `src/level/Dynamics.ts` — crates, pressure plates, doors, and the per-frame update that ties them together.
 - `src/level/GravitySwitch.ts` — the wall-mounted lever interactable.

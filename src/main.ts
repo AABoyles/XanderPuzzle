@@ -1,6 +1,6 @@
 import { Color4, Engine, GlowLayer, Scene, Vector3 } from '@babylonjs/core';
 import { GravitySystem } from './gravity/GravitySystem';
-import { buildSandbox, LEVELS as CHAMBERS } from './level/Level';
+import { buildSandbox, LEVELS as CHAMBERS } from './level/chambers';
 import { PlayerController } from './player/PlayerController';
 import { createSkin, SKIN_IDS, SKIN_LABELS, SkinId } from './skins/Skin';
 import { HUD } from './ui/HUD';

@@ -2,11 +2,12 @@
 
 Ten ideas for chambers V–XIV, roughly in the order they should be built. Each one teaches or tests a single idea. The first three need nothing the engine lacks today; the rest each introduce one new mechanic, listed under "Needs".
 
-What exists today: static axis-aligned boxes, wall-mounted levers that set gravity to a fixed axis (90° steps only), one exit trigger per chamber, and the `Builder` helpers (`slab`, `tube`, `addSwitch`) in `src/level/Level.ts`.
+What exists today: static axis-aligned boxes, wall-mounted levers that set gravity to a fixed axis (90° steps only), one exit trigger per chamber, and the `Builder` helpers (`slab`, `tube`, `addSwitch`) in `src/level/Builder.ts`.
 
 ## Buildable now
 
 ### V · The Chimney
+- **Status:** built (`src/level/chambers/chimney.ts`). A wide decoy ledge sits under the lever, and a lever at the bottom resets gravity for another attempt.
 - **Idea:** falling is travel. A lever at the bottom of a long horizontal tunnel turns the tunnel into a pit, and the exit door is partway down its side.
 - **Route:** `-Y → +Z`, then steer mid-fall onto a ledge.
 - **Teaches:** air control during a fall, and that the first surface you hit is not always the one you want.
