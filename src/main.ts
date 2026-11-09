@@ -33,7 +33,25 @@ const glow = new GlowLayer('glow', scene);
 glow.intensity = 0.7;
 
 const gravity = new GravitySystem('-Y', 22);
-let levelIndex = 0;
+const store = {
+  get(key: string): number | undefined {
+    try {
+      const v = localStorage.getItem(`shiftbound.${key}`);
+      return v === null ? undefined : Number(v);
+    } catch {
+      return undefined;
+    }
+  },
+  set(key: string, value: number): void {
+    try {
+      localStorage.setItem(`shiftbound.${key}`, String(value));
+    } catch {
+      /* storage is optional */
+    }
+  },
+};
+// Resume at the last chamber reached.
+let levelIndex = Math.min(Math.max(Math.floor(store.get('level') ?? 0), 0), LEVELS.length - 1);
 let level = LEVELS[levelIndex](scene);
 const player = new PlayerController(scene, canvas, gravity, level.spawnPosition);
 
@@ -53,6 +71,7 @@ const finishedAll = () => levelIndex >= LEVELS.length - 1;
 function startLevel(index: number): void {
   level.dispose();
   levelIndex = index;
+  store.set('level', index);
   level = LEVELS[levelIndex](scene);
   gravity.setAxis(level.entranceAxis);
   player.reset(level.spawnPosition);
@@ -124,7 +143,11 @@ engine.runRenderLoop(() => {
       hasWon = true;
       hud.setPrompt(false);
       beep(440, 880, 0.6, 'sine', 0.15);
-      const stats = `${levelTime.toFixed(1)}s · ${shifts} gravity shift${shifts === 1 ? '' : 's'}`;
+      const best = store.get(`best.${levelIndex}`);
+      const isBest = best === undefined || levelTime < best;
+      if (isBest) store.set(`best.${levelIndex}`, levelTime);
+      const bestText = isBest ? 'new best!' : `best ${best.toFixed(1)}s`;
+      const stats = `${levelTime.toFixed(1)}s (${bestText}) · ${shifts} gravity shift${shifts === 1 ? '' : 's'}`;
       if (finishedAll()) hud.showWin('ALL CHAMBERS CLEARED', `${stats}\n\nClick or press Enter to play again`);
       else hud.showWin('CHAMBER CLEARED', `${stats}\n\nClick or press Enter for the next chamber`);
     }
