@@ -1,169 +1,220 @@
-import { Color3, Material, Mesh, MeshBuilder, Scene, StandardMaterial, Vector3 } from '@babylonjs/core';
+import { Color3, Material, Mesh, MeshBuilder, Scene, Vector3 } from '@babylonjs/core';
 import { GridMaterial } from '@babylonjs/materials';
 import { GravityAxis } from '../gravity/GravitySystem';
 import { GravitySwitch } from './GravitySwitch';
 
 export interface BuiltLevel {
+  name: string;
+  hint: string;
   spawnPosition: Vector3;
   entranceAxis: GravityAxis;
   exitAxis: GravityAxis;
   switches: GravitySwitch[];
   exitCenter: Vector3;
   exitRadius: number;
-  colliders: Mesh[];
+  dispose(): void;
 }
 
-/** Half-extent of the main vault room; walls sit at +/-12 on every axis. */
-const R = 12;
-const THICK = 1;
+type Axis = 'x' | 'y' | 'z';
+type Face = '+x' | '-x' | '+y' | '-y' | '+z' | '-z';
+const T = 1; // wall thickness
 
-function box(scene: Scene, name: string, min: Vector3, max: Vector3, material: Material): Mesh {
-  const size = max.subtract(min);
-  const center = min.add(max).scale(0.5);
-  const m = MeshBuilder.CreateBox(
-    name,
-    { width: Math.abs(size.x), height: Math.abs(size.y), depth: Math.abs(size.z) },
-    scene,
-  );
-  m.position = center;
-  m.material = material;
-  m.checkCollisions = true;
-  m.isPickable = true;
-  return m;
+/** Small helper that accumulates a level's meshes/materials so it can be torn down again. */
+class Builder {
+  public readonly meshes: Mesh[] = [];
+  public readonly switches: GravitySwitch[] = [];
+  public readonly wall: GridMaterial;
+  public readonly floor: GridMaterial;
+  public readonly alcove: GridMaterial;
+  public readonly exit: GridMaterial;
+  private n = 0;
+
+  constructor(private readonly scene: Scene, accent: Color3) {
+    this.wall = this.grid('wallMat', new Color3(0.08, 0.09, 0.12), accent, 1);
+    this.floor = this.grid('floorMat', new Color3(0.1, 0.1, 0.13), new Color3(0.9, 0.6, 0.2), 1);
+    this.alcove = this.grid('alcoveMat', new Color3(0.07, 0.08, 0.1), new Color3(0.5, 0.35, 0.8), 0.8);
+    this.exit = this.grid('exitMat', new Color3(0.05, 0.12, 0.08), new Color3(0.3, 1.0, 0.5), 0.8);
+  }
+
+  private grid(name: string, main: Color3, line: Color3, ratio: number): GridMaterial {
+    const m = new GridMaterial(name, this.scene);
+    m.mainColor = main;
+    m.lineColor = line;
+    m.gridRatio = ratio;
+    m.majorUnitFrequency = 4;
+    m.minorUnitVisibility = 0.3;
+    return m;
+  }
+
+  public box(min: Vector3, max: Vector3, material: Material): void {
+    const size = max.subtract(min);
+    if (size.x <= 1e-6 || size.y <= 1e-6 || size.z <= 1e-6) return;
+    const m = MeshBuilder.CreateBox(`lvl_${this.n++}`, { width: size.x, height: size.y, depth: size.z }, this.scene);
+    m.position = min.add(max).scale(0.5);
+    m.material = material;
+    m.checkCollisions = true;
+    m.isPickable = true;
+    m.freezeWorldMatrix();
+    this.meshes.push(m);
+  }
+
+  /**
+   * A slab perpendicular to `axis`, occupying [lo, hi] along it and [u0,u1] x [v0,v1] on the two
+   * remaining axes (in x,y,z order), optionally with a rectangular hole.
+   */
+  public slab(
+    axis: Axis,
+    lo: number,
+    hi: number,
+    u: [number, number],
+    v: [number, number],
+    material: Material,
+    hole?: { u: [number, number]; v: [number, number] },
+  ): void {
+    const mk = (u0: number, u1: number, v0: number, v1: number) => {
+      const p = (a: number, b: number, c: number) =>
+        axis === 'x' ? new Vector3(a, b, c) : axis === 'y' ? new Vector3(b, a, c) : new Vector3(b, c, a);
+      this.box(p(lo, u0, v0), p(hi, u1, v1), material);
+    };
+    if (!hole) return mk(u[0], u[1], v[0], v[1]);
+    mk(u[0], u[1], hole.v[1], v[1]);
+    mk(u[0], u[1], v[0], hole.v[0]);
+    mk(u[0], hole.u[0], hole.v[0], hole.v[1]);
+    mk(hole.u[1], u[1], hole.v[0], hole.v[1]);
+  }
+
+  /** Walls around a box-shaped interior, leaving the listed faces open. */
+  public tube(min: Vector3, max: Vector3, open: Face[], material: Material): void {
+    const has = (f: Face) => !open.includes(f);
+    if (has('-x')) this.slab('x', min.x - T, min.x, [min.y, max.y], [min.z, max.z], material);
+    if (has('+x')) this.slab('x', max.x, max.x + T, [min.y, max.y], [min.z, max.z], material);
+    if (has('-y')) this.slab('y', min.y - T, min.y, [min.x, max.x], [min.z, max.z], material);
+    if (has('+y')) this.slab('y', max.y, max.y + T, [min.x, max.x], [min.z, max.z], material);
+    if (has('-z')) this.slab('z', min.z - T, min.z, [min.x, max.x], [min.y, max.y], material);
+    if (has('+z')) this.slab('z', max.z, max.z + T, [min.x, max.x], [min.y, max.y], material);
+  }
+
+  public addSwitch(position: Vector3, wallNormal: Vector3, target: GravityAxis): void {
+    this.switches.push(new GravitySwitch(this.scene, position, wallNormal, target));
+  }
+
+  public finish(info: Omit<BuiltLevel, 'switches' | 'dispose'>): BuiltLevel {
+    return {
+      ...info,
+      switches: this.switches,
+      dispose: () => {
+        this.meshes.forEach((m) => m.dispose());
+        this.switches.forEach((s) => s.dispose());
+        [this.wall, this.floor, this.alcove, this.exit].forEach((m) => m.dispose());
+      },
+    };
+  }
+}
+
+const V = (x: number, y: number, z: number) => new Vector3(x, y, z);
+
+/**
+ * Level 1 - a hollow cube. -Y -> +Z -> +X, then drop through the hole in the final floor.
+ */
+function buildVault(scene: Scene): BuiltLevel {
+  const b = new Builder(scene, new Color3(0.25, 0.55, 0.9));
+  const R = 12;
+  const full: [number, number] = [-R, R];
+
+  b.slab('y', -R - T, -R, full, full, b.floor);
+  b.slab('y', R, R + T, full, full, b.wall);
+  b.slab('z', R, R + T, full, full, b.wall);
+  b.slab('x', -R - T, -R, full, full, b.wall);
+  b.slab('z', -R - T, -R, full, full, b.wall, { u: [-2, 2], v: [-R, -R + 3] });
+  b.slab('x', R, R + T, full, full, b.wall, { u: [-2.5, 2.5], v: [-2.5, 2.5] });
+
+  b.tube(V(-2, -R, -R - 9), V(2, -R + 3, -R - T), ['+z'], b.alcove);
+  b.tube(V(R + T, -2.5, -2.5), V(R + 9, 2.5, 2.5), ['-x'], b.exit);
+
+  b.addSwitch(V(0, -R + 1.5, R - 0.3), V(0, 0, -1), '+Z');
+  b.addSwitch(V(R - 0.3, 0, R - 1.5), V(-1, 0, 0), '+X');
+
+  return b.finish({
+    name: 'I · THE VAULT',
+    hint: 'Levers pull gravity toward the wall their arrow points at.',
+    spawnPosition: V(0, -R + 0.5, -R - 5),
+    entranceAxis: '-Y',
+    exitAxis: '+X',
+    exitCenter: V(R + 7, 0, 0),
+    exitRadius: 2.5,
+  });
 }
 
 /**
- * Builds "The Vault": a hollow cube room whose six inner faces can each become
- * the floor depending on gravity. The player enters through a floor-level
- * doorway (natural -Y gravity) and must throw two wall-mounted switches -
- * first rotating gravity onto the +Z wall, then onto the +X wall - to reach a
- * hole in the final floor that drops them into the exit chamber.
+ * Level 2 - a 40-unit vertical shaft. The exit door is at the very top, upside down.
+ * -Y -> +X (walk up the wall) -> +Y (stand on the ceiling).
  */
-export function buildLevel(scene: Scene): BuiltLevel {
-  const colliders: Mesh[] = [];
+function buildShaft(scene: Scene): BuiltLevel {
+  const b = new Builder(scene, new Color3(0.9, 0.35, 0.55));
+  const W = 5;
+  const y0 = -5;
+  const y1 = 35;
+  const w: [number, number] = [-W, W];
+  const h: [number, number] = [y0, y1];
 
-  const wallMat = new GridMaterial('wallMat', scene);
-  wallMat.mainColor = new Color3(0.08, 0.09, 0.12);
-  wallMat.lineColor = new Color3(0.25, 0.55, 0.9);
-  wallMat.gridRatio = 1;
-  wallMat.majorUnitFrequency = 4;
-  wallMat.minorUnitVisibility = 0.35;
-  wallMat.opacity = 1;
+  b.slab('y', y0 - T, y0, w, w, b.floor);
+  b.slab('y', y1, y1 + T, w, w, b.wall);
+  b.slab('x', W, W + T, h, w, b.wall);
+  b.slab('z', W, W + T, w, h, b.wall);
+  b.slab('z', -W - T, -W, w, h, b.wall, { u: [-2, 2], v: [y0, y0 + 3] });
+  b.slab('x', -W - T, -W, h, w, b.wall, { u: [y1 - 3, y1], v: [-2, 2] });
 
-  const floorMat = new GridMaterial('floorMat', scene);
-  floorMat.mainColor = new Color3(0.1, 0.1, 0.13);
-  floorMat.lineColor = new Color3(0.9, 0.6, 0.2);
-  floorMat.gridRatio = 1;
-  floorMat.majorUnitFrequency = 4;
-  floorMat.minorUnitVisibility = 0.3;
+  b.tube(V(-2, y0, -W - 9), V(2, y0 + 3, -W - T), ['+z'], b.alcove);
+  b.tube(V(-W - 9, y1 - 3, -2), V(-W - T, y1, 2), ['+x'], b.exit);
 
-  const alcoveMat = new GridMaterial('alcoveMat', scene);
-  alcoveMat.mainColor = new Color3(0.07, 0.08, 0.1);
-  alcoveMat.lineColor = new Color3(0.5, 0.35, 0.8);
-  alcoveMat.gridRatio = 0.8;
-  alcoveMat.minorUnitVisibility = 0.25;
+  b.addSwitch(V(W - 0.3, y0 + 1.5, 0), V(-1, 0, 0), '+X');
+  b.addSwitch(V(W - 1.5, y1 - 0.3, 0), V(0, -1, 0), '+Y');
 
-  const add = (m: Mesh) => colliders.push(m);
-
-  // ---------------------------------------------------------------------------------------------
-  // Main vault: -Y floor, +Y ceiling, +Z / -X plain walls, -Z has the entrance doorway,
-  // +X has the centered exit hole.
-  // ---------------------------------------------------------------------------------------------
-  add(box(scene, 'floor', new Vector3(-R, -R - THICK, -R), new Vector3(R, -R, R), floorMat));
-  add(box(scene, 'ceiling', new Vector3(-R, R, -R), new Vector3(R, R + THICK, R), wallMat));
-  add(box(scene, 'wallPlusZ', new Vector3(-R, -R, R), new Vector3(R, R, R + THICK), wallMat));
-  add(box(scene, 'wallMinusX', new Vector3(-R - THICK, -R, -R), new Vector3(-R, R, R), wallMat));
-
-  // -Z wall with a floor-level doorway (width 4, height 3) for the entrance.
-  add(box(scene, 'wallMinusZ_top', new Vector3(-R, -R + 3, -R - THICK), new Vector3(R, R, -R), wallMat));
-  add(box(scene, 'wallMinusZ_left', new Vector3(-R, -R, -R - THICK), new Vector3(-2, -R + 3, -R), wallMat));
-  add(box(scene, 'wallMinusZ_right', new Vector3(2, -R, -R - THICK), new Vector3(R, -R + 3, -R), wallMat));
-
-  // +X wall with a centered hole (the exit chute) leading to the exit chamber beyond.
-  const holeHalf = 2.5;
-  add(
-    box(
-      scene,
-      'wallPlusX_top',
-      new Vector3(R, holeHalf, -R),
-      new Vector3(R + THICK, R, R),
-      wallMat,
-    ),
-  );
-  add(
-    box(
-      scene,
-      'wallPlusX_bottom',
-      new Vector3(R, -R, -R),
-      new Vector3(R + THICK, -holeHalf, R),
-      wallMat,
-    ),
-  );
-  add(
-    box(
-      scene,
-      'wallPlusX_left',
-      new Vector3(R, -holeHalf, -R),
-      new Vector3(R + THICK, holeHalf, -holeHalf),
-      wallMat,
-    ),
-  );
-  add(
-    box(
-      scene,
-      'wallPlusX_right',
-      new Vector3(R, -holeHalf, holeHalf),
-      new Vector3(R + THICK, holeHalf, R),
-      wallMat,
-    ),
-  );
-
-  // ---------------------------------------------------------------------------------------------
-  // Entrance corridor: floor-height doorway through -Z, extending out to z = -20.
-  // ---------------------------------------------------------------------------------------------
-  const ez0 = -R - 8; // -20
-  add(box(scene, 'entranceFloor', new Vector3(-2, -R - THICK, ez0), new Vector3(2, -R, -R), alcoveMat));
-  add(box(scene, 'entranceCeiling', new Vector3(-2, -R + 3, ez0), new Vector3(2, -R + 4, -R), alcoveMat));
-  add(box(scene, 'entranceLeftWall', new Vector3(-3, -R, ez0), new Vector3(-2, -R + 3, -R), alcoveMat));
-  add(box(scene, 'entranceRightWall', new Vector3(2, -R, ez0), new Vector3(3, -R + 3, -R), alcoveMat));
-  add(box(scene, 'entranceEndCap', new Vector3(-3, -R - THICK, ez0 - THICK), new Vector3(3, -R + 4, ez0), alcoveMat));
-
-  // ---------------------------------------------------------------------------------------------
-  // Exit chamber: a tube extending out through +X beyond the hole, capped at x = 20.
-  // ---------------------------------------------------------------------------------------------
-  const ex1 = R + 8; // 20
-  const h = 3.2; // chamber half-width, slightly larger than the hole for clearance
-  add(box(scene, 'exitTop', new Vector3(R, h - THICK, -h), new Vector3(ex1, h, h), alcoveMat));
-  add(box(scene, 'exitBottom', new Vector3(R, -h, -h), new Vector3(ex1, -h + THICK, h), alcoveMat));
-  add(box(scene, 'exitLeft', new Vector3(R, -h, -h), new Vector3(ex1, h, -h + THICK), alcoveMat));
-  add(box(scene, 'exitRight', new Vector3(R, -h, h - THICK), new Vector3(ex1, h, h), alcoveMat));
-  add(box(scene, 'exitEndCap', new Vector3(ex1, -h, -h), new Vector3(ex1 + THICK, h, h), alcoveMat));
-
-  // ---------------------------------------------------------------------------------------------
-  // Switches: step 1 rotates gravity onto the +Z wall, step 2 onto the +X wall (the exit floor).
-  // ---------------------------------------------------------------------------------------------
-  const switches: GravitySwitch[] = [
-    new GravitySwitch(scene, new Vector3(0, -R + 1.5, R - 0.3), new Vector3(0, 0, -1), '+Z'),
-    new GravitySwitch(scene, new Vector3(R - 0.3, 0, R - 1.5), new Vector3(-1, 0, 0), '+X'),
-  ];
-
-  const spawnPosition = new Vector3(0, -R + 0.5, ez0 + 3);
-
-  return {
-    spawnPosition,
+  return b.finish({
+    name: 'II · THE SHAFT',
+    hint: 'The way out is a long way up. Walls are just floors you have not met yet.',
+    spawnPosition: V(0, y0 + 0.5, -W - 5),
     entranceAxis: '-Y',
-    exitAxis: '+X',
-    switches,
-    exitCenter: new Vector3(ex1 - 2, 0, 0),
-    exitRadius: 3,
-    colliders,
-  };
+    exitAxis: '+Y',
+    exitCenter: V(-W - 7, y1 - 1, 0),
+    exitRadius: 2,
+  });
 }
 
-/** Skybox-friendly single-color material fallback if a texture ever fails to load. */
-export function makeUnlitMaterial(scene: Scene, color: Color3): StandardMaterial {
-  const mat = new StandardMaterial('unlit', scene);
-  mat.diffuseColor = color;
-  mat.specularColor = Color3.Black();
-  return mat;
+/**
+ * Level 3 - a room split by a partition that stops short of the ceiling.
+ * -Y -> +X (walk up and over the partition) -> +Z (the far wall, with the exit pit).
+ */
+function buildDivide(scene: Scene): BuiltLevel {
+  const b = new Builder(scene, new Color3(0.3, 0.85, 0.75));
+  const R = 8;
+  const full: [number, number] = [-R, R];
+
+  b.slab('y', -R - T, -R, full, full, b.floor);
+  b.slab('y', R, R + T, full, full, b.wall);
+  b.slab('x', -R - T, -R, full, full, b.wall);
+  b.slab('x', R, R + T, full, full, b.wall);
+  b.slab('z', -R - T, -R, full, full, b.wall, { u: [-2, 2], v: [-R, -R + 3] });
+  b.slab('z', R, R + T, full, full, b.wall, { u: [-6, -2], v: [-6, -2] });
+
+  // The partition: full width, 12 of the room's 16 units tall.
+  b.box(V(-R, -R, 0), V(R, 4, 1), b.alcove);
+
+  b.tube(V(-2, -R, -R - 9), V(2, -R + 3, -R - T), ['+z'], b.alcove);
+  b.tube(V(-6, -6, R + T), V(-2, -2, R + 9), ['-z'], b.exit);
+
+  b.addSwitch(V(R - 0.3, -R + 1.5, -4), V(-1, 0, 0), '+X');
+  b.addSwitch(V(R - 1.5, 6, R - 0.3), V(0, 0, -1), '+Z');
+
+  return b.finish({
+    name: 'III · THE DIVIDE',
+    hint: 'Too tall to jump. But is it too tall to walk around?',
+    spawnPosition: V(0, -R + 0.5, -R - 5),
+    entranceAxis: '-Y',
+    exitAxis: '+Z',
+    exitCenter: V(-4, -4, R + 7),
+    exitRadius: 2.5,
+  });
 }
+
+export const LEVELS: Array<(scene: Scene) => BuiltLevel> = [buildVault, buildShaft, buildDivide];

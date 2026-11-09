@@ -112,6 +112,21 @@ export class PlayerController {
     return v;
   }
 
+  /** Teleport to a spawn point and snap orientation to the current gravity. */
+  public reset(position: Vector3): void {
+    this.collider.position.copyFrom(position);
+    this.alignRot = PlayerController.quaternionFromTo(Vector3.Up(), this.gravity.up);
+    this.yaw = 0;
+    this.pitch = 0;
+    this.verticalSpeed = 0;
+    this.jumpQueued = false;
+    this.interactQueued = false;
+  }
+
+  public get isGrounded(): boolean {
+    return this.grounded;
+  }
+
   public update(dt: number): void {
     dt = Math.min(dt, 1 / 20);
 
@@ -120,8 +135,13 @@ export class PlayerController {
     const currentUp = rotate(Vector3.Up(), this.alignRot);
     const dot = Scalar.Clamp(Vector3.Dot(currentUp, targetUp), -1, 1);
     if (dot < 0.99999) {
-      const axis = Vector3.Cross(currentUp, targetUp);
-      const axisLen = axis.length();
+      let axis = Vector3.Cross(currentUp, targetUp);
+      let axisLen = axis.length();
+      if (axisLen <= 1e-5) {
+        // Exactly opposite: roll around the body's own forward axis.
+        axis = rotate(Vector3.Forward(), this.alignRot);
+        axisLen = 1;
+      }
       if (axisLen > 1e-5) {
         axis.scaleInPlace(1 / axisLen);
         const angle = Math.acos(dot);
@@ -168,7 +188,7 @@ export class PlayerController {
     if (moveX !== 0 || moveZ !== 0) {
       horizontal.addInPlace(forward.scale(moveZ));
       horizontal.addInPlace(right.scale(moveX));
-      horizontal.normalize().scaleInPlace(MOVE_SPEED);
+      horizontal.normalize().scaleInPlace(this.keys.has('ShiftLeft') ? MOVE_SPEED * 1.6 : MOVE_SPEED);
     }
 
     // --- Vertical (gravity + jump) -------------------------------------------------------------
