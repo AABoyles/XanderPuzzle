@@ -1,19 +1,8 @@
-import {
-  Color3,
-  Color4,
-  DynamicTexture,
-  Engine,
-  GlowLayer,
-  HemisphericLight,
-  Mesh,
-  MeshBuilder,
-  Scene,
-  StandardMaterial,
-  Vector3,
-} from '@babylonjs/core';
+import { Color4, Engine, GlowLayer, Scene, Vector3 } from '@babylonjs/core';
 import { GravitySystem } from './gravity/GravitySystem';
 import { buildSandbox, LEVELS as CHAMBERS } from './level/Level';
 import { PlayerController } from './player/PlayerController';
+import { createSkin, SKIN_IDS, SKIN_LABELS, SkinId } from './skins/Skin';
 import { HUD } from './ui/HUD';
 
 const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement;
@@ -22,12 +11,6 @@ const engine = new Engine(canvas, true, { stencil: true, preserveDrawingBuffer: 
 const scene = new Scene(engine);
 scene.clearColor = new Color4(0.01, 0.012, 0.02, 1);
 scene.collisionsEnabled = true;
-
-createSkybox(scene);
-
-const ambient = new HemisphericLight('ambient', new Vector3(0.3, 1, 0.2), scene);
-ambient.intensity = 0.55;
-ambient.groundColor = new Color3(0.15, 0.17, 0.22);
 
 const glow = new GlowLayer('glow', scene);
 glow.intensity = 0.7;
@@ -56,14 +39,19 @@ const store = {
 };
 // Resume at the last chamber reached.
 let levelIndex = sandbox ? 0 : Math.min(Math.max(Math.floor(store.get('level') ?? 0), 0), LEVELS.length - 1);
-let level = LEVELS[levelIndex](scene);
+// Skin: `?skin=axis|monolith|draft|neon`, else the last one picked with K, else Axis.
+const skinParam = new URLSearchParams(location.search).get('skin') as SkinId | null;
+let skinIndex = skinParam && SKIN_IDS.includes(skinParam) ? SKIN_IDS.indexOf(skinParam) : Math.floor(store.get('skin') ?? 0) % SKIN_IDS.length;
+let skin = createSkin(SKIN_IDS[skinIndex], scene, glow);
+let level = LEVELS[levelIndex](scene, skin);
 const player = new PlayerController(scene, canvas, gravity, level.spawnPosition);
 
 const hud = new HUD();
-hud.setGravityAxis(gravity.axis);
+hud.setGravityAxis(gravity.axis, skin.hudColor(gravity.axis));
 hud.setLevel(level.name, level.hint);
+hud.setSkin(SKIN_LABELS[skin.id]);
 gravity.onChangeObservable.add(({ axis }) => {
-  hud.setGravityAxis(axis);
+  hud.setGravityAxis(axis, skin.hudColor(axis));
   hud.flashGravityChange();
 });
 
@@ -76,7 +64,7 @@ function startLevel(index: number): void {
   level.dispose();
   levelIndex = index;
   if (!sandbox) store.set('level', index);
-  level = LEVELS[levelIndex](scene);
+  level = LEVELS[levelIndex](scene, skin);
   gravity.setAxis(level.entranceAxis);
   player.reset(level.spawnPosition);
   hud.setLevel(level.name, level.hint);
@@ -84,6 +72,18 @@ function startLevel(index: number): void {
   hasWon = false;
   levelTime = 0;
   shifts = 0;
+}
+
+/** Swaps the skin in place: the chamber is rebuilt, but the player keeps their spot and gravity. */
+function setSkin(index: number): void {
+  level.dispose();
+  skin.dispose();
+  skinIndex = ((index % SKIN_IDS.length) + SKIN_IDS.length) % SKIN_IDS.length;
+  store.set('skin', skinIndex);
+  skin = createSkin(SKIN_IDS[skinIndex], scene, glow);
+  level = LEVELS[levelIndex](scene, skin);
+  hud.setSkin(SKIN_LABELS[skin.id]);
+  hud.setGravityAxis(gravity.axis, skin.hudColor(gravity.axis));
 }
 
 function advance(): void {
@@ -98,6 +98,7 @@ document.addEventListener('pointerlockchange', () => {
 canvas.addEventListener('click', advance);
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyR' && !hasWon) startLevel(levelIndex);
+  if (e.code === 'KeyK') setSkin(skinIndex + (e.shiftKey ? -1 : 1));
   if (e.code === 'Enter') advance();
 });
 
@@ -181,31 +182,10 @@ if (import.meta.env.DEV) {
     hasWon: () => hasWon,
     level: () => levelIndex,
     startLevel,
+    look: (yaw: number, pitch: number) => player.setLook(yaw, pitch),
+    setSkin: (id: SkinId) => setSkin(SKIN_IDS.indexOf(id)),
     crates: () => level.dynamics.crates.map((c) => [...c.body.center]),
     plates: () => level.dynamics.plates.map((pl) => pl.pressed),
     doors: () => level.dynamics.doors.map((d) => d.isOpen),
   };
-}
-
-function createSkybox(s: Scene): Mesh {
-  const sky = MeshBuilder.CreateSphere('sky', { diameter: 900, sideOrientation: Mesh.BACKSIDE }, s);
-  const tex = new DynamicTexture('skyGradient', { width: 4, height: 256 }, s, false);
-  const ctx = tex.getContext();
-  const grad = ctx.createLinearGradient(0, 0, 0, 256);
-  grad.addColorStop(0, '#0a1420');
-  grad.addColorStop(0.55, '#050810');
-  grad.addColorStop(1, '#000000');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 4, 256);
-  tex.update();
-
-  const mat = new StandardMaterial('skyMat', s);
-  mat.diffuseTexture = tex;
-  mat.emissiveTexture = tex;
-  mat.disableLighting = true;
-  mat.backFaceCulling = false;
-  sky.material = mat;
-  sky.infiniteDistance = true;
-  sky.isPickable = false;
-  return sky;
 }

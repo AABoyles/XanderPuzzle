@@ -123,6 +123,12 @@ export class PlayerController {
     this.interactQueued = false;
   }
 
+  /** Sets the view direction relative to the current up (radians; positive pitch looks down). */
+  public setLook(yaw: number, pitch: number): void {
+    this.yaw = yaw;
+    this.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch));
+  }
+
   public get isGrounded(): boolean {
     return this.grounded;
   }

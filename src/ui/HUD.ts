@@ -14,6 +14,8 @@ export class HUD {
   private readonly ui: AdvancedDynamicTexture;
   private readonly prompt: TextBlock;
   private readonly gravityLabel: TextBlock;
+  private gravityColor = '#bfe3ff';
+  private keysLabel!: TextBlock;
   private readonly startOverlay: Rectangle;
   private readonly winOverlay: Rectangle;
   private readonly levelLabel: TextBlock;
@@ -92,8 +94,11 @@ export class HUD {
     this.hintLabel.outlineWidth = 3;
     this.ui.addControl(this.hintLabel);
 
-    const keys = new TextBlock('keys', 'WASD move · Shift run · Space jump · E use · R restart');
-    keys.color = 'rgba(255,255,255,0.45)';
+    const keys = (this.keysLabel = new TextBlock('keys', ''));
+    this.setSkin('');
+    keys.color = 'rgba(255,255,255,0.75)';
+    keys.outlineColor = 'rgba(0,0,0,0.6)';
+    keys.outlineWidth = 3;
     keys.fontSize = 13;
     keys.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
     keys.top = '-12px';
@@ -178,14 +183,20 @@ export class HUD {
     this.prompt.text = text;
   }
 
-  public setGravityAxis(axis: GravityAxis): void {
+  public setSkin(label: string): void {
+    this.keysLabel.text = `WASD move · Shift run · Space jump · E use · R restart · K skin${label ? `: ${label}` : ''}`;
+  }
+
+  public setGravityAxis(axis: GravityAxis, color = '#bfe3ff'): void {
+    this.gravityColor = color;
+    this.gravityLabel.color = color;
     this.gravityLabel.text = `GRAVITY: ${AXIS_LABEL[axis]}`;
   }
 
   public flashGravityChange(): void {
     this.gravityLabel.color = '#ffffff';
     setTimeout(() => {
-      this.gravityLabel.color = '#bfe3ff';
+      this.gravityLabel.color = this.gravityColor;
     }, 250);
   }
 

@@ -17,6 +17,17 @@ Four chambers ship with the game, each ending in a different orientation than it
 
 Each lever carries an arrow pointing the way "down" will be once it is thrown. **Shift** runs, **R** restarts the chamber, and clearing one shows your time and number of gravity shifts before moving on.
 
+## Skins
+
+Press **K** in game to cycle skins (Shift+K goes back), or load with `?skin=axis|monolith|draft|neon`. The choice is remembered.
+
+- **Axis** (default): matte pastel tiles where every surface is the colour of the lever that makes it the floor, so you can plan a route by colour. Soft sun and shadows.
+- **Monolith**: board-formed concrete with form-tie holes under a low warm sun, with fog and a vignette.
+- **Draft**: ink outlines on drafting paper; floors are clean and walls and ceilings are hatched by orientation.
+- **Neon**: the original glowing grid.
+
+Every face of every box is the floor under exactly one gravity axis (the one pointing into it), so `src/skins/Skin.ts` gives each skin one material per axis, plus lighting, sky, fog and lever colours.
+
 ## Running it
 
 ```bash
@@ -38,5 +49,6 @@ The engine supports gravity-driven crates, pressure plates and plate-controlled 
 - `src/physics/boxPhysics.ts` — dependency-free swept axis-aligned box physics used by crates.
 - `src/level/Dynamics.ts` — crates, pressure plates, doors, and the per-frame update that ties them together.
 - `src/level/GravitySwitch.ts` — the wall-mounted lever interactable.
+- `src/skins/Skin.ts` — the skins: per-axis surface materials, procedural textures, lighting, sky and post-processing.
 - `src/ui/HUD.ts` — Babylon GUI overlay: crosshair, interaction prompt, current-gravity indicator, start/win screens.
-- `src/main.ts` — scene bootstrap (lighting, skybox, glow layer, render loop, win-condition check).
+- `src/main.ts` — scene bootstrap, skin switching, render loop, win-condition check.

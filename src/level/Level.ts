@@ -1,10 +1,10 @@
-import { Color3, Material, Mesh, MeshBuilder, Scene, Vector3 } from '@babylonjs/core';
-import { GridMaterial } from '@babylonjs/materials';
+import { Color3, Mesh, MeshBuilder, MultiMaterial, Scene, SubMesh, Vector3, VertexBuffer } from '@babylonjs/core';
 import { GravityAxis } from '../gravity/GravitySystem';
 import { Door, DynamicsEvents, LevelDynamics, PressurePlate } from './Dynamics';
 import { Crate } from './Dynamics';
 import { GravitySwitch } from './GravitySwitch';
 import { Aabb } from '../physics/boxPhysics';
+import { AXIS_ORDER, SkinRuntime, SurfaceRole } from '../skins/Skin';
 
 export interface BuiltLevel {
   name: string;
@@ -31,37 +31,70 @@ class Builder {
   public readonly switches: GravitySwitch[] = [];
   public readonly solids: Aabb[] = [];
   public readonly dynamics = new LevelDynamics(this.solids);
-  public readonly wall: GridMaterial;
-  public readonly floor: GridMaterial;
-  public readonly alcove: GridMaterial;
-  public readonly exit: GridMaterial;
+  /** Surface roles, named for how level code uses them. */
+  public readonly wall: SurfaceRole = 'shell';
+  public readonly floor: SurfaceRole = 'shell';
+  public readonly alcove: SurfaceRole = 'alcove';
+  public readonly exit: SurfaceRole = 'exit';
+  private readonly multiMaterials = new Map<SurfaceRole, MultiMaterial>();
   private n = 0;
 
-  constructor(private readonly scene: Scene, accent: Color3) {
-    this.wall = this.grid('wallMat', new Color3(0.08, 0.09, 0.12), accent, 1);
-    this.floor = this.grid('floorMat', new Color3(0.1, 0.1, 0.13), new Color3(0.9, 0.6, 0.2), 1);
-    this.alcove = this.grid('alcoveMat', new Color3(0.07, 0.08, 0.1), new Color3(0.5, 0.35, 0.8), 0.8);
-    this.exit = this.grid('exitMat', new Color3(0.05, 0.12, 0.08), new Color3(0.3, 1.0, 0.5), 0.8);
+  constructor(
+    private readonly scene: Scene,
+    private readonly skin: SkinRuntime,
+    private readonly accent: Color3,
+  ) {}
+
+  /** One MultiMaterial per role; each box face picks the sub-material for its gravity axis. */
+  private multi(role: SurfaceRole): MultiMaterial {
+    let mm = this.multiMaterials.get(role);
+    if (!mm) {
+      mm = new MultiMaterial(`mm_${role}`, this.scene);
+      mm.subMaterials = this.skin.materials(role, this.accent);
+      this.multiMaterials.set(role, mm);
+    }
+    return mm;
   }
 
-  private grid(name: string, main: Color3, line: Color3, ratio: number): GridMaterial {
-    const m = new GridMaterial(name, this.scene);
-    m.mainColor = main;
-    m.lineColor = line;
-    m.gridRatio = ratio;
-    m.majorUnitFrequency = 4;
-    m.minorUnitVisibility = 0.3;
-    return m;
-  }
-
-  public box(min: Vector3, max: Vector3, material: Material): void {
+  /** A solid box. Called directly from level code it is an interior `feature`. */
+  public box(min: Vector3, max: Vector3, role: SurfaceRole = 'feature'): void {
     const size = max.subtract(min);
     if (size.x <= 1e-6 || size.y <= 1e-6 || size.z <= 1e-6) return;
     const m = MeshBuilder.CreateBox(`lvl_${this.n++}`, { width: size.x, height: size.y, depth: size.z }, this.scene);
-    m.position = min.add(max).scale(0.5);
-    m.material = material;
+    const center = min.add(max).scale(0.5);
+    m.position = center;
+
+    // World-space UVs, so texture scale is the same on every box and continuous across seams.
+    const pos = m.getVerticesData(VertexBuffer.PositionKind)!;
+    const nrm = m.getVerticesData(VertexBuffer.NormalKind)!;
+    const uvs = new Float32Array((pos.length / 3) * 2);
+    const k = 1 / this.skin.textureScale;
+    for (let i = 0; i < pos.length / 3; i++) {
+      const x = pos[i * 3] + center.x;
+      const y = pos[i * 3 + 1] + center.y;
+      const z = pos[i * 3 + 2] + center.z;
+      const [u, v] = Math.abs(nrm[i * 3]) > 0.5 ? [z, y] : Math.abs(nrm[i * 3 + 1]) > 0.5 ? [x, z] : [x, y];
+      uvs[i * 2] = u * k;
+      uvs[i * 2 + 1] = v * k;
+    }
+    m.setVerticesData(VertexBuffer.UVKind, uvs);
+
+    // One sub-mesh per face, coloured by the gravity under which that face is the floor
+    // (gravity pointing into the face, i.e. opposite its outward normal).
+    const idx = m.getIndices()!;
+    const total = m.getTotalVertices();
+    m.subMeshes = [];
+    for (let f = 0; f < idx.length / 6; f++) {
+      const vi = idx[f * 6] * 3;
+      const [nx, ny, nz] = [nrm[vi], nrm[vi + 1], nrm[vi + 2]];
+      const axis = Math.abs(nx) > 0.5 ? (nx > 0 ? '-X' : '+X') : Math.abs(ny) > 0.5 ? (ny > 0 ? '-Y' : '+Y') : nz > 0 ? '-Z' : '+Z';
+      new SubMesh(AXIS_ORDER.indexOf(axis), 0, total, f * 6, 6, m);
+    }
+    m.material = this.multi(role);
+
     m.checkCollisions = true;
     m.isPickable = true;
+    this.skin.decorate(m, role);
     m.freezeWorldMatrix();
     this.meshes.push(m);
     this.solids.push({ min: [min.x, min.y, min.z], max: [max.x, max.y, max.z] });
@@ -77,7 +110,7 @@ class Builder {
     hi: number,
     u: [number, number],
     v: [number, number],
-    material: Material,
+    material: SurfaceRole,
     hole?: { u: [number, number]; v: [number, number] },
   ): void {
     const mk = (u0: number, u1: number, v0: number, v1: number) => {
@@ -93,7 +126,7 @@ class Builder {
   }
 
   /** Walls around a box-shaped interior, leaving the listed faces open. */
-  public tube(min: Vector3, max: Vector3, open: Face[], material: Material): void {
+  public tube(min: Vector3, max: Vector3, open: Face[], material: SurfaceRole): void {
     const has = (f: Face) => !open.includes(f);
     if (has('-x')) this.slab('x', min.x - T, min.x, [min.y, max.y], [min.z, max.z], material);
     if (has('+x')) this.slab('x', max.x, max.x + T, [min.y, max.y], [min.z, max.z], material);
@@ -104,12 +137,15 @@ class Builder {
   }
 
   public addSwitch(position: Vector3, wallNormal: Vector3, target: GravityAxis): void {
-    this.switches.push(new GravitySwitch(this.scene, position, wallNormal, target));
+    const sw = new GravitySwitch(this.scene, position, wallNormal, target, this.skin.leverColor(target));
+    sw.root.getChildMeshes().forEach((m) => this.skin.decorateProp(m as Mesh));
+    this.switches.push(sw);
   }
 
   /** A gravity-driven cube. `center` is where it starts; it will fall from there. */
   public addCrate(center: Vector3, size = 1.5): Crate {
     const crate = new Crate(this.scene, center, size);
+    this.skin.decorateProp(crate.mesh);
     this.dynamics.crates.push(crate);
     return crate;
   }
@@ -117,6 +153,7 @@ class Builder {
   /** A pressure plate on the surface at `center`, facing along `normal`. */
   public addPlate(center: Vector3, normal: Vector3, size = 2.5, cratesOnly = false): PressurePlate {
     const plate = new PressurePlate(this.scene, center, normal, size, cratesOnly);
+    this.skin.decorateProp(plate.mesh);
     this.dynamics.plates.push(plate);
     return plate;
   }
@@ -124,6 +161,7 @@ class Builder {
   /** A solid slab filling [min, max] that opens while all of `plates` are pressed. */
   public addDoor(min: Vector3, max: Vector3, plates: PressurePlate[]): Door {
     const door = new Door(this.scene, min, max, plates);
+    this.skin.decorateProp(door.mesh);
     this.dynamics.doors.push(door);
     return door;
   }
@@ -138,7 +176,8 @@ class Builder {
         this.meshes.forEach((m) => m.dispose());
         this.switches.forEach((s) => s.dispose());
         this.dynamics.dispose();
-        [this.wall, this.floor, this.alcove, this.exit].forEach((m) => m.dispose());
+        // Sub-materials belong to the skin and outlive the level.
+        this.multiMaterials.forEach((mm) => mm.dispose(false, false, false));
       },
     };
   }
@@ -149,8 +188,8 @@ const V = (x: number, y: number, z: number) => new Vector3(x, y, z);
 /**
  * Level 1 - a hollow cube. -Y -> +Z -> +X, then drop through the hole in the final floor.
  */
-function buildVault(scene: Scene): BuiltLevel {
-  const b = new Builder(scene, new Color3(0.25, 0.55, 0.9));
+function buildVault(scene: Scene, skin: SkinRuntime): BuiltLevel {
+  const b = new Builder(scene, skin, new Color3(0.25, 0.55, 0.9));
   const R = 12;
   const full: [number, number] = [-R, R];
 
@@ -182,8 +221,8 @@ function buildVault(scene: Scene): BuiltLevel {
  * Level 2 - a 40-unit vertical shaft. The exit door is at the very top, upside down.
  * -Y -> +X (walk up the wall) -> +Y (stand on the ceiling).
  */
-function buildShaft(scene: Scene): BuiltLevel {
-  const b = new Builder(scene, new Color3(0.9, 0.35, 0.55));
+function buildShaft(scene: Scene, skin: SkinRuntime): BuiltLevel {
+  const b = new Builder(scene, skin, new Color3(0.9, 0.35, 0.55));
   const W = 5;
   const y0 = -5;
   const y1 = 35;
@@ -218,8 +257,8 @@ function buildShaft(scene: Scene): BuiltLevel {
  * Level 3 - a room split by a partition that stops short of the ceiling.
  * -Y -> +X (walk up and over the partition) -> +Z (the far wall, with the exit pit).
  */
-function buildDivide(scene: Scene): BuiltLevel {
-  const b = new Builder(scene, new Color3(0.3, 0.85, 0.75));
+function buildDivide(scene: Scene, skin: SkinRuntime): BuiltLevel {
+  const b = new Builder(scene, skin, new Color3(0.3, 0.85, 0.75));
   const R = 8;
   const full: [number, number] = [-R, R];
 
@@ -231,7 +270,7 @@ function buildDivide(scene: Scene): BuiltLevel {
   b.slab('z', R, R + T, full, full, b.wall, { u: [-6, -2], v: [-6, -2] });
 
   // The partition: full width, 12 of the room's 16 units tall.
-  b.box(V(-R, -R, 0), V(R, 4, 1), b.alcove);
+  b.box(V(-R, -R, 0), V(R, 4, 1));
 
   b.tube(V(-2, -R, -R - 9), V(2, -R + 3, -R - T), ['+z'], b.alcove);
   b.tube(V(-6, -6, R + T), V(-2, -2, R + 9), ['-z'], b.exit);
@@ -254,8 +293,8 @@ function buildDivide(scene: Scene): BuiltLevel {
  * Level 4 - three shifts around the room: -Y -> -X -> +Y -> +X, each lever only reachable
  * from the surface the previous one puts you on.
  */
-function buildSpiral(scene: Scene): BuiltLevel {
-  const b = new Builder(scene, new Color3(0.95, 0.8, 0.3));
+function buildSpiral(scene: Scene, skin: SkinRuntime): BuiltLevel {
+  const b = new Builder(scene, skin, new Color3(0.95, 0.8, 0.3));
   const R = 8;
   const full: [number, number] = [-R, R];
 
@@ -292,8 +331,8 @@ function buildSpiral(scene: Scene): BuiltLevel {
  * Throw the lever to drop the crate onto the wall plate, which opens the red door; the second
  * lever puts you back on the floor to walk through it.
  */
-export function buildSandbox(scene: Scene): BuiltLevel {
-  const b = new Builder(scene, new Color3(0.6, 0.6, 0.65));
+export function buildSandbox(scene: Scene, skin: SkinRuntime): BuiltLevel {
+  const b = new Builder(scene, skin, new Color3(0.6, 0.6, 0.65));
   const R = 8;
   const full: [number, number] = [-R, R];
 
@@ -326,4 +365,6 @@ export function buildSandbox(scene: Scene): BuiltLevel {
   });
 }
 
-export const LEVELS: Array<(scene: Scene) => BuiltLevel> = [buildVault, buildShaft, buildDivide, buildSpiral];
+export type LevelFactory = (scene: Scene, skin: SkinRuntime) => BuiltLevel;
+
+export const LEVELS: LevelFactory[] = [buildVault, buildShaft, buildDivide, buildSpiral];

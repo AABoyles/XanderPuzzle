@@ -11,15 +11,6 @@ import {
 import { GravityAxis, GravitySystem } from '../gravity/GravitySystem';
 
 const INTERACT_RANGE = 2.6;
-const AXIS_COLOR: Record<GravityAxis, Color3> = {
-  '+X': new Color3(1.0, 0.35, 0.35),
-  '-X': new Color3(0.6, 0.15, 0.15),
-  '+Y': new Color3(0.35, 1.0, 0.45),
-  '-Y': new Color3(0.15, 0.55, 0.2),
-  '+Z': new Color3(0.35, 0.55, 1.0),
-  '-Z': new Color3(0.15, 0.25, 0.6),
-};
-
 /**
  * A wall-mounted lever that, when the player is nearby and presses E,
  * snaps the whole level's gravity to `targetAxis`.
@@ -33,7 +24,10 @@ export class GravitySwitch {
   private readonly glowMat: StandardMaterial;
   private cooldown = 0;
 
-  constructor(scene: Scene, position: Vector3, wallNormal: Vector3, targetAxis: GravityAxis) {
+  private readonly color: Color3;
+
+  constructor(scene: Scene, position: Vector3, wallNormal: Vector3, targetAxis: GravityAxis, color: Color3) {
+    this.color = color;
     this.position = position.clone();
     this.targetAxis = targetAxis;
 
@@ -56,8 +50,8 @@ export class GravitySwitch {
 
     this.lever = MeshBuilder.CreateBox('switchLever', { width: 0.32, height: 0.32, depth: 0.75 }, scene);
     this.glowMat = new StandardMaterial('switchLeverMat', scene);
-    this.glowMat.diffuseColor = AXIS_COLOR[targetAxis].scale(0.4);
-    this.glowMat.emissiveColor = AXIS_COLOR[targetAxis];
+    this.glowMat.diffuseColor = color.scale(0.4);
+    this.glowMat.emissiveColor = color;
     this.lever.material = this.glowMat;
     this.lever.parent = this.root;
     this.lever.position = wallNormal.scale(0.55);
@@ -89,7 +83,7 @@ export class GravitySwitch {
 
     // Pulse brighter when reachable, full bright when it's the current gravity setting.
     const pulse = isActiveAxis ? 1.4 : inRange ? 0.9 : 0.5;
-    this.glowMat.emissiveColor = AXIS_COLOR[this.targetAxis].scale(pulse);
+    this.glowMat.emissiveColor = this.color.scale(pulse);
 
     if (inRange && activate && this.cooldown <= 0 && gravity.isAdjacentTo(this.targetAxis)) {
       gravity.setAxis(this.targetAxis);
