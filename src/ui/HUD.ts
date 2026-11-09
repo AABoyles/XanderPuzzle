@@ -16,6 +16,10 @@ export class HUD {
   private readonly gravityLabel: TextBlock;
   private readonly startOverlay: Rectangle;
   private readonly winOverlay: Rectangle;
+  private readonly levelLabel: TextBlock;
+  private readonly hintLabel: TextBlock;
+  private winTitle!: TextBlock;
+  private winSubtitle!: TextBlock;
 
   constructor() {
     this.ui = AdvancedDynamicTexture.CreateFullscreenUI('hud');
@@ -67,6 +71,35 @@ export class HUD {
     this.gravityLabel.fontFamily = 'Consolas, monospace';
     gravityBox.addControl(this.gravityLabel);
 
+    this.levelLabel = new TextBlock('levelLabel', '');
+    this.levelLabel.color = 'white';
+    this.levelLabel.fontSize = 20;
+    this.levelLabel.fontFamily = 'Consolas, monospace';
+    this.levelLabel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    this.levelLabel.top = '22px';
+    this.levelLabel.height = '30px';
+    this.levelLabel.outlineColor = 'black';
+    this.levelLabel.outlineWidth = 3;
+    this.ui.addControl(this.levelLabel);
+
+    this.hintLabel = new TextBlock('hintLabel', '');
+    this.hintLabel.color = '#aab8cc';
+    this.hintLabel.fontSize = 15;
+    this.hintLabel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    this.hintLabel.top = '50px';
+    this.hintLabel.height = '24px';
+    this.hintLabel.outlineColor = 'black';
+    this.hintLabel.outlineWidth = 3;
+    this.ui.addControl(this.hintLabel);
+
+    const keys = new TextBlock('keys', 'WASD move · Shift run · Space jump · E use · R restart');
+    keys.color = 'rgba(255,255,255,0.45)';
+    keys.fontSize = 13;
+    keys.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    keys.top = '-12px';
+    keys.height = '20px';
+    this.ui.addControl(keys);
+
     // Start overlay
     this.startOverlay = new Rectangle('startOverlay');
     this.startOverlay.width = 1;
@@ -85,7 +118,7 @@ export class HUD {
 
     const subtitle = new TextBlock(
       'subtitle',
-      'Click to look around  •  WASD to move  •  Space to jump\nWalk up to a lever and press E to rotate gravity 90°\n\nClick anywhere to begin',
+      'Click to look around  •  WASD to move  •  Shift to run  •  Space to jump\nWalk up to a lever and press E to rotate gravity 90°\nR restarts the chamber\n\nClick anywhere to begin',
     );
     subtitle.color = '#d8e6ff';
     subtitle.fontSize = 20;
@@ -103,14 +136,14 @@ export class HUD {
     this.winOverlay.isVisible = false;
     this.ui.addControl(this.winOverlay);
 
-    const winTitle = new TextBlock('winTitle', 'VAULT CLEARED');
+    const winTitle = (this.winTitle = new TextBlock('winTitle', 'CHAMBER CLEARED'));
     winTitle.color = '#9dffb0';
     winTitle.fontSize = 56;
     winTitle.fontWeight = 'bold';
     winTitle.top = '-40px';
     this.winOverlay.addControl(winTitle);
 
-    const winSubtitle = new TextBlock('winSubtitle', 'You rotated gravity to reach the exit.');
+    const winSubtitle = (this.winSubtitle = new TextBlock('winSubtitle', ''));
     winSubtitle.color = 'white';
     winSubtitle.fontSize = 22;
     winSubtitle.top = '30px';
@@ -121,8 +154,23 @@ export class HUD {
     this.startOverlay.isVisible = false;
   }
 
-  public showWin(): void {
+  public showStartOverlay(): void {
+    this.startOverlay.isVisible = true;
+  }
+
+  public showWin(title: string, subtitle: string): void {
+    this.winTitle.text = title;
+    this.winSubtitle.text = subtitle;
     this.winOverlay.isVisible = true;
+  }
+
+  public hideWin(): void {
+    this.winOverlay.isVisible = false;
+  }
+
+  public setLevel(name: string, hint: string): void {
+    this.levelLabel.text = name;
+    this.hintLabel.text = hint;
   }
 
   public setPrompt(visible: boolean, text = 'Press [E] to shift gravity'): void {

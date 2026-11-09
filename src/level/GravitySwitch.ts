@@ -62,6 +62,19 @@ export class GravitySwitch {
     this.lever.parent = this.root;
     this.lever.position = wallNormal.scale(0.55);
     this.lever.rotationQuaternion = GravitySwitch.rotationFromUp(wallNormal);
+
+    // Arrow showing which way "down" will be once the lever is thrown.
+    const dir = GravitySystem.axisVector(targetAxis);
+    const arrow = MeshBuilder.CreateCylinder('switchArrow', { diameterTop: 0, diameterBottom: 0.45, height: 0.7 }, scene);
+    arrow.material = this.glowMat;
+    arrow.parent = this.root;
+    arrow.position = wallNormal.scale(1.25).add(dir.scale(0.2));
+    arrow.rotationQuaternion = GravitySwitch.rotationFromUp(dir);
+    [base, this.lever, arrow].forEach((m) => (m.isPickable = false));
+  }
+
+  public distanceTo(playerPos: Vector3): number {
+    return Vector3.Distance(playerPos, this.position);
   }
 
   public isInRange(playerPos: Vector3): boolean {
@@ -78,7 +91,7 @@ export class GravitySwitch {
     const pulse = isActiveAxis ? 1.4 : inRange ? 0.9 : 0.5;
     this.glowMat.emissiveColor = AXIS_COLOR[this.targetAxis].scale(pulse);
 
-    if (inRange && activate && this.cooldown <= 0) {
+    if (inRange && activate && this.cooldown <= 0 && gravity.isAdjacentTo(this.targetAxis)) {
       gravity.setAxis(this.targetAxis);
       this.cooldown = 0.6;
       return true;
@@ -87,7 +100,7 @@ export class GravitySwitch {
   }
 
   public dispose(): void {
-    this.root.dispose();
+    this.root.dispose(false, true);
   }
 
   private static rotationFromUp(up: Vector3): Quaternion {

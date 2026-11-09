@@ -7,13 +7,12 @@ import {
   HemisphericLight,
   Mesh,
   MeshBuilder,
-  PointLight,
   Scene,
   StandardMaterial,
   Vector3,
 } from '@babylonjs/core';
 import { GravitySystem } from './gravity/GravitySystem';
-import { buildLevel } from './level/Level';
+import { buildSandbox, LEVELS as CHAMBERS } from './level/Level';
 import { PlayerController } from './player/PlayerController';
 import { HUD } from './ui/HUD';
 
@@ -34,48 +33,137 @@ const glow = new GlowLayer('glow', scene);
 glow.intensity = 0.7;
 
 const gravity = new GravitySystem('-Y', 22);
-const level = buildLevel(scene);
+// `?sandbox` loads the physics test room instead of the chambers.
+const sandbox = new URLSearchParams(location.search).has('sandbox');
+const LEVELS = sandbox ? [buildSandbox] : CHAMBERS;
 
-// A couple of warm point lights near the switches so the vault doesn't feel flat.
-addAccentLight(scene, new Vector3(0, -6, 10));
-addAccentLight(scene, new Vector3(9, 0, 6));
-addAccentLight(scene, new Vector3(0, -9, -14));
-
+const store = {
+  get(key: string): number | undefined {
+    try {
+      const v = localStorage.getItem(`shiftbound.${key}`);
+      return v === null ? undefined : Number(v);
+    } catch {
+      return undefined;
+    }
+  },
+  set(key: string, value: number): void {
+    try {
+      localStorage.setItem(`shiftbound.${key}`, String(value));
+    } catch {
+      /* storage is optional */
+    }
+  },
+};
+// Resume at the last chamber reached.
+let levelIndex = sandbox ? 0 : Math.min(Math.max(Math.floor(store.get('level') ?? 0), 0), LEVELS.length - 1);
+let level = LEVELS[levelIndex](scene);
 const player = new PlayerController(scene, canvas, gravity, level.spawnPosition);
 
 const hud = new HUD();
 hud.setGravityAxis(gravity.axis);
+hud.setLevel(level.name, level.hint);
 gravity.onChangeObservable.add(({ axis }) => {
   hud.setGravityAxis(axis);
   hud.flashGravityChange();
 });
 
+let hasWon = false;
+let levelTime = 0;
+let shifts = 0;
+const finishedAll = () => levelIndex >= LEVELS.length - 1;
+
+function startLevel(index: number): void {
+  level.dispose();
+  levelIndex = index;
+  if (!sandbox) store.set('level', index);
+  level = LEVELS[levelIndex](scene);
+  gravity.setAxis(level.entranceAxis);
+  player.reset(level.spawnPosition);
+  hud.setLevel(level.name, level.hint);
+  hud.hideWin();
+  hasWon = false;
+  levelTime = 0;
+  shifts = 0;
+}
+
+function advance(): void {
+  if (!hasWon) return;
+  startLevel(finishedAll() ? 0 : levelIndex + 1);
+}
+
 document.addEventListener('pointerlockchange', () => {
-  if (document.pointerLockElement === canvas && !hasWon) {
-    hud.hideStartOverlay();
-  }
+  if (document.pointerLockElement === canvas) hud.hideStartOverlay();
+  else if (!hasWon) hud.showStartOverlay();
+});
+canvas.addEventListener('click', advance);
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyR' && !hasWon) startLevel(levelIndex);
+  if (e.code === 'Enter') advance();
 });
 
-let hasWon = false;
+// --- Tiny synthesized sound effects (no assets) ------------------------------------------------
+let audio: AudioContext | undefined;
+function beep(from: number, to: number, duration: number, type: OscillatorType = 'sine', volume = 0.12): void {
+  try {
+    audio ??= new AudioContext();
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(from, audio.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(to, audio.currentTime + duration);
+    gain.gain.setValueAtTime(volume, audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + duration);
+    osc.connect(gain).connect(audio.destination);
+    osc.start();
+    osc.stop(audio.currentTime + duration);
+  } catch {
+    /* audio is optional */
+  }
+}
 
 engine.runRenderLoop(() => {
   const dt = engine.getDeltaTime() / 1000;
   if (dt > 0 && !hasWon) {
+    levelTime += dt;
+    const wasGrounded = player.isGrounded;
     player.update(dt);
+    if (!wasGrounded && player.isGrounded) beep(110, 60, 0.12, 'triangle', 0.15);
 
     const interactPressed = player.consumeInteract();
-    let anyInRange = false;
+    // Only the nearest usable lever responds, so two levers within reach never both fire.
+    let target: (typeof level.switches)[number] | undefined;
     for (const sw of level.switches) {
-      sw.update(dt, gravity, player.position, interactPressed);
-      if (sw.isInRange(player.position)) anyInRange = true;
+      if (!sw.isInRange(player.position) || !gravity.isAdjacentTo(sw.targetAxis)) continue;
+      if (!target || sw.distanceTo(player.position) < target.distanceTo(player.position)) target = sw;
     }
+    for (const sw of level.switches) {
+      if (sw.update(dt, gravity, player.position, interactPressed && sw === target)) {
+        shifts++;
+        beep(660, 110, 0.5, 'sawtooth', 0.08);
+      }
+    }
+    const anyInRange = target !== undefined;
     hud.setPrompt(anyInRange);
+
+    const dyn = level.update(dt, gravity.vector, player.position);
+    if (dyn.impact > 4) beep(90, 45, 0.18, 'square', Math.min(0.2, dyn.impact / 150));
+    if (dyn.plateChanged) beep(520, 520, 0.08, 'square', 0.06);
+    if (dyn.doorChanged) beep(180, 360, 0.3, 'triangle', 0.12);
+
+    // Safety net: anyone who escapes the geometry gets put back at the entrance.
+    if (player.position.length() > 90) startLevel(levelIndex);
 
     if (Vector3.Distance(player.position, level.exitCenter) <= level.exitRadius) {
       hasWon = true;
       hud.setPrompt(false);
-      hud.showWin();
-      if (document.pointerLockElement === canvas) document.exitPointerLock();
+      beep(440, 880, 0.6, 'sine', 0.15);
+      const best = store.get(`best.${levelIndex}`);
+      const isBest = best === undefined || levelTime < best;
+      if (isBest && !sandbox) store.set(`best.${levelIndex}`, levelTime);
+      const bestText = isBest ? 'new best!' : `best ${best.toFixed(1)}s`;
+      const stats = `${levelTime.toFixed(1)}s (${bestText}) · ${shifts} gravity shift${shifts === 1 ? '' : 's'}`;
+      if (finishedAll()) hud.showWin('ALL CHAMBERS CLEARED', `${stats}\n\nClick or press Enter to play again`);
+      else hud.showWin('CHAMBER CLEARED', `${stats}\n\nClick or press Enter for the next chamber`);
     }
   }
 
@@ -89,17 +177,14 @@ if (import.meta.env.DEV) {
   (window as unknown as Record<string, unknown>).__debug = {
     position: () => player.position.asArray(),
     gravityAxis: () => gravity.axis,
-    setGravityAxis: (axis: Parameters<typeof gravity.setAxis>[0]) => gravity.setAxis(axis),
     setPosition: (x: number, y: number, z: number) => player.collider.position.set(x, y, z),
     hasWon: () => hasWon,
+    level: () => levelIndex,
+    startLevel,
+    crates: () => level.dynamics.crates.map((c) => [...c.body.center]),
+    plates: () => level.dynamics.plates.map((pl) => pl.pressed),
+    doors: () => level.dynamics.doors.map((d) => d.isOpen),
   };
-}
-
-function addAccentLight(s: Scene, position: Vector3): void {
-  const light = new PointLight(`accent_${position.toString()}`, position, s);
-  light.diffuse = new Color3(0.9, 0.75, 0.55);
-  light.intensity = 0.35;
-  light.range = 18;
 }
 
 function createSkybox(s: Scene): Mesh {
