@@ -46,7 +46,8 @@ The engine supports gravity-driven crates, pressure plates and plate-controlled 
 
 - `src/gravity/GravitySystem.ts` — owns the single "which way is down" axis and notifies listeners when it changes.
 - `src/player/PlayerController.ts` — pointer-lock mouse look, WASD/jump input, and a kinematic body whose movement basis, ground checks, and camera orientation all derive from a smoothly-interpolated "up" vector, so a gravity flip reads as a coherent tumble into the new orientation rather than a snap.
-- `src/level/Level.ts` — data-driven level builders (`LEVELS`) on top of a small `Builder` with `slab` (wall with optional hole), `tube` (corridor/chamber) and `addSwitch` helpers; add a function to `LEVELS` to add a chamber.
+- `src/level/Builder.ts` — the `Builder` that chambers are written against: `slab` (wall with optional hole), `tube` (corridor/chamber), `box`, `addSwitch`, `addCrate`/`addPlate`/`addDoor`.
+- `src/level/chambers/` — one file per chamber; `index.ts` holds `LEVELS`, the play order. To add a chamber, add a file and list it there.
 - `src/physics/boxPhysics.ts` — dependency-free swept axis-aligned box physics used by crates.
 - `src/level/Dynamics.ts` — crates, pressure plates, doors, and the per-frame update that ties them together.
 - `src/level/GravitySwitch.ts` — the wall-mounted lever interactable.
