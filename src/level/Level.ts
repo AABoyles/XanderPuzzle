@@ -1,7 +1,10 @@
 import { Color3, Material, Mesh, MeshBuilder, Scene, Vector3 } from '@babylonjs/core';
 import { GridMaterial } from '@babylonjs/materials';
 import { GravityAxis } from '../gravity/GravitySystem';
+import { Door, DynamicsEvents, LevelDynamics, PressurePlate } from './Dynamics';
+import { Crate } from './Dynamics';
 import { GravitySwitch } from './GravitySwitch';
+import { Aabb } from '../physics/boxPhysics';
 
 export interface BuiltLevel {
   name: string;
@@ -12,6 +15,9 @@ export interface BuiltLevel {
   switches: GravitySwitch[];
   exitCenter: Vector3;
   exitRadius: number;
+  dynamics: LevelDynamics;
+  /** Advances crates, plates and doors. */
+  update(dt: number, gravity: Vector3, playerPos: Vector3): DynamicsEvents;
   dispose(): void;
 }
 
@@ -23,6 +29,8 @@ const T = 1; // wall thickness
 class Builder {
   public readonly meshes: Mesh[] = [];
   public readonly switches: GravitySwitch[] = [];
+  public readonly solids: Aabb[] = [];
+  public readonly dynamics = new LevelDynamics(this.solids);
   public readonly wall: GridMaterial;
   public readonly floor: GridMaterial;
   public readonly alcove: GridMaterial;
@@ -56,6 +64,7 @@ class Builder {
     m.isPickable = true;
     m.freezeWorldMatrix();
     this.meshes.push(m);
+    this.solids.push({ min: [min.x, min.y, min.z], max: [max.x, max.y, max.z] });
   }
 
   /**
@@ -98,13 +107,37 @@ class Builder {
     this.switches.push(new GravitySwitch(this.scene, position, wallNormal, target));
   }
 
-  public finish(info: Omit<BuiltLevel, 'switches' | 'dispose'>): BuiltLevel {
+  /** A gravity-driven cube. `center` is where it starts; it will fall from there. */
+  public addCrate(center: Vector3, size = 1.5): Crate {
+    const crate = new Crate(this.scene, center, size);
+    this.dynamics.crates.push(crate);
+    return crate;
+  }
+
+  /** A pressure plate on the surface at `center`, facing along `normal`. */
+  public addPlate(center: Vector3, normal: Vector3, size = 2.5, cratesOnly = false): PressurePlate {
+    const plate = new PressurePlate(this.scene, center, normal, size, cratesOnly);
+    this.dynamics.plates.push(plate);
+    return plate;
+  }
+
+  /** A solid slab filling [min, max] that opens while all of `plates` are pressed. */
+  public addDoor(min: Vector3, max: Vector3, plates: PressurePlate[]): Door {
+    const door = new Door(this.scene, min, max, plates);
+    this.dynamics.doors.push(door);
+    return door;
+  }
+
+  public finish(info: Omit<BuiltLevel, 'switches' | 'dispose' | 'dynamics' | 'update'>): BuiltLevel {
     return {
       ...info,
       switches: this.switches,
+      dynamics: this.dynamics,
+      update: (dt, gravity, playerPos) => this.dynamics.update(dt, gravity, playerPos),
       dispose: () => {
         this.meshes.forEach((m) => m.dispose());
         this.switches.forEach((s) => s.dispose());
+        this.dynamics.dispose();
         [this.wall, this.floor, this.alcove, this.exit].forEach((m) => m.dispose());
       },
     };
@@ -251,6 +284,45 @@ function buildSpiral(scene: Scene): BuiltLevel {
     exitAxis: '+X',
     exitCenter: V(R + 7, -4, -4),
     exitRadius: 2.5,
+  });
+}
+
+/**
+ * Not a chamber: a test room for crates, plates and doors, loaded with `?sandbox` in the URL.
+ * Throw the lever to drop the crate onto the wall plate, which opens the red door; the second
+ * lever puts you back on the floor to walk through it.
+ */
+export function buildSandbox(scene: Scene): BuiltLevel {
+  const b = new Builder(scene, new Color3(0.6, 0.6, 0.65));
+  const R = 8;
+  const full: [number, number] = [-R, R];
+
+  b.slab('y', -R - T, -R, full, full, b.floor);
+  b.slab('y', R, R + T, full, full, b.wall);
+  b.slab('x', -R - T, -R, full, full, b.wall);
+  b.slab('x', R, R + T, full, full, b.wall);
+  b.slab('z', -R - T, -R, full, full, b.wall, { u: [-2, 2], v: [-R, -R + 3] });
+  b.slab('z', R, R + T, full, full, b.wall, { u: [-2, 2], v: [-R, -R + 3] });
+
+  b.tube(V(-2, -R, -R - 9), V(2, -R + 3, -R - T), ['+z'], b.alcove);
+  b.tube(V(-2, -R, R + T), V(2, -R + 3, R + 9), ['-z'], b.exit);
+
+  b.addCrate(V(-3, -R + 0.75, 4));
+  b.addCrate(V(-3, -R + 2.25, 4)); // stacked on the first
+  const plate = b.addPlate(V(R, -R + 0.75, 4), V(-1, 0, 0), 2.5, true);
+  b.addDoor(V(-2, -R, R), V(2, -R + 3, R + T), [plate]);
+
+  b.addSwitch(V(R - 0.3, -R + 1.5, -4), V(-1, 0, 0), '+X');
+  b.addSwitch(V(R - 1.5, -R + 0.3, -4), V(0, 1, 0), '-Y');
+
+  return b.finish({
+    name: 'SANDBOX · CRATES, PLATES, DOORS',
+    hint: 'Crates fall with gravity. The wall plate opens the red door.',
+    spawnPosition: V(0, -R + 0.5, -R - 5),
+    entranceAxis: '-Y',
+    exitAxis: '-Y',
+    exitCenter: V(0, -R + 0.5, R + 7),
+    exitRadius: 2,
   });
 }
 

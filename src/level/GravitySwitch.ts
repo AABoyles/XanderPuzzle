@@ -73,6 +73,10 @@ export class GravitySwitch {
     [base, this.lever, arrow].forEach((m) => (m.isPickable = false));
   }
 
+  public distanceTo(playerPos: Vector3): number {
+    return Vector3.Distance(playerPos, this.position);
+  }
+
   public isInRange(playerPos: Vector3): boolean {
     return Vector3.Distance(playerPos, this.position) <= INTERACT_RANGE;
   }

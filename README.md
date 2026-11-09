@@ -26,11 +26,17 @@ npm run dev
 
 Then open the printed local URL, click into the canvas to lock the pointer, and play. `npm run build` produces a static production bundle in `dist/`.
 
+## Crates, plates and doors
+
+The engine supports gravity-driven crates, pressure plates and plate-controlled doors (`Builder.addCrate` / `addPlate` / `addDoor`). No chamber uses them yet; open the dev server with `?sandbox` in the URL for a test room. `npm test` runs the unit tests for the box physics.
+
 ## Project layout
 
 - `src/gravity/GravitySystem.ts` — owns the single "which way is down" axis and notifies listeners when it changes.
 - `src/player/PlayerController.ts` — pointer-lock mouse look, WASD/jump input, and a kinematic body whose movement basis, ground checks, and camera orientation all derive from a smoothly-interpolated "up" vector, so a gravity flip reads as a coherent tumble into the new orientation rather than a snap.
 - `src/level/Level.ts` — data-driven level builders (`LEVELS`) on top of a small `Builder` with `slab` (wall with optional hole), `tube` (corridor/chamber) and `addSwitch` helpers; add a function to `LEVELS` to add a chamber.
+- `src/physics/boxPhysics.ts` — dependency-free swept axis-aligned box physics used by crates.
+- `src/level/Dynamics.ts` — crates, pressure plates, doors, and the per-frame update that ties them together.
 - `src/level/GravitySwitch.ts` — the wall-mounted lever interactable.
 - `src/ui/HUD.ts` — Babylon GUI overlay: crosshair, interaction prompt, current-gravity indicator, start/win screens.
 - `src/main.ts` — scene bootstrap (lighting, skybox, glow layer, render loop, win-condition check).
