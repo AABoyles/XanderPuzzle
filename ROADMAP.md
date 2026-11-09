@@ -7,6 +7,7 @@ What exists today: static axis-aligned boxes, wall-mounted levers that set gravi
 ## Buildable now
 
 ### V · The Chimney
+- **Status:** built (`buildChimney` in `src/level/Level.ts`). A wide decoy ledge sits under the lever, and a lever at the bottom resets gravity for another attempt.
 - **Idea:** falling is travel. A lever at the bottom of a long horizontal tunnel turns the tunnel into a pit, and the exit door is partway down its side.
 - **Route:** `-Y → +Z`, then steer mid-fall onto a ledge.
 - **Teaches:** air control during a fall, and that the first surface you hit is not always the one you want.

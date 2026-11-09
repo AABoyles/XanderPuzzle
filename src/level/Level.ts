@@ -201,6 +201,8 @@ function buildVault(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.slab('x', R, R + T, full, full, b.wall, { u: [-2.5, 2.5], v: [-2.5, 2.5] });
 
   b.tube(V(-2, -R, -R - 9), V(2, -R + 3, -R - T), ['+z'], b.alcove);
+  // Sill under the doorway: the wall's hole runs to the floor, so nothing else covers this strip.
+  b.box(V(-2, -R - T, -R - T), V(2, -R, -R), b.alcove);
   b.tube(V(R + T, -2.5, -2.5), V(R + 9, 2.5, 2.5), ['-x'], b.exit);
 
   b.addSwitch(V(0, -R + 1.5, R - 0.3), V(0, 0, -1), '+Z');
@@ -237,7 +239,11 @@ function buildShaft(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.slab('x', -W - T, -W, h, w, b.wall, { u: [y1 - 3, y1], v: [-2, 2] });
 
   b.tube(V(-2, y0, -W - 9), V(2, y0 + 3, -W - T), ['+z'], b.alcove);
+  // Sill under the doorway: the wall's hole runs to the floor, so nothing else covers this strip.
+  b.box(V(-2, y0 - T, -W - T), V(2, y0, -W), b.alcove);
   b.tube(V(-W - 9, y1 - 3, -2), V(-W - T, y1, 2), ['+x'], b.exit);
+  // Sill above the exit doorway, which is its floor once +Y is down.
+  b.box(V(-W - T, y1, -2), V(-W, y1 + T, 2), b.exit);
 
   b.addSwitch(V(W - 0.3, y0 + 1.5, 0), V(-1, 0, 0), '+X');
   b.addSwitch(V(W - 1.5, y1 - 0.3, 0), V(0, -1, 0), '+Y');
@@ -273,6 +279,8 @@ function buildDivide(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.box(V(-R, -R, 0), V(R, 4, 1));
 
   b.tube(V(-2, -R, -R - 9), V(2, -R + 3, -R - T), ['+z'], b.alcove);
+  // Sill under the doorway: the wall's hole runs to the floor, so nothing else covers this strip.
+  b.box(V(-2, -R - T, -R - T), V(2, -R, -R), b.alcove);
   b.tube(V(-6, -6, R + T), V(-2, -2, R + 9), ['-z'], b.exit);
 
   b.addSwitch(V(R - 0.3, -R + 1.5, -4), V(-1, 0, 0), '+X');
@@ -306,6 +314,8 @@ function buildSpiral(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.slab('x', R, R + T, full, full, b.wall, { u: [-6, -2], v: [-6, -2] });
 
   b.tube(V(-2, -R, -R - 9), V(2, -R + 3, -R - T), ['+z'], b.alcove);
+  // Sill under the doorway: the wall's hole runs to the floor, so nothing else covers this strip.
+  b.box(V(-2, -R - T, -R - T), V(2, -R, -R), b.alcove);
   b.tube(V(R + T, -6, -6), V(R + 9, -2, -2), ['-x'], b.exit);
 
   b.addSwitch(V(-R + 0.3, -R + 1.5, 0), V(1, 0, 0), '-X');
@@ -322,6 +332,53 @@ function buildSpiral(scene: Scene, skin: SkinRuntime): BuiltLevel {
     entranceAxis: '-Y',
     exitAxis: '+X',
     exitCenter: V(R + 7, -4, -4),
+    exitRadius: 2.5,
+  });
+}
+
+/**
+ * Level 5 - a long horizontal tunnel that one lever turns into a 60-unit pit (-Y -> +Z). The exit
+ * is a doorway in the side wall partway down, above a narrow ledge you must steer onto mid-fall.
+ * A wide decoy ledge catches anyone who drops straight down from the lever; miss the real one and
+ * a lever at the bottom puts gravity back so you can walk up and try again.
+ */
+function buildChimney(scene: Scene, skin: SkinRuntime): BuiltLevel {
+  const b = new Builder(scene, skin, new Color3(0.95, 0.5, 0.2));
+  const W = 5; // tunnel half-width (x and y)
+  const L = 60; // tunnel length along +z
+  const w: [number, number] = [-W, W];
+  const len: [number, number] = [0, L];
+  // Exit doorway in the +X wall, at depth [36, 40] once +Z is down; the ledge is its sill.
+  const door = { y: [-2, 2] as [number, number], z: [36, 40] as [number, number] };
+
+  b.slab('y', -W - T, -W, w, len, b.floor);
+  b.slab('y', W, W + T, w, len, b.wall);
+  b.slab('x', -W - T, -W, w, len, b.wall);
+  b.slab('x', W, W + T, w, len, b.wall, { u: door.y, v: door.z });
+  b.slab('z', -T, 0, w, w, b.wall, { u: [-2, 2], v: [-W, -W + 3] });
+  b.slab('z', L, L + T, w, w, b.wall);
+
+  // Decoy ledge under the lever: drop straight down and you land here, 16 units short.
+  b.box(V(-W, -W, 20), V(-1.5, W, 21));
+  // The real ledge: the sill of the exit door, glowing so it can be found while falling.
+  b.box(V(1.5, -2.5, door.z[1]), V(W, 2.5, door.z[1] + T), b.exit);
+
+  b.tube(V(-2, -W, -9), V(2, -W + 3, -T), ['+z'], b.alcove);
+  // Sill under the doorway: the wall's hole runs to the floor, so nothing else covers this strip.
+  b.box(V(-2, -W - T, -T), V(2, -W, 0), b.alcove);
+  b.tube(V(W + T, door.y[0], door.z[0]), V(W + 9, door.y[1], door.z[1]), ['-x'], b.exit);
+
+  b.addSwitch(V(-W + 0.3, -W + 1.5, 4), V(1, 0, 0), '+Z');
+  // At the bottom: back to the tunnel floor for the long walk up.
+  b.addSwitch(V(-W + 0.3, 0, L - 1.5), V(1, 0, 0), '-Y');
+
+  return b.finish({
+    name: 'V · THE CHIMNEY',
+    hint: 'Falling is just walking, faster. Steer.',
+    spawnPosition: V(0, -W + 0.5, -5),
+    entranceAxis: '-Y',
+    exitAxis: '+Z',
+    exitCenter: V(W + 7, 0, door.z[1] - 0.5),
     exitRadius: 2.5,
   });
 }
@@ -344,12 +401,15 @@ export function buildSandbox(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.slab('z', R, R + T, full, full, b.wall, { u: [-2, 2], v: [-R, -R + 3] });
 
   b.tube(V(-2, -R, -R - 9), V(2, -R + 3, -R - T), ['+z'], b.alcove);
+  // Sill under the doorway: the wall's hole runs to the floor, so nothing else covers this strip.
+  b.box(V(-2, -R - T, -R - T), V(2, -R, -R), b.alcove);
   b.tube(V(-2, -R, R + T), V(2, -R + 3, R + 9), ['-z'], b.exit);
 
   b.addCrate(V(-3, -R + 0.75, 4));
   b.addCrate(V(-3, -R + 2.25, 4)); // stacked on the first
   const plate = b.addPlate(V(R, -R + 0.75, 4), V(-1, 0, 0), 2.5, true);
   b.addDoor(V(-2, -R, R), V(2, -R + 3, R + T), [plate]);
+  b.box(V(-2, -R - T, R), V(2, -R, R + T), b.exit);
 
   b.addSwitch(V(R - 0.3, -R + 1.5, -4), V(-1, 0, 0), '+X');
   b.addSwitch(V(R - 1.5, -R + 0.3, -4), V(0, 1, 0), '-Y');
@@ -367,4 +427,4 @@ export function buildSandbox(scene: Scene, skin: SkinRuntime): BuiltLevel {
 
 export type LevelFactory = (scene: Scene, skin: SkinRuntime) => BuiltLevel;
 
-export const LEVELS: LevelFactory[] = [buildVault, buildShaft, buildDivide, buildSpiral];
+export const LEVELS: LevelFactory[] = [buildVault, buildShaft, buildDivide, buildSpiral, buildChimney];
