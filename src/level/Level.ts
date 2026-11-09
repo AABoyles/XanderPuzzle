@@ -239,10 +239,13 @@ function buildSpiral(scene: Scene): BuiltLevel {
   b.addSwitch(V(-R + 0.3, -R + 1.5, 0), V(1, 0, 0), '-X');
   b.addSwitch(V(-R + 1.5, R - 0.3, 0), V(0, -1, 0), '+Y');
   b.addSwitch(V(R - 0.3, R - 1.5, 0), V(-1, 0, 0), '+X');
+  // Decoy: the far wall is a dead end, with a lever on the old floor to come back.
+  b.addSwitch(V(0, -R + 1.5, R - 0.3), V(0, 0, -1), '+Z');
+  b.addSwitch(V(0, -R + 0.3, R - 1.5), V(0, 1, 0), '-Y');
 
   return b.finish({
     name: 'IV · THE SPIRAL',
-    hint: 'One lever leads to the next. Follow the room around.',
+    hint: 'One lever leads to the next. Not every lever leads somewhere.',
     spawnPosition: V(0, -R + 0.5, -R - 5),
     entranceAxis: '-Y',
     exitAxis: '+X',
