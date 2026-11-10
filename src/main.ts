@@ -1,6 +1,8 @@
 import { Color4, Engine, GlowLayer, Scene, Vector3 } from '@babylonjs/core';
 import { chaseDirection, distanceOutside, FallTracker, planetDistance, Vec3 } from './environment/fall';
 import { SpaceBackdrop } from './environment/SpaceBackdrop';
+import { GameState, escapePauses, isFrozen, showsTouchControls, simulates, viewOf } from './game/GameState';
+import type { State } from './game/GameState';
 import { GravityAxis, GravitySystem } from './gravity/GravitySystem';
 import { buildSandbox, CHAMBERS, LEVELS as CHAMBER_LEVELS } from './level/chambers';
 import { GamepadInput } from './input/GamepadInput';
@@ -126,8 +128,8 @@ function applySettings(): void {
 }
 applySettings();
 
-// Whether the player has begun this session; after that, losing control shows the pause menu, not the title.
-let started = false;
+/** All game flow (title, play, pause, chamber select, falling, win) lives in `GameState`; see its transition table. */
+const game = new GameState();
 let pauseOpenedAt = 0;
 /** Set while a gamepad press drives the menu, so Resume doesn't ask for pointer lock. */
 let gamepadActing = false;
@@ -164,14 +166,11 @@ const syncTouchMode = () => {
   keyboardMouse.pointerLockSuspended = true;
   input.setLastDevice('touch');
   hud.setDevice('touch');
-  if (!levelSelectOpen() && !hasWon) {
-    if (started) openPause();
-    else hud.showStartOverlay();
-  }
+  game.send({ type: 'controlLost' });
 };
 touch.onActivate = syncTouchMode;
 touch.onChambers = () => openLevelSelect();
-touch.onPause = () => openPause();
+touch.onPause = () => game.send({ type: 'pause' });
 /** Touch the screen again after using another device and the on-screen controls come back. */
 window.addEventListener('pointerdown', (e) => {
   if (e.pointerType === 'touch' && touch.active) input.setLastDevice('touch');
@@ -191,7 +190,6 @@ const fall = new FallTracker();
 let planetDir = gravity.direction.asArray() as Vec3;
 const lastPosition = player.position.clone();
 
-let hasWon = false;
 /** Simulated seconds in this chamber: accumulates the clamped `dt`, so a hitch or hidden tab can't change a best time. */
 let levelTime = 0;
 let shifts = 0;
@@ -237,8 +235,6 @@ function startLevel(index: number): void {
   lastPosition.copyFrom(player.position);
   fall.reset();
   hud.setLevel(level.name, level.hint);
-  hud.hideWin();
-  hasWon = false;
   levelTime = 0;
   shifts = 0;
 }
@@ -256,7 +252,7 @@ function setSkin(index: number): void {
 }
 
 function advance(): void {
-  if (!hasWon) return;
+  if (!game.send({ type: 'advance' })) return;
   startLevel(finishedAll() ? 0 : levelIndex + 1);
   // Between chambers is a safe moment to install a waiting update: the next chamber is already saved as the resume point.
   applyUpdate?.();
@@ -264,16 +260,15 @@ function advance(): void {
 
 // --- Chamber select ------------------------------------------------------------------------------
 let selectIndex = 0;
-/** The chamber select was opened from the pause menu, so closing it returns there. */
-let selectFromPause = false;
-const levelSelectOpen = () => hud.isLevelSelectOpen;
 const chamberUnlocked = (index: number) => isUnlocked(index, furthestCleared(progress, CHAMBER_IDS), unlockAll);
 
 function openLevelSelect(): void {
-  if (sandbox || levelSelectOpen()) return;
-  keyboardMouse.pointerLockSuspended = true;
-  if (document.pointerLockElement) document.exitPointerLock();
-  hud.hideStartOverlay();
+  if (sandbox) return;
+  game.send({ type: 'openChambers' });
+}
+
+/** Fills and shows the chamber list; runs when the state machine enters `chamberSelect`. */
+function showChamberSelect(): void {
   selectIndex = levelIndex;
   const furthest = furthestCleared(progress, CHAMBER_IDS);
   const entries = CHAMBERS.map((c, i) => {
@@ -288,38 +283,17 @@ function openLevelSelect(): void {
   hud.showLevelSelect(entries, selectIndex, unlockAll && storageAvailable ? `${devices} · all unlocked` : devices);
 }
 
-function closeLevelSelect(returnToMenu = true): void {
-  if (!levelSelectOpen()) return;
-  hud.hideLevelSelect();
-  keyboardMouse.pointerLockSuspended = touch.active;
-  const fromPause = selectFromPause;
-  selectFromPause = false;
-  if (!returnToMenu || hasWon) return;
-  if (fromPause) {
-    openPause();
-    return;
-  }
+function closeLevelSelect(): void {
   // Touch and gamepad have no pointer lock to wait for: closing the menu resumes play.
-  if (!touch.active && input.lastDevice !== 'gamepad' && document.pointerLockElement !== canvas) {
-    if (started) openPause();
-    else hud.showStartOverlay();
-  }
+  const resume = touch.active || input.lastDevice === 'gamepad' || document.pointerLockElement === canvas;
+  game.send({ type: 'closeChambers', resume });
 }
 
 // --- Pause menu ----------------------------------------------------------------------------------
-function openPause(): void {
-  if (pauseMenu.isOpen || levelSelectOpen() || hasWon || hud.isStartOverlayVisible) return;
-  keyboardMouse.pointerLockSuspended = true;
-  if (document.pointerLockElement) document.exitPointerLock();
+function showPause(): void {
   hud.setPrompt(false);
   pauseOpenedAt = performance.now();
   pauseMenu.open(input.lastDevice);
-}
-
-function finishResume(): void {
-  pauseMenu.close();
-  keyboardMouse.pointerLockSuspended = touch.active;
-  input.drain(); // nothing pressed or moved while paused should fire now
 }
 
 /**
@@ -327,9 +301,9 @@ function finishResume(): void {
  * `pointerlockchange` handler); a refusal, such as the cooldown after Esc, leaves it open to try again.
  */
 function resumePlay(viaGamepad = false): void {
-  if (!pauseMenu.isOpen) return;
+  if (game.kind !== 'paused') return;
   if (touch.active || viaGamepad) {
-    finishResume();
+    game.send({ type: 'resume' });
     return;
   }
   const refused = () => pauseMenu.setHint('The browser would not capture the mouse yet. Try Resume again.');
@@ -343,23 +317,48 @@ function resumePlay(viaGamepad = false): void {
 pauseMenu.onResume = () => resumePlay(gamepadActing);
 pauseMenu.onRestart = () => {
   startLevel(levelIndex);
+  game.send({ type: 'restart' });
   resumePlay(gamepadActing);
 };
-pauseMenu.onChambers = () => {
-  selectFromPause = true;
-  pauseMenu.close();
-  openLevelSelect();
-};
+pauseMenu.onChambers = () => openLevelSelect();
 pauseMenu.onToggleFullscreen = () => {
   void toggleFullscreen().then(() => pauseMenu.refresh());
 };
 pauseMenu.onUpdate = () => applyUpdate?.();
 
-/** Leaves the title screen (or a chamber change on touch/gamepad) and starts play. */
-function beginPlay(): void {
-  started = true;
-  hud.hideStartOverlay();
-}
+// --- State changes -------------------------------------------------------------------------------
+/** The win screen's text, set just before the `win` event so entering `won` can show it. */
+let winMessage = { title: '', body: '' };
+
+/** Every overlay, pointer-lock and touch side effect of a flow change lives here. */
+game.onChange = (prev: State, next: State) => {
+  const was = viewOf(prev);
+  const now = viewOf(next);
+  const resumed = was.pause && !now.pause && !now.select && !now.title;
+  if (was.pause && !now.pause) {
+    pauseMenu.close();
+    keyboardMouse.pointerLockSuspended = touch.active;
+    if (resumed) input.drain(); // nothing pressed or moved while paused should fire now
+  }
+  if (was.select && !now.select) {
+    hud.hideLevelSelect();
+    keyboardMouse.pointerLockSuspended = touch.active;
+  }
+  if (was.win && !now.win) hud.hideWin();
+  if (was.title && !now.title) hud.hideStartOverlay();
+  if (!was.title && now.title) hud.showStartOverlay();
+  if (!was.select && now.select) {
+    keyboardMouse.pointerLockSuspended = true;
+    if (document.pointerLockElement) document.exitPointerLock();
+    showChamberSelect();
+  }
+  if (!was.pause && now.pause) {
+    keyboardMouse.pointerLockSuspended = true;
+    if (document.pointerLockElement) document.exitPointerLock();
+    showPause();
+  }
+  if (!was.win && now.win) hud.showWin(winMessage.title, winMessage.body);
+};
 
 function moveSelection(delta: number): void {
   selectIndex = Math.min(Math.max(selectIndex + delta, 0), CHAMBERS.length - 1);
@@ -372,13 +371,13 @@ function pickLevel(index: number, grabPointer = true): void {
     beep(140, 90, 0.15, 'square', 0.08);
     return;
   }
-  closeLevelSelect(false);
+  const immediate = touch.active || !grabPointer;
+  game.send({ type: 'pick', immediate });
   startLevel(index);
-  if (touch.active || !grabPointer) beginPlay();
-  else {
+  if (!immediate) {
     // Called from a click or key press, so the browser treats it as a user gesture. If it is refused, fall back
     // to a menu (the title before play has begun, the pause menu after) with a button to try again.
-    const refused = () => (started ? openPause() : hud.showStartOverlay());
+    const refused = () => game.send({ type: 'controlLost' });
     try {
       Promise.resolve(canvas.requestPointerLock()).catch(refused);
     } catch {
@@ -389,7 +388,7 @@ function pickLevel(index: number, grabPointer = true): void {
 
 if (touch.active) syncTouchMode(); // touch was detected at startup, before the callback existed
 hud.onOpenLevelSelect = openLevelSelect;
-hud.onCloseLevelSelect = () => closeLevelSelect();
+hud.onCloseLevelSelect = closeLevelSelect;
 hud.onToggleFullscreen = () => {
   swallowClick();
   void toggleFullscreen();
@@ -402,18 +401,11 @@ hud.onHoverLevel = (i) => {
 
 document.addEventListener('pointerlockchange', () => {
   if (touch.active) return;
-  if (document.pointerLockElement === canvas) {
-    started = true;
-    hud.hideStartOverlay();
-    if (pauseMenu.isOpen) finishResume();
-  } else if (!hasWon && !levelSelectOpen()) {
-    // Esc (which the browser handles itself) lands here: during play it means pause.
-    if (started) openPause();
-    else if (!pauseMenu.isOpen) hud.showStartOverlay();
-  }
+  if (document.pointerLockElement === canvas) game.send({ type: 'locked' });
+  else game.send({ type: 'controlLost' }); // Esc (which the browser handles itself) lands here: during play it means pause
 });
 document.addEventListener('pointerlockerror', () => {
-  if (pauseMenu.isOpen) pauseMenu.setHint('The browser would not capture the mouse yet. Try Resume again.');
+  if (game.kind === 'paused') pauseMenu.setHint('The browser would not capture the mouse yet. Try Resume again.');
 });
 
 /** A GUI button press is followed by a canvas `click`; stop it from also starting play on the title overlay. */
@@ -427,13 +419,13 @@ canvas.addEventListener('click', () => {
     clickSwallowed = false;
     return;
   }
-  if (levelSelectOpen() || pauseMenu.isOpen) return;
+  if (game.kind === 'chamberSelect' || game.kind === 'paused') return;
   // A tap on the start overlay begins play without pointer lock.
-  if (touch.active && hud.isStartOverlayVisible) beginPlay();
+  if (touch.active && game.kind === 'title') game.send({ type: 'begin' });
   else advance();
 });
 window.addEventListener('keydown', (e) => {
-  if (pauseMenu.isOpen) {
+  if (game.kind === 'paused') {
     input.setLastDevice('keyboard');
     if (e.code === 'ArrowUp' || e.code === 'KeyW') pauseMenu.move(-1);
     else if (e.code === 'ArrowDown' || e.code === 'KeyS') pauseMenu.move(1);
@@ -448,7 +440,7 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     return;
   }
-  if (levelSelectOpen()) {
+  if (game.kind === 'chamberSelect') {
     if (e.code === 'ArrowUp' || e.code === 'KeyW') moveSelection(-1);
     else if (e.code === 'ArrowDown' || e.code === 'KeyS') moveSelection(1);
     else if (e.code === 'Home') moveSelection(-CHAMBERS.length);
@@ -460,7 +452,7 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   // Esc with no pointer lock to release (e.g. play without a lock) opens the pause menu directly.
-  if (e.code === 'Escape' && !e.repeat && started) openPause();
+  if (e.code === 'Escape' && !e.repeat && escapePauses(game.state)) game.send({ type: 'pause' });
   if (e.code === 'KeyL') openLevelSelect();
   if (e.code === 'KeyK') setSkin(skinIndex + (e.shiftKey ? -1 : 1));
   if (e.code === 'Enter') advance();
@@ -499,13 +491,13 @@ engine.runRenderLoop(() => {
   const frame = input.read(dt);
   const pad = gamepad.menu;
   // Actions below use up this frame's presses, so the player doesn't also act on them.
-  let consumed = levelSelectOpen();
-  if (levelSelectOpen()) {
+  let consumed = game.kind === 'chamberSelect';
+  if (game.kind === 'chamberSelect') {
     if (pad.up) moveSelection(-1);
     if (pad.down) moveSelection(1);
     if (pad.confirm) pickLevel(selectIndex, false);
     else if (pad.back || pad.select) closeLevelSelect();
-  } else if (pauseMenu.isOpen) {
+  } else if (game.kind === 'paused') {
     // Gamepad drives the menu; keyboard and pointer are handled by events.
     gamepadActing = true;
     if (pad.up) pauseMenu.move(-1);
@@ -520,31 +512,30 @@ engine.runRenderLoop(() => {
   } else if (pad.select) {
     openLevelSelect();
     consumed = true;
-  } else if (frame.restart && !hasWon) {
+  } else if (frame.restart && game.kind !== 'won') {
     startLevel(levelIndex);
+    game.send({ type: 'restart' });
     consumed = true;
-  } else if (hasWon) {
+  } else if (game.kind === 'won') {
     if (pad.confirm) {
       advance();
       consumed = true;
     }
-  } else if (hud.isStartOverlayVisible) {
+  } else if (game.kind === 'title') {
     // A or Start begins play (or resumes) where there is no pointer lock to wait for.
     if (pad.confirm || frame.pause) {
-      beginPlay();
+      game.send({ type: 'begin' });
       consumed = true;
     }
   } else if (frame.pause) {
-    openPause();
+    game.send({ type: 'pause' });
     consumed = true;
   }
-  const menuOpen = levelSelectOpen() || pauseMenu.isOpen;
-  touch.setVisible(touch.active && input.lastDevice === 'touch' && !hasWon && !menuOpen && !hud.isStartOverlayVisible);
+  touch.setVisible(touch.active && input.lastDevice === 'touch' && showsTouchControls(game.state));
   // On desktop with a keyboard the player can already move while the pointer is unlocked on the title screen;
   // other devices wait. Any menu freezes everything: the player, the timer, the sequencer, dynamics and falling.
-  const waitingToStart = hud.isStartOverlayVisible && input.lastDevice !== 'keyboard';
-  const frozen = menuOpen || waitingToStart;
-  if (dt > 0 && !consumed && !hasWon && !frozen) {
+  const frozen = isFrozen(game.state, input.lastDevice);
+  if (dt > 0 && !consumed && simulates(game.state, input.lastDevice)) {
     levelTime += dt;
     const wasGrounded = player.isGrounded;
     player.update(dt, frame);
@@ -595,10 +586,12 @@ engine.runRenderLoop(() => {
 
     // Anyone who escapes the geometry falls through space for a while, then is put back at the entrance.
     fall.update(dt, distanceOutside(level.bounds, player.position.asArray() as Vec3));
-    if (fall.finished) startLevel(levelIndex);
+    if (fall.finished) {
+      startLevel(levelIndex);
+      game.send({ type: 'respawn' });
+    } else game.send({ type: fall.falling ? 'fell' : 'recovered' });
 
     if (Vector3.Distance(player.position, level.exitCenter) <= level.exitRadius) {
-      hasWon = true;
       hud.setPrompt(false);
       beep(440, 880, 0.6, 'sine', 0.15);
       const chamberId = CHAMBERS[levelIndex]?.id;
@@ -613,8 +606,10 @@ engine.runRenderLoop(() => {
       const text = TEXT[input.lastDevice];
       const select = sandbox ? '' : text.select;
       const update = applyUpdate ? '\nUpdate ready: it installs when you continue' : '';
-      if (finishedAll()) hud.showWin('ALL CHAMBERS CLEARED', `${stats}\n\n${text.again}${select}${update}`);
-      else hud.showWin('CHAMBER CLEARED', `${stats}\n\n${text.next}${select}${update}`);
+      winMessage = finishedAll()
+        ? { title: 'ALL CHAMBERS CLEARED', body: `${stats}\n\n${text.again}${select}${update}` }
+        : { title: 'CHAMBER CLEARED', body: `${stats}\n\n${text.next}${select}${update}` };
+      game.send({ type: 'win' });
     }
   }
 
@@ -669,13 +664,18 @@ if (import.meta.env.DEV) {
     position: () => player.position.asArray(),
     gravityAxis: () => gravity.axis,
     setPosition: (x: number, y: number, z: number) => player.collider.position.set(x, y, z),
-    hasWon: () => hasWon,
+    state: () => game.kind,
+    hasWon: () => game.kind === 'won',
     level: () => levelIndex,
-    startLevel,
-    openPause,
-    pauseOpen: () => pauseMenu.isOpen,
+    startLevel: (index: number) => {
+      game.send({ type: 'advance' }); // leaves the win screen if it is up
+      startLevel(index);
+      game.send({ type: 'restart' });
+    },
+    openPause: () => game.send({ type: 'pause' }),
+    pauseOpen: () => game.kind === 'paused',
     openLevelSelect,
-    levelSelectOpen,
+    levelSelectOpen: () => game.kind === 'chamberSelect',
     look: (yaw: number, pitch: number) => player.setLook(yaw, pitch),
     setSkin: (id: SkinId) => setSkin(SKIN_IDS.indexOf(id)),
     crates: () => level.dynamics.crates.map((c) => [...c.body.center]),

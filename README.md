@@ -102,6 +102,7 @@ Gravity-driven crates, pressure plates and plate-controlled doors (`Builder.addC
 - `src/level/GravitySwitch.ts` — the wall-mounted lever interactable: fixed, relative or sequence, optionally one-shot.
 - `src/skins/Skin.ts` — the skins: per-axis surface materials, procedural textures, lighting, sky and post-processing.
 - `src/ui/HUD.ts` — Babylon GUI overlay: crosshair, interaction prompt, current-gravity indicator, start/win screens.
+- `src/game/GameState.ts` — the game-flow state machine (title, playing, falling, paused, chamber select, won) and its transition table; unit-tested.
 - `src/ui/PauseMenu.ts` — the pause menu: resume, restart, chamber select, fullscreen, settings and the controls reference.
 - `src/settings.ts` — Babylon-free settings model (defaults, limits, parsing, load/save), tested by Node.
 - `src/pwa/` — fullscreen helpers, service-worker registration and the offline cache policy.
