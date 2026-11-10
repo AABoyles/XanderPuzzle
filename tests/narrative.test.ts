@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ATTENDANT, CUBE_SERIAL, cubeLabel, darkFraction, dutyLine, planetLights, recoveryLine, winTitle, workLog } from '../src/narrative.ts';
+import {
+  ATTENDANT, CUBE_SERIAL, cubeLabel, darkFraction, descentAlarm, dutyLine, endCard, NOT_RECOVERED, planetLights,
+  recoveryLine, winTitle, workLog,
+} from '../src/narrative.ts';
 
 test('the attendant serial stays AT-0417, one above the reveal crate', () => {
   assert.equal(ATTENDANT, 'AT-0417');
@@ -48,4 +51,12 @@ test('the planet stays dark until Act III, then lights up chamber by chamber', (
   assert.equal(planetLights(13, 9, 14), 1);
   // No Act III (the sandbox, or a missing chamber id) means no lights.
   assert.equal(planetLights(5, -1, 14), 0);
+});
+
+test('the Descent: alarms escalate with each lever, then the attendant is not recovered', () => {
+  assert.equal(descentAlarm(0, '0147'), 'ATTENDANT, THIS SHIFT IS NOT ON SCHEDULE.');
+  assert.equal(descentAlarm(1, '0147'), 'CUBE 0147 OUT OF TRIM. PLEASE RETURN TO YOUR STATION.');
+  assert.equal(descentAlarm(5, '0147'), descentAlarm(1, '0147'));
+  assert.equal(NOT_RECOVERED, 'ATTENDANT NOT RECOVERED.');
+  assert.equal(endCard(3), 'RECOVERIES THIS CYCLE: 3');
 });

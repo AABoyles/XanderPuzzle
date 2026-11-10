@@ -107,3 +107,16 @@ test('chaseDirection stays unit length and converges on the target', () => {
 test('chaseDirection leaves a settled direction alone', () => {
   assert.deepEqual(chaseDirection([0, -1, 0], [0, -1, 0], 1 / 60, 4), [0, -1, 0]);
 });
+
+test('a longer fall (the Descent) lasts its own duration and ends nearer the planet', async () => {
+  const { DESCENT_DURATION, PLANET_LAST } = await import('../src/environment/fall.ts');
+  const f = new FallTracker();
+  f.duration = DESCENT_DURATION;
+  for (let t = 0; t < 10; t += 0.5) f.update(0.5, 10);
+  assert.equal(f.finished, false);
+  for (let t = 10; t < DESCENT_DURATION; t += 0.5) f.update(0.5, 10);
+  assert.equal(f.finished, true);
+  assert.equal(planetDistance(0, DESCENT_DURATION, PLANET_LAST), PLANET_FAR);
+  assert.equal(planetDistance(DESCENT_DURATION, DESCENT_DURATION, PLANET_LAST), PLANET_LAST);
+  assert.ok(PLANET_LAST > 150, 'the camera stays above the surface');
+});

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  CHAMBER_CLEARANCE, CHAMBER_DEPTH, CUBE_MAX, cubeAngle, FIELD_BOTTOM, FIELD_CLEARANCE, FIELD_COUNT, FIELD_RADIUS, FIELD_TOP, fieldBasis, layoutField,
+  CHAMBER_CLEARANCE, CHAMBER_DEPTH, chamberHull, CUBE_MAX, cubeAngle, FIELD_BOTTOM, FIELD_CLEARANCE, FIELD_COUNT, FIELD_RADIUS, FIELD_TOP, fieldBasis, layoutField,
   toWorld, TURN_TIME,
 } from '../src/environment/ballastField.ts';
 import type { Vec3 } from '../src/environment/fall.ts';
@@ -82,4 +82,15 @@ test('the field frame is orthonormal with y pointing away from the planet', () =
   }
   const p = toWorld([10, 0, 0], fieldBasis([0, -1, 0]), [0, 5, 0]);
   assert.deepEqual(p.map((v) => Math.round(v * 1e9) / 1e9), [10, 5, 0]);
+});
+
+test('the chamber hull is a cube that encloses the chamber with a margin', () => {
+  const bounds = { min: [-6, -6, -1] as Vec3, max: [6, 6, 61] as Vec3 };
+  const { center, size } = chamberHull(bounds, 1);
+  assert.deepEqual(center, [0, 0, 30]);
+  assert.equal(size, 64);
+  for (let i = 0; i < 3; i++) {
+    assert.ok(center[i] - size / 2 <= bounds.min[i] - 1 + 1e-9);
+    assert.ok(center[i] + size / 2 >= bounds.max[i] + 1 - 1e-9);
+  }
 });

@@ -75,7 +75,7 @@ export function buildOrrery(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.placard(V(-2, -H + 1.6, -18.5), V(1, 0, 0), '-Y', 'CUBE 0140', { width: 2.6 });
   // On the north wall, upright once it is the floor.
   b.placard(V(4, -4, H), V(0, 0, -1), '+Z', [
-    'FIELD ALIGNMENT: 35% OF CUBES RESPONDING',
+    'FIELD ALIGNMENT: 39% OF CUBES RESPONDING',
     'ATTENDANT SUPPLY INCREASED TO COMPENSATE',
   ].join('\n'), {
     width: 10,

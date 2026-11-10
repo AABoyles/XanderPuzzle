@@ -42,7 +42,7 @@ Shiftbound is an installable web app that works offline after the first visit.
 - **Updates:** a new version is picked up on the next launch, or choose *Update and reload* in the pause menu when the "Update available" notice appears. It never reloads mid-chamber; between chambers it installs on its own.
 - **Fullscreen:** a button on the start screen (touch) and an item in the pause menu, which also asks for landscape where the browser supports it.
 
-Fourteen chambers ship with the game, each teaching or testing one idea:
+Fifteen chambers ship with the game, each teaching or testing one idea:
 
 1. **The Vault** (`-Y → +Z → +X`) — a hollow cube; drop through the hole in the final "floor".
 2. **The Shaft** (`-Y → +X → +Y`) — a 40-unit vertical shaft whose exit door is at the top, upside down. A hole in the floor opens onto space.
@@ -58,10 +58,11 @@ Fourteen chambers ship with the game, each teaching or testing one idea:
 12. **The Grate** (`-Y → +X → -Y`) — a crate falls through the grate you stand on.
 13. **The Tide** (`-Y → +X → +Z`, on a timer) — a lever starts gravity cycling; be in the right place when each change comes.
 14. **The Orrery** (all six) — the finale: a crate, a relative lever and a one-shot lever, leaving through the entrance corridor's ceiling.
+15. **The Descent** (`-Y → +X → +Y`) — the epilogue: two one-shot levers and no door. The only way out is a hole in the ceiling, and the fall through it ends the game.
 
 Each lever carries an arrow pointing the way "down" will be once it is thrown. White levers with a ring are **relative**: they turn gravity a quarter turn clockwise as you face their wall, so the arrow changes with your orientation. A lever that goes dark after use is **one-shot**. A gold lever with four studs starts a **timed cycle**, with a countdown to the next shift on the HUD. **Shift** runs, **R** restarts the chamber, and clearing one shows your time and number of gravity shifts before moving on.
 
-Some chambers have **trap holes** in their shell. Fall through one and you drop out into open space, past the other cubes of the ballast field, towards a planet that always lies the way gravity points; after a few seconds (or on **R**) you are put back at the chamber entrance, and the facility logs the recovery.
+Some chambers have **trap holes** in their shell. Seen from inside, a hole is pitch black, unless it is in the floor you are standing on: then you can see the planet below. Fall through one and you drop out into open space, past the other cubes of the ballast field, towards a planet that always lies the way gravity points; after a few seconds (or on **R**) you are put back at the chamber entrance, and the facility logs the recovery.
 
 The story is told by the facility's own log lines and placards: see [NARRATIVE.md](NARRATIVE.md).
 

@@ -16,6 +16,8 @@ interface Row {
   plates?: boolean;
   /** Timed chamber: gravity changes on its own, so the route is replaced by waiting for the cycle. */
   timed?: boolean;
+  /** Ending chamber (the Descent): its exit is a hole into space, and leaving ends the game on the end card. */
+  ending?: boolean;
 }
 
 const ROWS: Row[] = [
@@ -33,6 +35,7 @@ const ROWS: Row[] = [
   { id: 'grate', route: [0, 1], axes: ['+X', '-Y'], plates: true },
   { id: 'tide', route: [], axes: [], timed: true },
   { id: 'orrery', route: [0, 1, 2, 3, 4, 5], axes: ['+X', '+Z', '+Y', '-X', '-Z', '+Y'], plates: true },
+  { id: 'descent', route: [0, 1], axes: ['+X', '+Y'], ending: true },
 ];
 
 type Debug = {
@@ -42,6 +45,8 @@ type Debug = {
   gravityAxis(): string;
   grounded(): boolean;
   hasWon(): boolean;
+  state(): string;
+  endFall(): void;
   setPosition(x: number, y: number, z: number): void;
   interact(): void;
   switches(): { target: string | null; position: number[] }[];
@@ -118,6 +123,24 @@ test.describe('chambers', () => {
       if (row.plates) {
         await expect.poll(() => dbg(page, (d) => d.plates().every(Boolean)), { timeout: 10_000 }).toBe(true);
         await expect.poll(() => dbg(page, (d) => d.doors().every(Boolean)), { timeout: 10_000 }).toBe(true);
+      }
+
+      if (row.ending) {
+        // Out through the hole along the exit gravity: the final fall begins, R cannot undo it, and it ends on the
+        // end card, from which Enter returns to the title.
+        const exitAxis = row.axes[row.axes.length - 1];
+        const k = 'XYZ'.indexOf(exitAxis[1]);
+        const out = exit.center.map((v, i) => (i === k ? v + (exitAxis[0] === '+' ? 6 : -6) : v));
+        await page.evaluate(([x, y, z]) => (window as any).__debug.setPosition(x, y, z), out);
+        await expect.poll(() => dbg(page, (d) => d.state()), { timeout: 10_000 }).toBe('descending');
+        await page.keyboard.press('KeyR');
+        await page.waitForTimeout(300);
+        expect(await dbg(page, (d) => d.state())).toBe('descending');
+        await dbg(page, (d) => d.endFall());
+        await expect.poll(() => dbg(page, (d) => d.state()), { timeout: 10_000 }).toBe('ended');
+        await page.keyboard.press('Enter');
+        await expect.poll(() => dbg(page, (d) => d.state()), { timeout: 10_000 }).toBe('title');
+        return;
       }
 
       // The route works; stepping into the exit then wins (walking the last stretch is covered by playtests).

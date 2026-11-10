@@ -4,9 +4,12 @@ import { Engine } from '@babylonjs/core/Engines/engine';
 import { GlowLayer } from '@babylonjs/core/Layers/glowLayer';
 import { Scene } from '@babylonjs/core/scene';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
-import { chaseDirection, distanceOutside, FallTracker, planetDistance, Vec3 } from './environment/fall';
+import {
+  chaseDirection, DESCENT_DURATION, distanceOutside, FALL_DURATION, FallTracker, PLANET_LAST, PLANET_NEAR,
+  planetDistance, Vec3,
+} from './environment/fall';
 import { SpaceBackdrop } from './environment/SpaceBackdrop';
-import { GameState, escapePauses, isFrozen, showsTouchControls, simulates, viewOf } from './game/GameState';
+import { GameState, escapePauses, isFrozen, showsTouchControls, simulates, transition, viewOf } from './game/GameState';
 import type { State } from './game/GameState';
 import { GravityAxis, GravitySystem } from './gravity/GravitySystem';
 import { buildSandbox, CHAMBERS, LEVELS as CHAMBER_LEVELS } from './level/chambers';
@@ -18,7 +21,9 @@ import { TouchInput } from './input/TouchInput';
 import { PlayerController } from './player/PlayerController';
 import { canFullscreen, isFullscreen, isIOS, isStandalone, onFullscreenChange, toggleFullscreen } from './pwa/fullscreen';
 import { loadFonts } from './level/fonts';
-import { darkFraction, dutyLine, planetLights, recoveryLine, winTitle, workLog } from './narrative';
+import {
+  darkFraction, descentAlarm, dutyLine, endCard, NOT_RECOVERED, planetLights, recoveryLine, winTitle, workLog,
+} from './narrative';
 import { registerServiceWorker } from './pwa/register';
 import { shiftTone } from './gravity/shiftSound';
 import { simDelta } from './time';
@@ -194,6 +199,7 @@ gravity.onChangeObservable.add(({ axis }) => {
 
 // Open space, shown only once the player has fallen out of the chamber.
 const backdrop = new SpaceBackdrop(scene, glow);
+backdrop.setChamber(level.bounds);
 const fall = new FallTracker();
 /** Where the planet is: it chases the gravity direction, so "down" always leads to it. */
 let planetDir = gravity.direction.asArray() as Vec3;
@@ -217,13 +223,15 @@ function restartLevel(): void {
   if (lost) hud.log(recoveryLine(++recoveries));
 }
 
-const TEXT: Record<InputDevice, { void: string; cycle: string; next: string; again: string; select: string }> = {
+type Prompts = { void: string; cycle: string; next: string; again: string; select: string; title: string };
+const TEXT: Record<InputDevice, Prompts> = {
   keyboard: {
     void: 'Outside the cube · press [R] to recover',
     cycle: 'Press [E] to start the cycle',
     next: 'Click or press Enter for the next chamber',
     again: 'Click or press Enter to play again',
     select: '\nL for chamber select',
+    title: 'Click or press Enter to return to the title',
   },
   touch: {
     void: 'Outside the cube · tap \u21BB to recover',
@@ -231,6 +239,7 @@ const TEXT: Record<InputDevice, { void: string; cycle: string; next: string; aga
     next: 'Tap for the next chamber',
     again: 'Tap to play again',
     select: '\nTap \u2630 for chamber select',
+    title: 'Tap to return to the title',
   },
   gamepad: {
     void: 'Outside the cube · press [Y] to recover',
@@ -238,6 +247,7 @@ const TEXT: Record<InputDevice, { void: string; cycle: string; next: string; aga
     next: 'Press [A] for the next chamber',
     again: 'Press [A] to play again',
     select: '\nBack for chamber select',
+    title: 'Press [A] to return to the title',
   },
 };
 
@@ -256,6 +266,9 @@ function startLevel(index: number): void {
   player.reset(level.spawnPosition);
   lastPosition.copyFrom(player.position);
   fall.reset();
+  backdrop.setChamber(level.bounds);
+  // Leaving an ending chamber is the final fall, and a long one.
+  fall.duration = level.ending ? DESCENT_DURATION : FALL_DURATION;
   hud.setLevel(level.name, level.hint);
   const cube = cubeOf(index);
   if (cube !== undefined) hud.log(dutyLine(cube));
@@ -273,6 +286,17 @@ function setSkin(index: number): void {
   level = LEVELS[levelIndex](scene, skin);
   hud.setSkin(SKIN_LABELS[skin.id]);
   hud.setGravityAxis(gravity.axis, skin.hudColor(gravity.axis));
+}
+
+/** The player has left an ending chamber: the clear is saved now, and the final fall begins. */
+function beginDescent(): void {
+  const chamberId = CHAMBERS[levelIndex]?.id;
+  if (progressWritable && chamberId !== undefined) {
+    recordWin(progress, chamberId, levelTime);
+    persistProgress();
+  }
+  hud.setSequence(null);
+  game.send({ type: 'descend' });
 }
 
 function advance(): void {
@@ -341,6 +365,8 @@ function resumePlay(viaGamepad = false): void {
 
 pauseMenu.onResume = () => resumePlay(gamepadActing);
 pauseMenu.onRestart = () => {
+  // Refused during the final fall, which is final.
+  if (!transition(game.state, { type: 'restart' })) return;
   startLevel(levelIndex);
   game.send({ type: 'restart' });
   resumePlay(gamepadActing);
@@ -383,6 +409,11 @@ game.onChange = (prev: State, next: State) => {
     showPause();
   }
   if (!was.win && now.win) hud.showWin(winMessage.title, winMessage.body);
+  if (!was.ending && now.ending) {
+    hud.setPrompt(false);
+    hud.showEnding(NOT_RECOVERED, `SHIFTBOUND\n\n${endCard(recoveries)}\n\n${TEXT[input.lastDevice].title}`);
+  }
+  if (was.ending && !now.ending) hud.hideEnding();
 };
 
 function moveSelection(delta: number): void {
@@ -537,11 +568,11 @@ engine.runRenderLoop(() => {
   } else if (pad.select) {
     openLevelSelect();
     consumed = true;
-  } else if (frame.restart && game.kind !== 'won') {
+  } else if (frame.restart && game.kind !== 'won' && transition(game.state, { type: 'restart' })) {
     restartLevel();
     game.send({ type: 'restart' });
     consumed = true;
-  } else if (game.kind === 'won') {
+  } else if (game.kind === 'won' || game.kind === 'ended') {
     if (pad.confirm) {
       advance();
       consumed = true;
@@ -579,12 +610,15 @@ engine.runRenderLoop(() => {
         if (sw.spec.kind !== 'sequence') level.sequencer?.stop();
         shifts++;
         shiftSound(gravity.axis);
+        // In the Descent, the facility objects to every throw.
+        if (level.ending) hud.log(descentAlarm(shifts - 1, cubeOf(levelIndex) ?? ''));
       }
     }
     const anyInRange = target !== undefined;
     touch.setInteractAvailable(anyInRange);
     const text = TEXT[input.lastDevice];
-    if (fall.falling) hud.setPrompt(true, text.void);
+    if (game.kind === 'descending') hud.setPrompt(false);
+    else if (fall.falling) hud.setPrompt(true, text.void);
     else if (target?.spec.kind === 'sequence') hud.setPrompt(anyInRange, text.cycle);
     else hud.setPrompt(anyInRange);
 
@@ -610,13 +644,18 @@ engine.runRenderLoop(() => {
     if (dyn.doorChanged) beep(180, 360, 0.3, 'triangle', 0.12);
 
     // Anyone who escapes the geometry falls through space for a while, then is put back at the entrance.
+    // Leaving an ending chamber is the final fall instead: it is the exit, and it ends on the end card.
     fall.update(dt, distanceOutside(level.bounds, player.position.asArray() as Vec3));
-    if (fall.finished) {
+    if (game.kind === 'descending') {
+      if (fall.finished) game.send({ type: 'end' });
+    } else if (fall.finished) {
       restartLevel();
       game.send({ type: 'respawn' });
+    } else if (level.ending && fall.falling) {
+      beginDescent();
     } else game.send({ type: fall.falling ? 'fell' : 'recovered' });
 
-    if (Vector3.Distance(player.position, level.exitCenter) <= level.exitRadius) {
+    if (!level.ending && Vector3.Distance(player.position, level.exitCenter) <= level.exitRadius) {
       hud.setPrompt(false);
       beep(440, 880, 0.6, 'sine', 0.15);
       const chamberId = CHAMBERS[levelIndex]?.id;
@@ -646,7 +685,7 @@ engine.runRenderLoop(() => {
     cameraPosition: player.camera.position,
     visibility: fall.visibility,
     planetDirection: Vector3.FromArray(planetDir),
-    planetDistance: planetDistance(fall.time),
+    planetDistance: planetDistance(fall.time, fall.duration, level.ending ? PLANET_LAST : PLANET_NEAR),
     speed: dt > 0 ? Vector3.Distance(player.position, lastPosition) / dt : 0,
     dt: frozen ? 0 : dt,
     darkFraction: darkFraction(levelIndex, LEVELS.length),
@@ -694,6 +733,10 @@ if (import.meta.env.DEV) {
     setPosition: (x: number, y: number, z: number) => player.collider.position.set(x, y, z),
     state: () => game.kind,
     hasWon: () => game.kind === 'won',
+    /** Skips to the end of the current fall (the Descent's is 25 s). */
+    endFall: () => {
+      if (fall.falling) fall.time = fall.duration;
+    },
     level: () => levelIndex,
     startLevel: (index: number) => {
       game.send({ type: 'advance' }); // leaves the win screen if it is up

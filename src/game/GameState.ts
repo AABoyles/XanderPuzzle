@@ -10,7 +10,11 @@
  * `viewOf`/`showsTouchControls`. main.ts needs a change only where the new state has a visible effect.
  */
 
-export type Kind = 'title' | 'playing' | 'falling' | 'paused' | 'chamberSelect' | 'won';
+/**
+ * `descending` is the final fall out of an ending chamber (the Descent): live, but it cannot be restarted or won, and
+ * it ends in `ended`, the end card.
+ */
+export type Kind = 'title' | 'playing' | 'falling' | 'descending' | 'paused' | 'chamberSelect' | 'won' | 'ended';
 
 export interface State {
   readonly kind: Kind;
@@ -40,13 +44,18 @@ export type GameEvent =
   | { type: 'respawn' }
   | { type: 'restart' }
   | { type: 'win' }
+  /** The player left an ending chamber: the final fall begins. */
+  | { type: 'descend' }
+  /** The final fall is over: show the end card. */
+  | { type: 'end' }
+  /** Leave the win screen for the next chamber, or the end card for the title. */
   | { type: 'advance' };
 
 const make = (kind: Kind, begun: boolean, back: State | null = null): State => ({ kind, begun, back });
 
 export const INITIAL_STATE: State = make('title', false);
 
-const live = (s: State) => s.kind === 'playing' || s.kind === 'falling';
+const live = (s: State) => s.kind === 'playing' || s.kind === 'falling' || s.kind === 'descending';
 
 /** `s` after pointer lock arrived: play has begun, and a title waiting behind a menu or win screen is gone. */
 function markBegun(s: State): State {
@@ -91,13 +100,22 @@ export function transition(s: State, event: GameEvent): State | null {
       return s.kind === 'falling' ? make('playing', s.begun) : null;
     case 'restart':
       if (s.kind === 'title') return s;
+      // The final fall is final: no restart, from play or from the pause menu over it.
+      if (s.kind === 'descending' || (s.kind === 'paused' && (s.back as State).kind === 'descending')) return null;
       if (live(s)) return make('playing', s.begun);
       // Restarting from the pause menu clears any fall in progress, so resuming goes back to plain play.
       if (s.kind === 'paused') return make('paused', s.begun, make('playing', (s.back as State).begun));
       return null;
     case 'win':
-      return s.kind === 'title' || live(s) ? make('won', s.begun, s) : null;
+      return s.kind === 'title' || s.kind === 'playing' || s.kind === 'falling' ? make('won', s.begun, s) : null;
+    case 'descend':
+      // Like a win, a keyboard player can reach it from the title (they can move there).
+      return s.kind === 'title' || s.kind === 'playing' || s.kind === 'falling' ? make('descending', s.begun) : null;
+    case 'end':
+      return s.kind === 'descending' ? make('ended', s.begun) : null;
     case 'advance': {
+      // From the end card, back to the title as if starting afresh.
+      if (s.kind === 'ended') return make('title', false);
       if (s.kind !== 'won') return null;
       const b = s.back as State;
       return b.kind === 'title' ? b : make('playing', s.begun);
@@ -107,7 +125,7 @@ export function transition(s: State, event: GameEvent): State | null {
 
 /** Does the world (player, timer, levers, crates, falling) advance in state `s` on this input device? */
 export function simulates(s: State, device: string): boolean {
-  return !isFrozen(s, device) && s.kind !== 'won';
+  return !isFrozen(s, device) && s.kind !== 'won' && s.kind !== 'ended';
 }
 
 /**
@@ -133,20 +151,24 @@ export interface View {
   readonly pause: boolean;
   readonly select: boolean;
   readonly win: boolean;
+  /** The end card, after the final fall. */
+  readonly ending: boolean;
 }
 
 /** Which overlays are up in state `s`. */
 export function viewOf(s: State): View {
-  const none = { title: false, pause: false, select: false, win: false };
+  const none = { title: false, pause: false, select: false, win: false, ending: false };
   switch (s.kind) {
     case 'title':
       return { ...none, title: true };
     case 'paused':
       return { ...none, pause: true };
     case 'chamberSelect':
-      return { ...none, select: true, win: (s.back as State).kind === 'won' };
+      return { ...none, select: true, win: s.back?.kind === 'won', ending: s.back?.kind === 'ended' };
     case 'won':
       return { ...none, win: true, title: (s.back as State).kind === 'title' };
+    case 'ended':
+      return { ...none, ending: true };
     default:
       return none;
   }

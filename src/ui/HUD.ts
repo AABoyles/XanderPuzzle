@@ -81,6 +81,10 @@ export class HUD {
   private readonly hintLabel: TextBlock;
   private readonly logLabel: TextBlock;
   private logTimer: ReturnType<typeof setTimeout> | undefined;
+  private readonly endOverlay: Rectangle;
+  private readonly endTitle: TextBlock;
+  private readonly endBody: TextBlock;
+  private endTimer: ReturnType<typeof setInterval> | undefined;
   private winTitle!: TextBlock;
   private winSubtitle!: TextBlock;
   private readonly updateNotice: TextBlock;
@@ -303,6 +307,27 @@ export class HUD {
     winSubtitle.top = '30px';
     this.winOverlay.addControl(winSubtitle);
 
+    // End card, after the final fall: fades to black on the facility's last log line, then the game's name.
+    this.endOverlay = new Rectangle('endOverlay');
+    this.endOverlay.width = 1;
+    this.endOverlay.height = 1;
+    this.endOverlay.thickness = 0;
+    this.endOverlay.background = 'black';
+    this.endOverlay.isVisible = false;
+    this.ui.addControl(this.endOverlay);
+    this.endTitle = new TextBlock('endTitle', '');
+    this.endTitle.color = '#d8c89a';
+    this.endTitle.fontSize = 26;
+    this.endTitle.fontFamily = 'Consolas, monospace';
+    this.endTitle.top = '-70px';
+    this.endOverlay.addControl(this.endTitle);
+    this.endBody = new TextBlock('endBody', '');
+    this.endBody.color = 'white';
+    this.endBody.fontSize = 22;
+    this.endBody.top = '50px';
+    this.endBody.height = '200px';
+    this.endOverlay.addControl(this.endBody);
+
     // Chamber select overlay
     this.selectOverlay = new Rectangle('selectOverlay');
     this.selectOverlay.width = 1;
@@ -516,6 +541,31 @@ export class HUD {
     this.winOverlay.isVisible = true;
   }
 
+  /**
+   * The end card: the screen fades to black over ~2 s with `title` (the facility's last line) on it, then `body` fades
+   * in below. Purely visual; hiding it at any point is safe.
+   */
+  public showEnding(title: string, body: string): void {
+    clearInterval(this.endTimer);
+    this.endTitle.text = title;
+    this.endBody.text = body;
+    this.endOverlay.alpha = 0;
+    this.endBody.alpha = 0;
+    this.endOverlay.isVisible = true;
+    const start = performance.now();
+    this.endTimer = setInterval(() => {
+      const t = (performance.now() - start) / 1000;
+      this.endOverlay.alpha = Math.min(1, t / 2);
+      this.endBody.alpha = Math.min(1, Math.max(0, (t - 3) / 1.5));
+      if (t > 4.5) clearInterval(this.endTimer);
+    }, 33);
+  }
+
+  public hideEnding(): void {
+    clearInterval(this.endTimer);
+    this.endOverlay.isVisible = false;
+  }
+
   public hideWin(): void {
     this.winOverlay.isVisible = false;
   }
@@ -573,6 +623,7 @@ export class HUD {
   }
 
   public dispose(): void {
+    clearInterval(this.endTimer);
     clearTimeout(this.logTimer);
     this.ui.dispose();
   }

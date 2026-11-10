@@ -8,6 +8,7 @@ import { bodyAabb, overlaps, sweep } from '../src/physics/boxPhysics.ts';
 import type { Aabb } from '../src/physics/boxPhysics.ts';
 import { AXES, axisVec } from '../src/gravity/axes.ts';
 import { placardCorners } from '../src/level/placardText.ts';
+import { darkFraction } from '../src/narrative.ts';
 import type { GravityAxis } from '../src/gravity/axes.ts';
 
 setupHeadless();
@@ -86,6 +87,17 @@ for (const [index, chamber] of CHAMBERS.entries()) {
         const exit = level.exitCenter.asArray();
         assert.ok(inside(bounds, exit), `exitCenter ${exit} is outside bounds`);
         assert.ok(level.exitRadius > 0);
+        if (level.ending) {
+          // An ending chamber's exit is a hole on its boundary, open to space along the exit gravity.
+          const g = axisVec(level.exitAxis);
+          const k = g.findIndex((c) => c !== 0);
+          const edge = g[k] > 0 ? bounds.max[k] : bounds.min[k];
+          assert.ok(Math.abs(exit[k] - edge) < 1e-6, `ending exit ${exit} is not on the ${level.exitAxis} side`);
+          for (let d = -3; d <= 20; d += 0.5) {
+            const p = exit.map((v, i) => v + g[i] * d);
+            assert.ok(!solids.some((s) => inside(s, p)), `ending exit is blocked at ${p}`);
+          }
+        }
 
         // Levers: every one must be usable from some axis the player can reach, and the exit axis must be reachable.
         const reachable = new Set<GravityAxis>([level.entranceAxis]);
@@ -126,6 +138,12 @@ for (const [index, chamber] of CHAMBERS.entries()) {
           level.placards.some((pl) => pl.voice === 'stencil' && pl.text === `CUBE ${chamber.cube}`),
           `no CUBE ${chamber.cube} placard`,
         );
+
+        // A placard quoting the field's state agrees with what the fall from this chamber shows.
+        for (const pl of level.placards) {
+          const m = /(\d+)% OF CUBES RESPONDING/.exec(pl.text);
+          if (m) assert.equal(Number(m[1]), Math.round(100 * (1 - darkFraction(index, CHAMBERS.length))), pl.text);
+        }
 
         // Placards: every corner lies on a real face pointing the placard's way, with open space in front of it.
         for (const pl of level.placards) {

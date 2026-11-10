@@ -53,3 +53,18 @@ export function planetLights(index: number, from: number, count: number): number
   if (from < 0 || index < from) return 0;
   return Math.min(1, (index - from + 1) / Math.max(count - from, 1));
 }
+
+/** The facility's alarm for the `n`th lever thrown (from 0) in the Descent, cube `serial`; later throws repeat the last. */
+export function descentAlarm(n: number, serial: string): string {
+  const alarms = [
+    'ATTENDANT, THIS SHIFT IS NOT ON SCHEDULE.',
+    `${cubeLabel(serial)} OUT OF TRIM. PLEASE RETURN TO YOUR STATION.`,
+  ];
+  return alarms[Math.min(Math.max(n, 0), alarms.length - 1)];
+}
+
+/** The end card's first line, logged as the final fall ends. */
+export const NOT_RECOVERED = 'ATTENDANT NOT RECOVERED.';
+
+/** The end card's body, under the game's name, before the input prompt. */
+export const endCard = (recoveries: number): string => `RECOVERIES THIS CYCLE: ${recoveries}`;
