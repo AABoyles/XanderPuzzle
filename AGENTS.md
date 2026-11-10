@@ -24,7 +24,8 @@ There is no linter or formatter. Match the existing style: 2-space indent, singl
 
 - `src/main.ts`: scene bootstrap, level loading and progression, skin switching, render loop, win check, `localStorage` persistence (keys prefixed `shiftbound.`).
 - `src/gravity/GravitySystem.ts`: the single current gravity axis and its change listeners.
-- `src/player/PlayerController.ts`: pointer-lock FPS controls and a kinematic body oriented by a smoothly interpolated "up" vector.
+- `src/input/`: `InputSource.ts` is the Babylon-free input interface (`InputFrame`, `mergeFrames`, `stickVector`), tested by Node like `boxPhysics.ts`; `KeyboardMouseInput.ts` and `TouchInput.ts` implement it, and a future gamepad source should too.
+- `src/player/PlayerController.ts`: merges the input sources' frames and drives a kinematic body oriented by a smoothly interpolated "up" vector.
 - `src/level/Builder.ts`: the API chambers are written against (`box`, `slab`, `tube`, `grate`, `glass`, `barrier`, `addSwitch` (with `{ once }`), `addRelativeSwitch`, `addSequenceSwitch`, `addCrate`, `addPlate`, `addDoor`, `finish`), plus `V()` and the wall thickness `T`.
 - `src/gravity/axes.ts`: Babylon-free axis maths and the `GravitySequencer`; tested directly by Node like `boxPhysics.ts`.
 - `src/level/chambers/`: one file per chamber. `index.ts` exports `CHAMBERS` (the play order, each with the name shown in the chamber select), `LEVELS` and `buildSandbox`.

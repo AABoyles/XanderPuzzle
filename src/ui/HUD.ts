@@ -29,6 +29,8 @@ export interface ChamberEntry {
 }
 
 const ROW_HEIGHT = 52;
+const DESKTOP_SUBTITLE =
+  'Click to look around  •  WASD to move  •  Shift to run  •  Space to jump\nWalk up to a lever and press E to rotate gravity 90°\nR restarts the chamber  •  L opens chamber select\n\nClick anywhere to begin';
 
 export class HUD {
   /** The start overlay's chamber select button was pressed. */
@@ -45,6 +47,9 @@ export class HUD {
   private readonly gravityLabel: TextBlock;
   private gravityColor = '#bfe3ff';
   private keysLabel!: TextBlock;
+  private subtitle!: TextBlock;
+  private gravityBox!: Rectangle;
+  private touchMode = false;
   private readonly startOverlay: Rectangle;
   private readonly winOverlay: Rectangle;
   private readonly sequenceLabel: TextBlock;
@@ -90,7 +95,7 @@ export class HUD {
     this.ui.addControl(this.prompt);
 
     // Gravity indicator (top-left)
-    const gravityBox = new Rectangle('gravityBox');
+    const gravityBox = (this.gravityBox = new Rectangle('gravityBox'));
     gravityBox.width = '260px';
     gravityBox.height = '54px';
     gravityBox.cornerRadius = 6;
@@ -173,10 +178,7 @@ export class HUD {
     title.fontWeight = 'bold';
     this.startOverlay.addControl(title);
 
-    const subtitle = new TextBlock(
-      'subtitle',
-      'Click to look around  •  WASD to move  •  Shift to run  •  Space to jump\nWalk up to a lever and press E to rotate gravity 90°\nR restarts the chamber  •  L opens chamber select\n\nClick anywhere to begin',
-    );
+    const subtitle = (this.subtitle = new TextBlock('subtitle', DESKTOP_SUBTITLE));
     subtitle.color = '#d8e6ff';
     subtitle.fontSize = 20;
     subtitle.top = '10px';
@@ -353,6 +355,24 @@ export class HUD {
     this.startOverlay.isVisible = true;
   }
 
+  public get isStartOverlayVisible(): boolean {
+    return this.startOverlay.isVisible;
+  }
+
+  /** Switches prompts and labels to touch wording, and keeps the key list out from under the buttons. */
+  public setTouchMode(on: boolean): void {
+    this.touchMode = on;
+    this.subtitle.text = on
+      ? 'Left thumb: move  \u2022  Right side: drag to look\nJUMP to jump  \u2022  USE at a lever to rotate gravity 90\u00B0\n\nTap anywhere to begin'
+      : DESKTOP_SUBTITLE;
+    this.keysLabel.isVisible = !on;
+    // Leave the top-right corner to the touch RESTART / CHAMBERS buttons.
+    this.gravityBox.width = on ? '210px' : '260px';
+    this.levelLabel.width = on ? '40%' : '100%';
+    this.hintLabel.width = on ? '40%' : '100%';
+    this.hintLabel.textWrapping = on;
+  }
+
   public showWin(title: string, subtitle: string): void {
     this.winTitle.text = title;
     this.winSubtitle.text = subtitle;
@@ -368,9 +388,9 @@ export class HUD {
     this.hintLabel.text = hint;
   }
 
-  public setPrompt(visible: boolean, text = 'Press [E] to shift gravity'): void {
+  public setPrompt(visible: boolean, text?: string): void {
     this.prompt.isVisible = visible;
-    this.prompt.text = text;
+    this.prompt.text = text ?? (this.touchMode ? 'Tap [USE] to shift gravity' : 'Press [E] to shift gravity');
   }
 
   public setSkin(label: string): void {

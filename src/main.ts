@@ -3,6 +3,8 @@ import { chaseDirection, distanceOutside, FallTracker, planetDistance, Vec3 } fr
 import { SpaceBackdrop } from './environment/SpaceBackdrop';
 import { GravityAxis, GravitySystem } from './gravity/GravitySystem';
 import { buildSandbox, CHAMBERS, LEVELS as CHAMBER_LEVELS } from './level/chambers';
+import { KeyboardMouseInput } from './input/KeyboardMouseInput';
+import { TouchInput } from './input/TouchInput';
 import { PlayerController } from './player/PlayerController';
 import { createSkin, SKIN_IDS, SKIN_LABELS, SkinId } from './skins/Skin';
 import { formatBest, furthestCleared, isUnlocked, recordCleared } from './progress';
@@ -59,9 +61,22 @@ const skinParam = params.get('skin') as SkinId | null;
 let skinIndex = skinParam && SKIN_IDS.includes(skinParam) ? SKIN_IDS.indexOf(skinParam) : Math.floor(store.get('skin') ?? 0) % SKIN_IDS.length;
 let skin = createSkin(SKIN_IDS[skinIndex], scene, glow);
 let level = LEVELS[levelIndex](scene, skin);
-const player = new PlayerController(scene, canvas, gravity, level.spawnPosition);
+const keyboardMouse = new KeyboardMouseInput(canvas);
+const touch = new TouchInput();
+const player = new PlayerController(scene, gravity, level.spawnPosition, [keyboardMouse, touch]);
 
 const hud = new HUD();
+/** Touch mode: no pointer lock, and the on-screen controls are shown while actually playing. */
+const syncTouchMode = () => {
+  hud.setTouchMode(touch.active);
+  keyboardMouse.pointerLockSuspended = touch.active || levelSelectOpen();
+  if (touch.active && !levelSelectOpen() && !hasWon) hud.showStartOverlay();
+};
+touch.onActivate = syncTouchMode;
+touch.onRestart = () => {
+  if (!hasWon && !levelSelectOpen()) startLevel(levelIndex);
+};
+touch.onChambers = () => openLevelSelect();
 hud.setGravityAxis(gravity.axis, skin.hudColor(gravity.axis));
 hud.setLevel(level.name, level.hint);
 hud.setSkin(SKIN_LABELS[skin.id]);
@@ -125,7 +140,7 @@ const chamberUnlocked = (index: number) => isUnlocked(index, furthestCleared(sto
 
 function openLevelSelect(): void {
   if (sandbox || levelSelectOpen()) return;
-  player.pointerLockSuspended = true;
+  keyboardMouse.pointerLockSuspended = true;
   if (document.pointerLockElement) document.exitPointerLock();
   hud.hideStartOverlay();
   selectIndex = levelIndex;
@@ -138,15 +153,16 @@ function openLevelSelect(): void {
       unlocked: isUnlocked(i, furthest, unlockAll),
     };
   });
-  const devices = 'Arrows/D-pad choose · Enter/A play · Esc/B back';
+  const devices = touch.active ? 'Tap a chamber to play' : 'Arrows/D-pad choose · Enter/A play · Esc/B back';
   hud.showLevelSelect(entries, selectIndex, unlockAll && storageAvailable ? `${devices} · all unlocked` : devices);
 }
 
 function closeLevelSelect(): void {
   if (!levelSelectOpen()) return;
   hud.hideLevelSelect();
-  player.pointerLockSuspended = false;
-  if (!hasWon && document.pointerLockElement !== canvas) hud.showStartOverlay();
+  keyboardMouse.pointerLockSuspended = touch.active;
+  // On touch there is no pointer lock to wait for: closing the menu resumes play.
+  if (!touch.active && !hasWon && document.pointerLockElement !== canvas) hud.showStartOverlay();
 }
 
 function moveSelection(delta: number): void {
@@ -162,12 +178,14 @@ function pickLevel(index: number, grabPointer = true): void {
   }
   closeLevelSelect();
   startLevel(index);
-  if (grabPointer) {
+  if (touch.active) hud.hideStartOverlay();
+  else if (grabPointer) {
     // Called from a click or key press, so the browser treats it as a user gesture; failure just leaves the overlay.
     Promise.resolve(canvas.requestPointerLock()).catch(() => {});
   }
 }
 
+if (touch.active) syncTouchMode(); // touch was detected at startup, before the callback existed
 hud.onOpenLevelSelect = openLevelSelect;
 hud.onCloseLevelSelect = closeLevelSelect;
 hud.onPickLevel = (i) => pickLevel(i);
@@ -177,11 +195,15 @@ hud.onHoverLevel = (i) => {
 };
 
 document.addEventListener('pointerlockchange', () => {
+  if (touch.active) return;
   if (document.pointerLockElement === canvas) hud.hideStartOverlay();
   else if (!hasWon && !levelSelectOpen()) hud.showStartOverlay();
 });
 canvas.addEventListener('click', () => {
-  if (!levelSelectOpen()) advance();
+  if (levelSelectOpen()) return;
+  // A tap on the start overlay begins play without pointer lock.
+  if (touch.active && hud.isStartOverlayVisible) hud.hideStartOverlay();
+  else advance();
 });
 window.addEventListener('keydown', (e) => {
   if (levelSelectOpen()) {
@@ -253,7 +275,9 @@ function pollGamepadMenu(): void {
 engine.runRenderLoop(() => {
   const dt = engine.getDeltaTime() / 1000;
   pollGamepadMenu();
-  if (dt > 0 && !hasWon && !levelSelectOpen()) {
+  touch.setVisible(touch.active && !hasWon && !levelSelectOpen() && !hud.isStartOverlayVisible);
+  const waitingToStart = touch.active && hud.isStartOverlayVisible;
+  if (dt > 0 && !hasWon && !levelSelectOpen() && !waitingToStart) {
     levelTime += dt;
     const wasGrounded = player.isGrounded;
     player.update(dt);
@@ -275,8 +299,11 @@ engine.runRenderLoop(() => {
       }
     }
     const anyInRange = target !== undefined;
-    if (fall.falling) hud.setPrompt(true, 'Lost to the void · press [R] to return');
-    else hud.setPrompt(anyInRange, target?.spec.kind === 'sequence' ? 'Press [E] to start the cycle' : undefined);
+    touch.setInteractAvailable(anyInRange);
+    if (fall.falling) hud.setPrompt(true, touch.active ? 'Lost to the void · tap \u21BB to return' : 'Lost to the void · press [R] to return');
+    else if (target?.spec.kind === 'sequence') {
+      hud.setPrompt(anyInRange, touch.active ? 'Tap [USE] to start the cycle' : 'Press [E] to start the cycle');
+    } else hud.setPrompt(anyInRange);
 
     const seq = level.sequencer;
     if (seq?.active) {
@@ -315,9 +342,9 @@ engine.runRenderLoop(() => {
       }
       const bestText = isBest ? 'new best!' : `best ${best.toFixed(1)}s`;
       const stats = `${levelTime.toFixed(1)}s (${bestText}) · ${shifts} gravity shift${shifts === 1 ? '' : 's'}`;
-      const select = sandbox ? '' : '\nL for chamber select';
-      if (finishedAll()) hud.showWin('ALL CHAMBERS CLEARED', `${stats}\n\nClick or press Enter to play again${select}`);
-      else hud.showWin('CHAMBER CLEARED', `${stats}\n\nClick or press Enter for the next chamber${select}`);
+      const select = sandbox ? '' : touch.active ? '\nTap \u2630 for chamber select' : '\nL for chamber select';
+      if (finishedAll()) hud.showWin('ALL CHAMBERS CLEARED', `${stats}\n\n${touch.active ? 'Tap to play again' : 'Click or press Enter to play again'}${select}`);
+      else hud.showWin('CHAMBER CLEARED', `${stats}\n\n${touch.active ? 'Tap for the next chamber' : 'Click or press Enter for the next chamber'}${select}`);
     }
   }
 

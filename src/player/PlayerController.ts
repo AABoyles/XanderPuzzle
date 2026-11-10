@@ -10,13 +10,13 @@ import {
   Vector3,
 } from '@babylonjs/core';
 import { GravitySystem } from '../gravity/GravitySystem';
+import { InputSource, mergeFrames } from '../input/InputSource';
 
 const RADIUS = 0.5;
 const EYE_OFFSET = 0.35; // above the collider center
 const MOVE_SPEED = 6.5;
 const JUMP_SPEED = 8.5;
 const REORIENT_SPEED = 6; // higher = snappier catch-up to the new "up"
-const MOUSE_SENSITIVITY = 0.0022;
 const PITCH_LIMIT = (89 * Math.PI) / 180;
 
 const tmpMatrix = new Matrix();
@@ -37,7 +37,7 @@ export class PlayerController {
   public readonly camera: UniversalCamera;
 
   private readonly scene: Scene;
-  private readonly canvas: HTMLCanvasElement;
+  private readonly inputs: InputSource[];
   private readonly gravity: GravitySystem;
 
   private alignRot = Quaternion.Identity();
@@ -46,32 +46,12 @@ export class PlayerController {
   private verticalSpeed = 0;
   private grounded = false;
 
-  private readonly keys = new Set<string>();
   private jumpQueued = false;
   private interactQueued = false;
-  private mouseDX = 0;
-  private mouseDY = 0;
 
-  private readonly onKeyDown = (e: KeyboardEvent) => {
-    this.keys.add(e.code);
-    if (e.code === 'Space') this.jumpQueued = true;
-    if (e.code === 'KeyE') this.interactQueued = true;
-  };
-  private readonly onKeyUp = (e: KeyboardEvent) => this.keys.delete(e.code);
-  private readonly onMouseMove = (e: MouseEvent) => {
-    if (document.pointerLockElement !== this.canvas) return;
-    this.mouseDX += e.movementX;
-    this.mouseDY += e.movementY;
-  };
-  private readonly onCanvasClick = () => {
-    if (!this.pointerLockSuspended && document.pointerLockElement !== this.canvas) {
-      this.canvas.requestPointerLock();
-    }
-  };
-
-  constructor(scene: Scene, canvas: HTMLCanvasElement, gravity: GravitySystem, spawnPosition: Vector3) {
+  constructor(scene: Scene, gravity: GravitySystem, spawnPosition: Vector3, inputs: InputSource[]) {
     this.scene = scene;
-    this.canvas = canvas;
+    this.inputs = inputs;
     this.gravity = gravity;
 
     // Initialise the alignment so the player already faces the level's natural up.
@@ -90,18 +70,6 @@ export class PlayerController {
     this.camera.inputs.clear();
     this.camera.rotationQuaternion = this.alignRot.clone();
     scene.activeCamera = this.camera;
-
-    window.addEventListener('keydown', this.onKeyDown);
-    window.addEventListener('keyup', this.onKeyUp);
-    document.addEventListener('mousemove', this.onMouseMove);
-    canvas.addEventListener('click', this.onCanvasClick);
-  }
-
-  /** While true (e.g. a menu is open), clicking the canvas doesn't grab the pointer. */
-  public pointerLockSuspended = false;
-
-  public get isPointerLocked(): boolean {
-    return document.pointerLockElement === this.canvas;
   }
 
   public get position(): Vector3 {
@@ -124,6 +92,8 @@ export class PlayerController {
     this.verticalSpeed = 0;
     this.jumpQueued = false;
     this.interactQueued = false;
+    // Drain pending edges and look deltas so a queued press doesn't fire after the restart.
+    for (const input of this.inputs) input.read();
   }
 
   /** Sets the view direction relative to the current up (radians; positive pitch looks down). */
@@ -163,13 +133,12 @@ export class PlayerController {
     }
     const up = rotate(Vector3.Up(), this.alignRot);
 
-    // --- Mouse look ----------------------------------------------------------------------------
-    if (this.isPointerLocked) {
-      this.yaw += this.mouseDX * MOUSE_SENSITIVITY;
-      this.pitch = Scalar.Clamp(this.pitch + this.mouseDY * MOUSE_SENSITIVITY, -PITCH_LIMIT, PITCH_LIMIT);
-    }
-    this.mouseDX = 0;
-    this.mouseDY = 0;
+    // --- Look ------------------------------------------------------------------------------------
+    const input = mergeFrames(this.inputs.map((i) => i.read()));
+    if (input.jump) this.jumpQueued = true;
+    if (input.interact) this.interactQueued = true;
+    this.yaw += input.lookX;
+    this.pitch = Scalar.Clamp(this.pitch + input.lookY, -PITCH_LIMIT, PITCH_LIMIT);
 
     const yawQuat = Quaternion.RotationAxis(Vector3.Up(), this.yaw);
     const pitchQuat = Quaternion.RotationAxis(Vector3.Right(), this.pitch);
@@ -186,18 +155,11 @@ export class PlayerController {
     this.grounded = !!hit && !!hit.hit;
 
     // --- Horizontal input --------------------------------------------------------------------------
-    let moveX = 0;
-    let moveZ = 0;
-    if (this.keys.has('KeyW')) moveZ += 1;
-    if (this.keys.has('KeyS')) moveZ -= 1;
-    if (this.keys.has('KeyD')) moveX += 1;
-    if (this.keys.has('KeyA')) moveX -= 1;
-
     const horizontal = new Vector3(0, 0, 0);
-    if (moveX !== 0 || moveZ !== 0) {
-      horizontal.addInPlace(forward.scale(moveZ));
-      horizontal.addInPlace(right.scale(moveX));
-      horizontal.normalize().scaleInPlace(this.keys.has('ShiftLeft') ? MOVE_SPEED * 1.6 : MOVE_SPEED);
+    if (input.moveX !== 0 || input.moveZ !== 0) {
+      horizontal.addInPlace(forward.scale(input.moveZ));
+      horizontal.addInPlace(right.scale(input.moveX));
+      horizontal.scaleInPlace(input.sprint ? MOVE_SPEED * 1.6 : MOVE_SPEED);
     }
 
     // --- Vertical (gravity + jump) -------------------------------------------------------------
@@ -220,10 +182,6 @@ export class PlayerController {
   }
 
   public dispose(): void {
-    window.removeEventListener('keydown', this.onKeyDown);
-    window.removeEventListener('keyup', this.onKeyUp);
-    document.removeEventListener('mousemove', this.onMouseMove);
-    this.canvas.removeEventListener('click', this.onCanvasClick);
     this.collider.dispose();
     this.camera.dispose();
   }

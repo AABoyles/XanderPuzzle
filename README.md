@@ -4,9 +4,18 @@ A browser-based 3D environmental puzzle game built with [Babylon.js](https://www
 
 ## The mechanic
 
-You walk around a level with standard FPS controls (WASD + mouse look, Space to jump). Scattered through the environment are **gravity levers**: walk up to one and press **E** to rotate gravity 90° onto a different wall. Whatever was a wall becomes the new floor, and you keep walking — no re-spawning, no menus, just a continuous first-person traversal through a room that keeps reorienting under your feet.
+You walk around a level with standard FPS controls (WASD + mouse look, Space to jump; on a phone or tablet, on-screen touch controls). Scattered through the environment are **gravity levers**: walk up to one and press **E** to rotate gravity 90° onto a different wall. Whatever was a wall becomes the new floor, and you keep walking — no re-spawning, no menus, just a continuous first-person traversal through a room that keeps reorienting under your feet.
 
 Gravity can point along any of the 6 axis-aligned directions. Every level starts in the orientation natural to its entrance (normal "down") and ends in whatever orientation its exit requires, so a level might use anywhere from zero extra switches (if entrance and exit already agree) up to a chain of them.
+
+### Touch controls
+
+On touch devices the controls appear automatically (desktop is unchanged); play in landscape.
+
+- **Left half:** drag to move (a floating joystick appears under your thumb).
+- **Right half:** drag to look.
+- **JUMP** and **USE** (bottom right; USE lights up when a lever is in reach), **RUN** (toggle, bottom left).
+- **↻** restarts the chamber and **☰** opens the chamber select (top right).
 
 Fourteen chambers ship with the game, each teaching or testing one idea:
 
@@ -59,7 +68,8 @@ Gravity-driven crates, pressure plates and plate-controlled doors (`Builder.addC
 
 - `src/gravity/GravitySystem.ts` — owns the single "which way is down" axis and notifies listeners when it changes.
 - `src/gravity/axes.ts` — dependency-free axis maths (quarter-turn rotation for relative levers) and the timed `GravitySequencer`.
-- `src/player/PlayerController.ts` — pointer-lock mouse look, WASD/jump input, and a kinematic body whose movement basis, ground checks, and camera orientation all derive from a smoothly-interpolated "up" vector, so a gravity flip reads as a coherent tumble into the new orientation rather than a snap.
+- `src/input/` — `InputSource` (the shared frame of move/look/jump/use that every device produces, dependency-free and unit-tested), `KeyboardMouseInput` (WASD, pointer-lock mouse look) and `TouchInput` (on-screen controls).
+- `src/player/PlayerController.ts` — reads and merges the input sources, and drives a kinematic body whose movement basis, ground checks, and camera orientation all derive from a smoothly-interpolated "up" vector, so a gravity flip reads as a coherent tumble into the new orientation rather than a snap.
 - `src/level/Builder.ts` — the `Builder` that chambers are written against: `slab` (wall with optional hole), `tube` (corridor/chamber), `box`, `grate`/`glass`/`barrier`, `addSwitch`/`addRelativeSwitch`/`addSequenceSwitch`, `addCrate`/`addPlate`/`addDoor`.
 - `src/level/chambers/` — one file per chamber; `index.ts` holds `CHAMBERS`, the play order with each chamber's name (shown in the chamber select). To add a chamber, add a file and list it there.
 - `src/physics/boxPhysics.ts` — dependency-free swept axis-aligned box physics used by crates.
