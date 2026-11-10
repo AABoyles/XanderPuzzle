@@ -54,7 +54,7 @@ export function buildTide(scene: Scene, skin: SkinRuntime): BuiltLevel {
 
   return b.finish({
     name: 'XIII · THE TIDE',
-    hint: 'The cycle will not wait. Be where the next shift needs you.',
+    hint: 'The cube turns itself now. Be where the next shift needs you.',
     spawnPosition: V(10, 0.5, -5),
     entranceAxis: '-Y',
     exitAxis: '+X',

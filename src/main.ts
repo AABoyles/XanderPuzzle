@@ -17,6 +17,7 @@ import { KeyboardMouseInput } from './input/KeyboardMouseInput';
 import { TouchInput } from './input/TouchInput';
 import { PlayerController } from './player/PlayerController';
 import { canFullscreen, isFullscreen, isIOS, isStandalone, onFullscreenChange, toggleFullscreen } from './pwa/fullscreen';
+import { darkFraction, dutyLine, recoveryLine, winTitle, workLog } from './narrative';
 import { registerServiceWorker } from './pwa/register';
 import { shiftTone } from './gravity/shiftSound';
 import { simDelta } from './time';
@@ -198,25 +199,36 @@ const lastPosition = player.position.clone();
 /** Simulated seconds in this chamber: accumulates the clamped `dt`, so a hitch or hidden tab can't change a best time. */
 let levelTime = 0;
 let shifts = 0;
+/** Attendants lost to the void this session (NARRATIVE.md). Never saved. */
+let recoveries = 0;
 const finishedAll = () => levelIndex >= LEVELS.length - 1;
+/** The facility's serial for chamber `index`; the sandbox has none. */
+const cubeOf = (index: number): string | undefined => (sandbox ? undefined : CHAMBERS[index]?.cube);
+
+/** Restarts the chamber; if the player was falling, the facility logs the lost attendant's replacement. */
+function restartLevel(): void {
+  const lost = fall.falling;
+  startLevel(levelIndex);
+  if (lost) hud.log(recoveryLine(++recoveries));
+}
 
 const TEXT: Record<InputDevice, { void: string; cycle: string; next: string; again: string; select: string }> = {
   keyboard: {
-    void: 'Lost to the void · press [R] to return',
+    void: 'Outside the cube · press [R] to recover',
     cycle: 'Press [E] to start the cycle',
     next: 'Click or press Enter for the next chamber',
     again: 'Click or press Enter to play again',
     select: '\nL for chamber select',
   },
   touch: {
-    void: 'Lost to the void · tap \u21BB to return',
+    void: 'Outside the cube · tap \u21BB to recover',
     cycle: 'Tap [USE] to start the cycle',
     next: 'Tap for the next chamber',
     again: 'Tap to play again',
     select: '\nTap \u2630 for chamber select',
   },
   gamepad: {
-    void: 'Lost to the void · press [Y] to return',
+    void: 'Outside the cube · press [Y] to recover',
     cycle: 'Press [X] to start the cycle',
     next: 'Press [A] for the next chamber',
     again: 'Press [A] to play again',
@@ -240,6 +252,8 @@ function startLevel(index: number): void {
   lastPosition.copyFrom(player.position);
   fall.reset();
   hud.setLevel(level.name, level.hint);
+  const cube = cubeOf(index);
+  if (cube !== undefined) hud.log(dutyLine(cube));
   levelTime = 0;
   shifts = 0;
 }
@@ -279,6 +293,7 @@ function showChamberSelect(): void {
   const entries = CHAMBERS.map((c, i) => {
     return {
       name: c.name,
+      cube: c.cube,
       best: formatBest(progress.best[c.id]),
       completed: i <= furthest,
       unlocked: isUnlocked(i, furthest, unlockAll),
@@ -518,7 +533,7 @@ engine.runRenderLoop(() => {
     openLevelSelect();
     consumed = true;
   } else if (frame.restart && game.kind !== 'won') {
-    startLevel(levelIndex);
+    restartLevel();
     game.send({ type: 'restart' });
     consumed = true;
   } else if (game.kind === 'won') {
@@ -592,7 +607,7 @@ engine.runRenderLoop(() => {
     // Anyone who escapes the geometry falls through space for a while, then is put back at the entrance.
     fall.update(dt, distanceOutside(level.bounds, player.position.asArray() as Vec3));
     if (fall.finished) {
-      startLevel(levelIndex);
+      restartLevel();
       game.send({ type: 'respawn' });
     } else game.send({ type: fall.falling ? 'fell' : 'recovered' });
 
@@ -601,19 +616,20 @@ engine.runRenderLoop(() => {
       beep(440, 880, 0.6, 'sine', 0.15);
       const chamberId = CHAMBERS[levelIndex]?.id;
       const best = chamberId === undefined ? undefined : progress.best[chamberId];
-      const isBest = best === undefined || levelTime < best;
       if (progressWritable && chamberId !== undefined) {
         recordWin(progress, chamberId, levelTime);
         persistProgress();
       }
-      const bestText = isBest || best === undefined ? 'new best!' : `best ${best.toFixed(1)}s`;
-      const stats = `${levelTime.toFixed(1)}s (${bestText}) · ${shifts} gravity shift${shifts === 1 ? '' : 's'}`;
+      const last = finishedAll();
+      const cube = cubeOf(levelIndex);
+      const log = workLog({ time: levelTime, best, shifts, next: last ? undefined : cubeOf(levelIndex + 1) });
       const text = TEXT[input.lastDevice];
       const select = sandbox ? '' : text.select;
       const update = applyUpdate ? '\nUpdate ready: it installs when you continue' : '';
-      winMessage = finishedAll()
-        ? { title: 'ALL CHAMBERS CLEARED', body: `${stats}\n\n${text.again}${select}${update}` }
-        : { title: 'CHAMBER CLEARED', body: `${stats}\n\n${text.next}${select}${update}` };
+      winMessage = {
+        title: cube === undefined ? 'CHAMBER CLEARED' : winTitle(cube, last),
+        body: `${log}\n\n${last ? text.again : text.next}${select}${update}`,
+      };
       game.send({ type: 'win' });
     }
   }
@@ -628,6 +644,7 @@ engine.runRenderLoop(() => {
     planetDistance: planetDistance(fall.time),
     speed: dt > 0 ? Vector3.Distance(player.position, lastPosition) / dt : 0,
     dt: frozen ? 0 : dt,
+    darkFraction: darkFraction(levelIndex, LEVELS.length),
   });
   lastPosition.copyFrom(player.position);
 

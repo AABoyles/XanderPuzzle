@@ -61,7 +61,7 @@ export function buildStaircase(scene: Scene, skin: SkinRuntime): BuiltLevel {
 
   return b.finish({
     name: 'VI · THE STAIRCASE',
-    hint: 'Climb the wall, step off the top, then walk round the divider.',
+    hint: 'Climb, step off, turn the cube back, walk round. Repeat until it\'s done.',
     spawnPosition: V(2, 0.5, -3),
     entranceAxis: '-Y',
     exitAxis: '-Y',

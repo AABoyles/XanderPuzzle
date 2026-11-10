@@ -61,7 +61,9 @@ Fourteen chambers ship with the game, each teaching or testing one idea:
 
 Each lever carries an arrow pointing the way "down" will be once it is thrown. White levers with a ring are **relative**: they turn gravity a quarter turn clockwise as you face their wall, so the arrow changes with your orientation. A lever that goes dark after use is **one-shot**. A gold lever with four studs starts a **timed cycle**, with a countdown to the next shift on the HUD. **Shift** runs, **R** restarts the chamber, and clearing one shows your time and number of gravity shifts before moving on.
 
-Some chambers have **trap holes** in their shell. Fall through one and you drop out into open space, towards a planet that always lies the way gravity points; after a few seconds (or on **R**) you are put back at the chamber entrance.
+Some chambers have **trap holes** in their shell. Fall through one and you drop out into open space, past the other cubes of the ballast field, towards a planet that always lies the way gravity points; after a few seconds (or on **R**) you are put back at the chamber entrance, and the facility logs the recovery.
+
+The story is told by the facility's own log lines and placards: see [NARRATIVE.md](NARRATIVE.md).
 
 Press **L** (or the button on the start screen, or Back/Select on a gamepad) for the chamber select, which lists every chamber with your best time. You can replay any chamber you've cleared and try the next one; the rest stay locked. Progress and best times are kept in `localStorage` (`shiftbound.progress`, keyed by chamber id, so reordering chambers never moves your times; saves from older versions are migrated automatically). Pause menu > Settings > Erase saved progress (press twice to confirm) wipes them. Add `?unlockall` to the URL to open every chamber for playtesting; it never saves progress or resume points. If storage is unavailable, everything is unlocked.
 

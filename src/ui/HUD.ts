@@ -8,6 +8,7 @@ import { StackPanel } from '@babylonjs/gui/2D/controls/stackPanel';
 import { TextBlock } from '@babylonjs/gui/2D/controls/textBlock';
 import { GravityAxis } from '../gravity/GravitySystem';
 import type { InputDevice } from '../input/InputSource';
+import { cubeLabel } from '../narrative';
 
 const AXIS_LABEL: Record<GravityAxis, string> = {
   '+X': 'EAST WALL',
@@ -21,6 +22,8 @@ const AXIS_LABEL: Record<GravityAxis, string> = {
 /** One row of the chamber select list. */
 export interface ChamberEntry {
   name: string;
+  /** The facility's serial for the chamber, shown under its name. */
+  cube: string;
   /** Best time, or "not completed". */
   best: string;
   completed: boolean;
@@ -76,6 +79,8 @@ export class HUD {
   private readonly sequenceLabel: TextBlock;
   private readonly levelLabel: TextBlock;
   private readonly hintLabel: TextBlock;
+  private readonly logLabel: TextBlock;
+  private logTimer: ReturnType<typeof setTimeout> | undefined;
   private winTitle!: TextBlock;
   private winSubtitle!: TextBlock;
   private readonly updateNotice: TextBlock;
@@ -176,6 +181,19 @@ export class HUD {
     this.hintLabel.outlineColor = 'black';
     this.hintLabel.outlineWidth = 3;
     this.ui.addControl(this.hintLabel);
+
+    // The facility's log line (the Stencil, see NARRATIVE.md), under the hint for a few seconds.
+    this.logLabel = new TextBlock('logLabel', '');
+    this.logLabel.color = '#d8c89a';
+    this.logLabel.fontSize = 14;
+    this.logLabel.fontFamily = 'Consolas, monospace';
+    this.logLabel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    this.logLabel.top = '76px';
+    this.logLabel.height = '22px';
+    this.logLabel.outlineColor = 'black';
+    this.logLabel.outlineWidth = 3;
+    this.logLabel.isVisible = false;
+    this.ui.addControl(this.logLabel);
 
     const keys = (this.keysLabel = new TextBlock('keys', ''));
     this.setSkin('');
@@ -399,7 +417,17 @@ export class HUD {
     name.fontFamily = 'Consolas, monospace';
     name.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
     name.paddingLeft = '16px';
+    name.top = '-7px';
     row.addControl(name);
+
+    const cube = new TextBlock(`chamberCube${index}`, cubeLabel(entry.cube));
+    cube.color = '#8a96a8';
+    cube.fontSize = 12;
+    cube.fontFamily = 'Consolas, monospace';
+    cube.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    cube.paddingLeft = '16px';
+    cube.top = '13px';
+    row.addControl(cube);
 
     const status = new TextBlock(`chamberStatus${index}`, entry.unlocked ? entry.best : 'LOCKED');
     status.color = !entry.unlocked ? '#ff9d9d' : entry.completed ? '#9dffb0' : '#aab8cc';
@@ -497,6 +525,16 @@ export class HUD {
     this.hintLabel.text = hint;
   }
 
+  /** Shows one log line for `seconds`, replacing any line still showing. */
+  public log(text: string, seconds = 5): void {
+    clearTimeout(this.logTimer);
+    this.logLabel.text = text;
+    this.logLabel.isVisible = true;
+    this.logTimer = setTimeout(() => {
+      this.logLabel.isVisible = false;
+    }, seconds * 1000);
+  }
+
   public setPrompt(visible: boolean, text?: string): void {
     this.prompt.isVisible = visible;
     this.prompt.text = text ?? USE_PROMPT[this.device];
@@ -535,6 +573,7 @@ export class HUD {
   }
 
   public dispose(): void {
+    clearTimeout(this.logTimer);
     this.ui.dispose();
   }
 }

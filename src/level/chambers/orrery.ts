@@ -74,7 +74,7 @@ export function buildOrrery(scene: Scene, skin: SkinRuntime): BuiltLevel {
 
   return b.finish({
     name: 'XIV · THE ORRERY',
-    hint: 'Everything you have learned, in one room. The way out is the way you came in. R restarts.',
+    hint: 'Everything you have learned, in one room. The way out is the way you came in.',
     spawnPosition: V(0, -H + 0.5, -21),
     entranceAxis: '-Y',
     exitAxis: '+Y',
