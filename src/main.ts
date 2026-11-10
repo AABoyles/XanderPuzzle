@@ -18,7 +18,7 @@ import { TouchInput } from './input/TouchInput';
 import { PlayerController } from './player/PlayerController';
 import { canFullscreen, isFullscreen, isIOS, isStandalone, onFullscreenChange, toggleFullscreen } from './pwa/fullscreen';
 import { loadFonts } from './level/fonts';
-import { darkFraction, dutyLine, recoveryLine, winTitle, workLog } from './narrative';
+import { darkFraction, dutyLine, planetLights, recoveryLine, winTitle, workLog } from './narrative';
 import { registerServiceWorker } from './pwa/register';
 import { shiftTone } from './gravity/shiftSound';
 import { simDelta } from './time';
@@ -205,6 +205,8 @@ let shifts = 0;
 /** Attendants lost to the void this session (NARRATIVE.md). Never saved. */
 let recoveries = 0;
 const finishedAll = () => levelIndex >= LEVELS.length - 1;
+/** Lights appear on the planet from the first chamber of Act III (NARRATIVE.md). */
+const LIGHTS_FROM = CHAMBERS.findIndex((c) => c.id === 'turnstile');
 /** The facility's serial for chamber `index`; the sandbox has none. */
 const cubeOf = (index: number): string | undefined => (sandbox ? undefined : CHAMBERS[index]?.cube);
 
@@ -648,6 +650,7 @@ engine.runRenderLoop(() => {
     speed: dt > 0 ? Vector3.Distance(player.position, lastPosition) / dt : 0,
     dt: frozen ? 0 : dt,
     darkFraction: darkFraction(levelIndex, LEVELS.length),
+    planetLights: planetLights(levelIndex, sandbox ? -1 : LIGHTS_FROM, LEVELS.length),
   });
   lastPosition.copyFrom(player.position);
 

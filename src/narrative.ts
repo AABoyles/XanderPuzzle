@@ -44,3 +44,12 @@ export function workLog({ time, best, shifts, next }: WorkLog): string {
 /** The share of the ballast field gone dark, seen when falling from chamber `index` of `count`: it grows each chamber. */
 export const darkFraction = (index: number, count: number): number =>
   0.15 + 0.5 * Math.min(Math.max(index / Math.max(count - 1, 1), 0), 1);
+
+/**
+ * How lit the planet's night side is (0-1) when falling from chamber `index` of `count`: dark until chamber `from`
+ * (the start of Act III), then a few lights more each chamber, fully lit at the last. Someone is down there.
+ */
+export function planetLights(index: number, from: number, count: number): number {
+  if (from < 0 || index < from) return 0;
+  return Math.min(1, (index - from + 1) / Math.max(count - from, 1));
+}
