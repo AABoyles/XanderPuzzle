@@ -1,0 +1,163 @@
+import { expect, Page, test } from '@playwright/test';
+
+/**
+ * Chamber smoke tests. Every chamber is loaded and checked for errors and a sane spawn; every chamber with a
+ * route below is then "solved" by teleporting to each lever in turn and throwing it, and finally to the exit.
+ *
+ * `route` lists lever indexes, in the order the chamber's `addSwitch` calls place them (`__debug.switches()`).
+ * `axes` is the gravity expected after each throw (the chamber's doc-comment route without the entrance axis).
+ * When a chamber's lever order or route changes, update its row here.
+ */
+interface Row {
+  id: string;
+  route: number[];
+  axes: string[];
+  /** Crate chambers: after the route, every pressure plate must be pressed and every door open. */
+  plates?: boolean;
+  /** Timed chamber: gravity changes on its own, so the route is replaced by waiting for the cycle. */
+  timed?: boolean;
+}
+
+const ROWS: Row[] = [
+  { id: 'vault', route: [0, 1], axes: ['+Z', '+X'] },
+  { id: 'shaft', route: [0, 1], axes: ['+X', '+Y'] },
+  { id: 'divide', route: [0, 1], axes: ['+X', '+Z'] },
+  { id: 'spiral', route: [0, 1, 2], axes: ['-X', '+Y', '+X'] },
+  { id: 'chimney', route: [0], axes: ['+Z'] },
+  { id: 'staircase', route: [0, 2, 1, 4, 3, 6, 5, 7], axes: ['+X', '-Y', '+X', '-Y', '+X', '-Y', '+X', '-Y'] },
+  { id: 'atrium', route: [0, 4, 1, 6, 8], axes: ['+X', '-Z', '-X', '+Z', '+Y'] },
+  { id: 'ballast', route: [0, 1], axes: ['+X', '-Y'], plates: true },
+  { id: 'counterweight', route: [0, 1, 2], axes: ['-X', '-Y', '+X'], plates: true },
+  { id: 'turnstile', route: [0, 0, 2], axes: ['+X', '+Y', '+Z'] },
+  { id: 'lockout', route: [1, 0], axes: ['-X', '+Y'] },
+  { id: 'grate', route: [0, 1], axes: ['+X', '-Y'], plates: true },
+  { id: 'tide', route: [], axes: [], timed: true },
+  { id: 'orrery', route: [0, 1, 2, 3, 4, 5], axes: ['+X', '+Z', '+Y', '-X', '-Z', '+Y'], plates: true },
+];
+
+type Debug = {
+  levelCount(): number;
+  startLevel(i: number): void;
+  position(): number[];
+  gravityAxis(): string;
+  grounded(): boolean;
+  hasWon(): boolean;
+  setPosition(x: number, y: number, z: number): void;
+  interact(): void;
+  switches(): { target: string | null; position: number[] }[];
+  crates(): number[][];
+  plates(): boolean[];
+  doors(): boolean[];
+  exit(): { center: number[]; radius: number };
+};
+
+const dbg = <T>(page: Page, fn: (d: Debug) => T) => page.evaluate(`(${fn.toString()})(window.__debug)`) as Promise<T>;
+
+async function boot(page: Page, errors: string[]) {
+  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  page.on('console', (m) => {
+    if (m.type() === 'error') errors.push(`console.error: ${m.text()}`);
+  });
+  await page.goto('/');
+  await page.waitForFunction(() => '__debug' in window);
+}
+
+async function load(page: Page, index: number) {
+  await page.evaluate((i) => (window as any).__debug.startLevel(i), index);
+  // The player starts on solid ground: nothing but gravity moves them, and they must stay put and grounded.
+  await expect.poll(() => dbg(page, (d) => d.grounded()), { timeout: 10_000 }).toBe(true);
+}
+
+test.describe('chambers', () => {
+  let errors: string[];
+  test.beforeEach(async ({ page }) => {
+    errors = [];
+    await boot(page, errors);
+  });
+  test.afterEach(() => {
+    expect(errors, 'browser errors').toEqual([]);
+  });
+
+  test('every chamber has a route row, in play order', async ({ page }) => {
+    expect(await dbg(page, (d) => d.levelCount())).toBe(ROWS.length);
+  });
+
+  ROWS.forEach((row, index) => {
+    test(`${index + 1}. ${row.id}: loads, spawns on solid ground, can be solved`, async ({ page }) => {
+      await load(page, index);
+
+      // Valid spawn: still inside the level bounds a moment later, still grounded, still under -Y gravity.
+      const spawn = await dbg(page, (d) => d.position());
+      const exit = await dbg(page, (d) => d.exit());
+      await page.waitForTimeout(500);
+      const now = await dbg(page, (d) => d.position());
+      expect(Math.hypot(now[0] - spawn[0], now[1] - spawn[1], now[2] - spawn[2])).toBeLessThan(1);
+      expect(await dbg(page, (d) => d.grounded())).toBe(true);
+      expect(await dbg(page, (d) => d.gravityAxis())).toBe('-Y');
+
+      if (row.timed) {
+        // Throw the one lever; the sequencer must then carry gravity -Y -> +X -> +Z on its own.
+        const lever = (await dbg(page, (d) => d.switches()))[0];
+        await page.evaluate(
+          ([x, y, z]) => {
+            const d = (window as any).__debug;
+            d.setPosition(x, y, z);
+            d.interact();
+          },
+          lever.position,
+        );
+        await expect.poll(() => dbg(page, (d) => d.gravityAxis()), { timeout: 30_000 }).toBe('+X');
+        await expect.poll(() => dbg(page, (d) => d.gravityAxis()), { timeout: 30_000 }).toBe('+Z');
+      }
+
+      for (let step = 0; step < row.route.length; step++) {
+        await throwLever(page, row.route[step], row.axes[step]);
+        await settleCrates(page);
+      }
+
+      if (row.plates) {
+        await expect.poll(() => dbg(page, (d) => d.plates().every(Boolean)), { timeout: 10_000 }).toBe(true);
+        await expect.poll(() => dbg(page, (d) => d.doors().every(Boolean)), { timeout: 10_000 }).toBe(true);
+      }
+
+      // The route works; stepping into the exit then wins (walking the last stretch is covered by playtests).
+      await page.evaluate(([x, y, z]) => (window as any).__debug.setPosition(x, y, z), exit.center);
+      await expect.poll(() => dbg(page, (d) => d.hasWon()), { timeout: 10_000 }).toBe(true);
+    });
+  });
+});
+
+/** Waits until no crate has moved for a moment, so the next lever is thrown after the crates have slid home. */
+async function settleCrates(page: Page) {
+  let last = '';
+  let still = 0;
+  for (let i = 0; i < 100 && still < 4; i++) {
+    await page.waitForTimeout(150);
+    const now = JSON.stringify(await dbg(page, (d) => d.crates()));
+    still = now === last ? still + 1 : 0;
+    last = now;
+  }
+}
+
+/** Teleports onto a lever and presses E until gravity becomes `expected`. */
+async function throwLever(page: Page, index: number, expected: string) {
+  const sw = (await dbg(page, (d) => d.switches()))[index];
+  expect(sw.target, `lever ${index} should offer ${expected}`).toBe(expected);
+  await expect
+    .poll(
+      async () => {
+        await page.evaluate(
+          ([x, y, z]) => {
+            const d = (window as any).__debug;
+            d.setPosition(x, y, z);
+            d.interact();
+          },
+          sw.position,
+        );
+        await page.waitForTimeout(250);
+        return dbg(page, (d) => d.gravityAxis());
+      },
+      { message: `gravity after lever ${index}`, timeout: 10_000, intervals: [100] },
+    )
+    .toBe(expected);
+}
