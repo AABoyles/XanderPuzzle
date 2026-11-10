@@ -33,6 +33,8 @@ export interface BackdropFrame {
   dt: number;
   /** Share of the ballast field that has gone dark (0-1), read when a fall begins. */
   darkFraction?: number;
+  /** How many lights show on the planet's night side, 0 (none) to 1. */
+  planetLights?: number;
 }
 
 const HALO_SCALE = 1.12;
@@ -152,6 +154,7 @@ const PLANET_FRAGMENT = `
   varying vec3 vN;
   varying vec3 vW;
   uniform float fade;
+  uniform float lights;
   uniform vec3 camPos;
   ${COMMON}
 
@@ -177,10 +180,13 @@ const PLANET_FRAGMENT = `
     col += vec3(0.7, 0.85, 1.0) * spec * 0.5;
     col = mix(col, vec3(1.0) * (0.03 + lam), cl * 0.75);
 
-    // Night side: faint blue ambient and a few city lights
+    // Night side: faint blue ambient, and city lights that only appear late in the game (the lights uniform, 0-1).
     float night = 1.0 - smoothstep(-0.15, 0.05, ndl);
     col += vec3(0.01, 0.03, 0.07) * night;
-    float city = step(0.985, hash(floor(n * 85.0))) * land * (1.0 - cl) * (1.0 - ice);
+    // Each light is a soft dot in its own cell, so up close they read as points rather than tiles.
+    vec3 cell = n * 85.0;
+    float spot = 1.0 - smoothstep(0.12, 0.3, length(fract(cell) - 0.5));
+    float city = step(1.0 - 0.03 * lights, hash(floor(cell))) * spot * land * (1.0 - cl) * (1.0 - ice);
     col += vec3(1.0, 0.75, 0.4) * city * night * 0.8;
 
     // Atmosphere rim
@@ -355,7 +361,7 @@ export class SpaceBackdrop {
       { vertex: 'spacePlanet', fragment: 'spacePlanet' },
       {
         attributes: ['position', 'normal'],
-        uniforms: ['worldViewProjection', 'world', 'fade', 'camPos'],
+        uniforms: ['worldViewProjection', 'world', 'fade', 'lights', 'camPos'],
         needAlphaBlending: true,
       },
     );
@@ -479,6 +485,7 @@ export class SpaceBackdrop {
     this.starsMat.setFloat('fade', vis);
     this.starsMat.setFloat('time', this.time);
     this.planetMat.setFloat('fade', vis);
+    this.planetMat.setFloat('lights', frame.planetLights ?? 0);
     this.planetMat.setVector3('camPos', cam);
     this.haloMat.setFloat('fade', vis);
     this.haloMat.setVector3('camPos', cam);

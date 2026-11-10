@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ATTENDANT, CUBE_SERIAL, cubeLabel, darkFraction, dutyLine, recoveryLine, winTitle, workLog } from '../src/narrative.ts';
+import { ATTENDANT, CUBE_SERIAL, cubeLabel, darkFraction, dutyLine, planetLights, recoveryLine, winTitle, workLog } from '../src/narrative.ts';
 
 test('the attendant serial stays AT-0417, one above the reveal crate', () => {
   assert.equal(ATTENDANT, 'AT-0417');
@@ -39,4 +39,13 @@ test('more of the field has gone dark with each chamber', () => {
   assert.ok(Math.abs(darkFraction(13, 14) - 0.65) < 1e-12);
   for (let i = 1; i < 14; i++) assert.ok(darkFraction(i, 14) > darkFraction(i - 1, 14));
   assert.ok(Math.abs(darkFraction(0, 1) - 0.15) < 1e-12);
+});
+
+test('the planet stays dark until Act III, then lights up chamber by chamber', () => {
+  for (let i = 0; i < 9; i++) assert.equal(planetLights(i, 9, 14), 0);
+  assert.ok(Math.abs(planetLights(9, 9, 14) - 0.2) < 1e-12);
+  for (let i = 10; i < 14; i++) assert.ok(planetLights(i, 9, 14) > planetLights(i - 1, 9, 14));
+  assert.equal(planetLights(13, 9, 14), 1);
+  // No Act III (the sandbox, or a missing chamber id) means no lights.
+  assert.equal(planetLights(5, -1, 14), 0);
 });

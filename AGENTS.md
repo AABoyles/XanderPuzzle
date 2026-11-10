@@ -40,7 +40,7 @@ There is no linter or formatter. Match the existing style: 2-space indent, singl
 - `src/skins/Skin.ts`: the skins (`axis`, `monolith`, `draft`, `neon`): per-axis materials, lighting, sky, post-processing.
 - `src/ui/HUD.ts`: Babylon GUI overlay.
 - `src/ui/PauseMenu.ts`: the pause menu (resume, restart, chamber select, fullscreen, update, settings, controls reference); added on top of the HUD's GUI texture. Keep its controls reference in sync with the real bindings.
-- `src/narrative.ts`: Babylon-free story text in the facility's voice (the attendant serial, cube labels, duty, recovery and win log lines); tested by Node. Each chamber's cube serial is the `cube` field in `CHAMBERS`. The design, voices and writing rules are in `NARRATIVE.md`.
+- `src/narrative.ts`: Babylon-free story text in the facility's voice (the attendant serial, cube labels, duty, recovery and win log lines) and the per-chamber story state of the fall view (`darkFraction`, `planetLights`); tested by Node. Each chamber's cube serial is the `cube` field in `CHAMBERS`. The design, voices and writing rules are in `NARRATIVE.md`.
 - `src/random.ts`: Babylon-free seeded random (`random`) and string hash (`hashString`), so layouts and handwriting repeat exactly.
 - `src/time.ts`: Babylon-free `simDelta`, the one clamped frame delta (`MAX_SIM_DELTA` = 1/20 s) that `main.ts` feeds every system; tested by Node.
 - `src/gravity/shiftSound.ts`: Babylon-free axis -> shift-sound mapping (`shiftTone`); tested by Node.
