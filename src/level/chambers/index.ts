@@ -17,24 +17,24 @@ import { buildVault } from './vault';
 export { buildSandbox } from './sandbox';
 
 /**
- * The chambers in play order. Each lives in its own file in this folder. `name` must match the name the chamber
+ * The chambers in play order. `id` is the stable key saved progress is stored under: never change or reuse one. Each lives in its own file in this folder. `name` must match the name the chamber
  * passes to `finish()`; it lets the chamber select list chambers without building them.
  */
-export const CHAMBERS: { name: string; build: LevelFactory }[] = [
-  { name: 'I · THE VAULT', build: buildVault },
-  { name: 'II · THE SHAFT', build: buildShaft },
-  { name: 'III · THE DIVIDE', build: buildDivide },
-  { name: 'IV · THE SPIRAL', build: buildSpiral },
-  { name: 'V · THE CHIMNEY', build: buildChimney },
-  { name: 'VI · THE STAIRCASE', build: buildStaircase },
-  { name: 'VII · THE ATRIUM', build: buildAtrium },
-  { name: 'VIII · THE BALLAST', build: buildBallast },
-  { name: 'IX · THE COUNTERWEIGHT', build: buildCounterweight },
-  { name: 'X · THE TURNSTILE', build: buildTurnstile },
-  { name: 'XI · THE LOCKOUT', build: buildLockout },
-  { name: 'XII · THE GRATE', build: buildGrate },
-  { name: 'XIII · THE TIDE', build: buildTide },
-  { name: 'XIV · THE ORRERY', build: buildOrrery },
+export const CHAMBERS: { id: string; name: string; build: LevelFactory }[] = [
+  { id: 'vault', name: 'I · THE VAULT', build: buildVault },
+  { id: 'shaft', name: 'II · THE SHAFT', build: buildShaft },
+  { id: 'divide', name: 'III · THE DIVIDE', build: buildDivide },
+  { id: 'spiral', name: 'IV · THE SPIRAL', build: buildSpiral },
+  { id: 'chimney', name: 'V · THE CHIMNEY', build: buildChimney },
+  { id: 'staircase', name: 'VI · THE STAIRCASE', build: buildStaircase },
+  { id: 'atrium', name: 'VII · THE ATRIUM', build: buildAtrium },
+  { id: 'ballast', name: 'VIII · THE BALLAST', build: buildBallast },
+  { id: 'counterweight', name: 'IX · THE COUNTERWEIGHT', build: buildCounterweight },
+  { id: 'turnstile', name: 'X · THE TURNSTILE', build: buildTurnstile },
+  { id: 'lockout', name: 'XI · THE LOCKOUT', build: buildLockout },
+  { id: 'grate', name: 'XII · THE GRATE', build: buildGrate },
+  { id: 'tide', name: 'XIII · THE TIDE', build: buildTide },
+  { id: 'orrery', name: 'XIV · THE ORRERY', build: buildOrrery },
 ];
 
 export const LEVELS: LevelFactory[] = CHAMBERS.map((c) => c.build);

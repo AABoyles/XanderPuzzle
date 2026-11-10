@@ -22,7 +22,7 @@ There is no linter or formatter. Match the existing style: 2-space indent, singl
 
 ## Layout
 
-- `src/main.ts`: scene bootstrap, level loading and progression, skin switching, render loop, win check, `localStorage` persistence (keys prefixed `shiftbound.`).
+- `src/main.ts`: scene bootstrap, level loading and progression, skin switching, render loop, win check, `localStorage` persistence (keys prefixed `shiftbound.`). Progress lives in `src/progress.ts` (`shiftbound.progress`, keyed by each chamber's stable `id` in `CHAMBERS`; never change or reuse an id). `?unlockall` must never write progress.
 - `src/gravity/GravitySystem.ts`: the single current gravity axis and its change listeners.
 - `src/input/`: `InputSource.ts` is the Babylon-free input interface (`InputFrame`, `mergeFrames`, `stickVector`, deadzone/look-curve maths) and `InputManager.ts` reads and merges the sources once per frame and tracks the last-used device (`lastDevice`, which drives HUD wording); both are tested by Node like `boxPhysics.ts` (import with explicit `.ts` extensions and no constructor parameter properties). `KeyboardMouseInput.ts`, `TouchInput.ts` and `GamepadInput.ts` implement `InputSource`; `main.ts` reads the manager once per frame and passes the frame to `PlayerController.update`.
 - `src/player/PlayerController.ts`: merges the input sources' frames and drives a kinematic body oriented by a smoothly interpolated "up" vector.
@@ -46,7 +46,7 @@ There is no linter or formatter. Match the existing style: 2-space indent, singl
 
 1. Create `src/level/chambers/<name>.ts` exporting `build<Name>(scene, skin): BuiltLevel`. Start by copying a similar chamber; `chimney.ts` is a good, recent example.
 2. Construct a `Builder` with an accent `Color3`, lay out geometry with `slab`/`tube`/`box`, place levers with `addSwitch(position, wallNormal, targetAxis)`, and return `b.finish({ name, hint, spawnPosition, entranceAxis, exitAxis, exitCenter, exitRadius })`.
-3. Add it to `CHAMBERS` in `chambers/index.ts` with the same `name` it passes to `finish()`, then update the chamber list in `README.md` and its status in `ROADMAP.md`.
+3. Add it to `CHAMBERS` in `chambers/index.ts` with a new unique, permanent `id` and the same `name` it passes to `finish()`, then update the chamber list in `README.md` and its status in `ROADMAP.md`.
 
 Conventions and pitfalls:
 

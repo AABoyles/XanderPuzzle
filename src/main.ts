@@ -16,7 +16,18 @@ import { simDelta } from './time';
 import { fovToRadians, loadSettings, masterGain, saveSettings } from './settings';
 import type { Settings, SettingsStorage } from './settings';
 import { createSkin, SKIN_IDS, SKIN_LABELS, SkinId } from './skins/Skin';
-import { formatBest, furthestCleared, isUnlocked, recordCleared } from './progress';
+import {
+  formatBest,
+  furthestCleared,
+  isUnlocked,
+  loadProgress,
+  recordWin,
+  resetProgress,
+  resumeIndex,
+  saveProgress,
+  setResume,
+  type ProgressStorage,
+} from './progress';
 import { HUD } from './ui/HUD';
 import { PauseMenu } from './ui/PauseMenu';
 
@@ -40,7 +51,8 @@ const store = {
   get(key: string): number | undefined {
     try {
       const v = localStorage.getItem(`shiftbound.${key}`);
-      return v === null ? undefined : Number(v);
+      const n = v === null || v.trim() === '' ? NaN : Number(v);
+      return Number.isFinite(n) ? n : undefined;
     } catch {
       return undefined;
     }
@@ -64,8 +76,16 @@ const storageAvailable = (() => {
   }
 })();
 const unlockAll = params.has('unlockall') || !storageAvailable;
+// Progress is keyed by chamber id. `?unlockall` is a playtest flag and never writes it (see `progressWritable`).
+const CHAMBER_IDS = CHAMBERS.map((c) => c.id);
+const progressStorage = (): ProgressStorage | null => (storageAvailable ? localStorage : null);
+let progress = loadProgress(progressStorage(), CHAMBER_IDS);
+const progressWritable = !sandbox && !unlockAll;
+const persistProgress = () => {
+  if (progressWritable) saveProgress(progressStorage(), progress);
+};
 // Resume at the last chamber reached.
-let levelIndex = sandbox ? 0 : Math.min(Math.max(Math.floor(store.get('level') ?? 0), 0), LEVELS.length - 1);
+let levelIndex = sandbox ? 0 : Math.min(resumeIndex(progress, CHAMBER_IDS), LEVELS.length - 1);
 // Skin: `?skin=axis|monolith|draft|neon`, else the last one picked with K, else Axis.
 const skinParam = params.get('skin') as SkinId | null;
 let skinIndex = skinParam && SKIN_IDS.includes(skinParam) ? SKIN_IDS.indexOf(skinParam) : Math.floor(store.get('skin') ?? 0) % SKIN_IDS.length;
@@ -127,6 +147,9 @@ const pauseMenu = new PauseMenu({
     saveSettings(settingsStorage(), settings);
     applySettings();
     if (changed === 'volume' || changed === 'muted') beep(520, 520, 0.08, 'square', 0.06);
+  },
+  onResetProgress: () => {
+    progress = resetProgress(progressStorage());
   },
   fullscreen: () => ({ kind: fullscreenMode(), on: isFullscreen() }),
   hasChamberSelect: !sandbox,
@@ -201,7 +224,10 @@ const TEXT: Record<InputDevice, { void: string; cycle: string; next: string; aga
 function startLevel(index: number): void {
   level.dispose();
   levelIndex = index;
-  if (!sandbox) store.set('level', index);
+  if (progressWritable) {
+    setResume(progress, CHAMBERS[index].id);
+    persistProgress();
+  }
   level = LEVELS[levelIndex](scene, skin);
   if (import.meta.env.DEV && !sandbox && level.name !== CHAMBERS[index].name) {
     console.warn(`CHAMBERS[${index}].name is '${CHAMBERS[index].name}' but the chamber is named '${level.name}'`);
@@ -241,7 +267,7 @@ let selectIndex = 0;
 /** The chamber select was opened from the pause menu, so closing it returns there. */
 let selectFromPause = false;
 const levelSelectOpen = () => hud.isLevelSelectOpen;
-const chamberUnlocked = (index: number) => isUnlocked(index, furthestCleared(store, LEVELS.length), unlockAll);
+const chamberUnlocked = (index: number) => isUnlocked(index, furthestCleared(progress, CHAMBER_IDS), unlockAll);
 
 function openLevelSelect(): void {
   if (sandbox || levelSelectOpen()) return;
@@ -249,11 +275,11 @@ function openLevelSelect(): void {
   if (document.pointerLockElement) document.exitPointerLock();
   hud.hideStartOverlay();
   selectIndex = levelIndex;
-  const furthest = furthestCleared(store, LEVELS.length);
+  const furthest = furthestCleared(progress, CHAMBER_IDS);
   const entries = CHAMBERS.map((c, i) => {
     return {
       name: c.name,
-      best: formatBest(store.get(`best.${i}`)),
+      best: formatBest(progress.best[c.id]),
       completed: i <= furthest,
       unlocked: isUnlocked(i, furthest, unlockAll),
     };
@@ -575,13 +601,14 @@ engine.runRenderLoop(() => {
       hasWon = true;
       hud.setPrompt(false);
       beep(440, 880, 0.6, 'sine', 0.15);
-      const best = store.get(`best.${levelIndex}`);
+      const chamberId = CHAMBERS[levelIndex]?.id;
+      const best = chamberId === undefined ? undefined : progress.best[chamberId];
       const isBest = best === undefined || levelTime < best;
-      if (!sandbox) {
-        if (isBest) store.set(`best.${levelIndex}`, levelTime);
-        recordCleared(store, levelIndex, LEVELS.length);
+      if (progressWritable && chamberId !== undefined) {
+        recordWin(progress, chamberId, levelTime);
+        persistProgress();
       }
-      const bestText = isBest ? 'new best!' : `best ${best.toFixed(1)}s`;
+      const bestText = isBest || best === undefined ? 'new best!' : `best ${best.toFixed(1)}s`;
       const stats = `${levelTime.toFixed(1)}s (${bestText}) · ${shifts} gravity shift${shifts === 1 ? '' : 's'}`;
       const text = TEXT[input.lastDevice];
       const select = sandbox ? '' : text.select;

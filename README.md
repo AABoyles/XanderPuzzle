@@ -63,7 +63,7 @@ Each lever carries an arrow pointing the way "down" will be once it is thrown. W
 
 Some chambers have **trap holes** in their shell. Fall through one and you drop out into open space, towards a planet that always lies the way gravity points; after a few seconds (or on **R**) you are put back at the chamber entrance.
 
-Press **L** (or the button on the start screen, or Back/Select on a gamepad) for the chamber select, which lists every chamber with your best time. You can replay any chamber you've cleared and try the next one; the rest stay locked. Progress and best times are kept in `localStorage`. Add `?unlockall` to the URL to open every chamber for playtesting; if storage is unavailable, everything is unlocked.
+Press **L** (or the button on the start screen, or Back/Select on a gamepad) for the chamber select, which lists every chamber with your best time. You can replay any chamber you've cleared and try the next one; the rest stay locked. Progress and best times are kept in `localStorage` (`shiftbound.progress`, keyed by chamber id, so reordering chambers never moves your times; saves from older versions are migrated automatically). Pause menu > Settings > Erase saved progress (press twice to confirm) wipes them. Add `?unlockall` to the URL to open every chamber for playtesting; it never saves progress or resume points. If storage is unavailable, everything is unlocked.
 
 ## Skins
 
@@ -106,4 +106,4 @@ Gravity-driven crates, pressure plates and plate-controlled doors (`Builder.addC
 - `src/settings.ts` — Babylon-free settings model (defaults, limits, parsing, load/save), tested by Node.
 - `src/pwa/` — fullscreen helpers, service-worker registration and the offline cache policy.
 - `src/main.ts` — scene bootstrap, skin switching, render loop, win-condition check.
-- `src/progress.ts` — Babylon-free unlock rule and best-time formatting for the chamber select, tested by Node.
+- `src/progress.ts` — Babylon-free versioned, id-keyed progress (unlock rule, best times, migration, reset), tested by Node.
