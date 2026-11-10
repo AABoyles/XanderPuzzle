@@ -84,6 +84,8 @@ export interface PauseMenuOptions {
   systemReducedMotion?: () => boolean;
   /** Called with the new settings, and which numeric/boolean field changed (undefined for a full reset). */
   onSettingsChange: (next: Settings, changed?: keyof Settings) => void;
+  /** Erases saved progress and best times (the menu asks for confirmation first). */
+  onResetProgress?: () => void;
   fullscreen: () => FullscreenState;
   /** False in the sandbox, which has a single room. */
   hasChamberSelect: boolean;
@@ -115,6 +117,8 @@ export class PauseMenu {
   private heights: number[] = [];
   private focus = 0;
   private mainFocus = 0;
+  /** The 'Erase saved progress' row has been pressed once and awaits a second press. */
+  private confirmErase = false;
 
   constructor(opts: PauseMenuOptions) {
     this.opts = opts;
@@ -242,6 +246,7 @@ export class PauseMenu {
   private goto(page: Page): void {
     if (this.page === 'main') this.mainFocus = this.focus;
     this.page = page;
+    this.confirmErase = false;
     if (page === 'controls') this.controlsTab = this.device;
     this.render(page === 'main' ? this.mainFocus : 0);
   }
@@ -316,7 +321,27 @@ export class PauseMenu {
           this.updateValues();
         },
       },
+      ...this.eraseRows(),
       { kind: 'button', label: 'Back', run: () => this.goto('main') },
+    ];
+  }
+
+  /** Erasing needs two presses; moving focus or leaving the page cancels. */
+  private eraseRows(): Row[] {
+    if (!this.opts.hasChamberSelect || !this.opts.onResetProgress) return [];
+    return [
+      {
+        kind: 'button',
+        label: 'Erase saved progress',
+        value: () => (this.confirmErase ? 'PRESS AGAIN' : ''),
+        run: () => {
+          if (this.confirmErase) {
+            this.confirmErase = false;
+            this.opts.onResetProgress?.();
+          } else this.confirmErase = true;
+          this.updateValues();
+        },
+      },
     ];
   }
 
@@ -480,6 +505,10 @@ export class PauseMenu {
   }
 
   private setFocus(index: number): void {
+    if (this.confirmErase && index !== this.focus) {
+      this.confirmErase = false;
+      this.updateValues();
+    }
     this.focus = index;
     this.rows.forEach((row, i) => {
       if (row.kind === 'text') return;
