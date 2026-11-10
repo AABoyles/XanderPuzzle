@@ -121,6 +121,12 @@ for (const [index, chamber] of CHAMBERS.entries()) {
         });
         if (dynamics.doors.length) assert.ok(dynamics.plates.length > 0, 'doors but no plates');
 
+        // The cube serial stencilled in the chamber matches CHAMBERS (NARRATIVE.md: one at every entrance).
+        assert.ok(
+          level.placards.some((pl) => pl.voice === 'stencil' && pl.text === `CUBE ${chamber.cube}`),
+          `no CUBE ${chamber.cube} placard`,
+        );
+
         // Placards: every corner lies on a real face pointing the placard's way, with open space in front of it.
         for (const pl of level.placards) {
           const k = pl.normal.findIndex((c) => c !== 0);

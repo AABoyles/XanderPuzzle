@@ -52,6 +52,14 @@ export function buildCounterweight(scene: Scene, skin: SkinRuntime): BuiltLevel 
   // Undo for a wrong order: -X-side lever to get back to -Y from the +X wall.
   b.addSwitch(V(R - 1.5, -R + 0.5, -R + 0.3), V(0, 0, 1), '-Y');
 
+  b.placard(V(-2, -R + 1.6, -R - 3), V(1, 0, 0), '-Y', 'CUBE 0122', { width: 2.6 });
+  b.placard(V(0, -5.5, R), V(0, 0, -1), '-Y', 'TRIM REQUIRES 2 MASSES\nATTENDANTS ON THIS CYCLE: 1', { width: 6 });
+  // On the -X wall above the pit, upright once it is the floor.
+  b.note(V(-R, -3, -4), V(1, 0, 0), '-X', 'I have never met another attendant.\nThe roster has room for hundreds.', {
+    width: 6,
+    top: V(0, 1, 0),
+  });
+
   return b.finish({
     name: 'IX · THE COUNTERWEIGHT',
     hint: 'Pin one crate where gravity cannot move it, then seat the other.',

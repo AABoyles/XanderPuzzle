@@ -704,6 +704,7 @@ if (import.meta.env.DEV) {
     look: (yaw: number, pitch: number) => player.setLook(yaw, pitch),
     setSkin: (id: SkinId) => setSkin(SKIN_IDS.indexOf(id)),
     crates: () => level.dynamics.crates.map((c) => [...c.body.center]),
+    placards: () => level.placards,
     plates: () => level.dynamics.plates.map((pl) => pl.pressed),
     doors: () => level.dynamics.doors.map((d) => d.isOpen),
     switches: () =>

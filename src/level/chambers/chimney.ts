@@ -39,6 +39,11 @@ export function buildChimney(scene: Scene, skin: SkinRuntime): BuiltLevel {
   // At the bottom: back to the tunnel floor for the long walk up.
   b.addSwitch(V(-W + 0.3, 0, L - 1.5), V(1, 0, 0), '-Y');
 
+  b.placard(V(-2, -W + 1.6, -3), V(1, 0, 0), '-Y', 'CUBE 0116', { width: 2.6 });
+  b.placard(V(-W, -1.5, 7), V(1, 0, 0), '-Y', 'DESCENT CORRIDOR · KEEP TO THE LEDGE', { width: 8.5 });
+  // On the decoy ledge, where anyone who drops straight down lands.
+  b.note(V(-3.25, 0, 20), V(0, 0, -1), '+Z', 'Missed it too.\nSteer earlier.', { width: 3.2, top: V(0, 1, 0) });
+
   return b.finish({
     name: 'V · THE CHIMNEY',
     hint: 'Falling is just walking, faster. Steer.',

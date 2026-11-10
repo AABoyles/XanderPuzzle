@@ -72,6 +72,25 @@ export function buildOrrery(scene: Scene, skin: SkinRuntime): BuiltLevel {
   // 6. -Z -> +Y, in the corridor, 1.5 above its far end wall.
   b.addSwitch(V(1.7, -10, -20.5), V(-1, 0, 0), '+Y');
 
+  b.placard(V(-2, -H + 1.6, -18.5), V(1, 0, 0), '-Y', 'CUBE 0140', { width: 2.6 });
+  // On the north wall, upright once it is the floor.
+  b.placard(V(4, -4, H), V(0, 0, -1), '+Z', [
+    'FIELD ALIGNMENT: 35% OF CUBES RESPONDING',
+    'ATTENDANT SUPPLY INCREASED TO COMPENSATE',
+  ].join('\n'), {
+    width: 10,
+    top: V(0, 1, 0),
+  });
+  // The reveal (NARRATIVE.md): a fixed crate on the ceiling beside the walk to the relative lever, clear of the
+  // live crate's path along the hall's edges.
+  b.addFixedCrate(V(-5, H - 0.75, -2), 1.5, { stamp: 'BALLAST MASS\nAT-0416' });
+  b.placard(V(-3.2, H, -2), V(0, -1, 0), '+Y', 'THANK YOU FOR YOUR\nCONTINUED ALIGNMENT.', {
+    width: 5.5,
+    top: V(-1, 0, 0),
+  });
+  // The Margin's last note, far from the route on the west wall.
+  b.note(V(-H, -4, 6), V(1, 0, 0), '-X', 'If you\'re reading this, I didn\'t', { width: 4.5, top: V(0, 1, 0) });
+
   return b.finish({
     name: 'XIV · THE ORRERY',
     hint: 'Everything you have learned, in one room. The way out is the way you came in.',

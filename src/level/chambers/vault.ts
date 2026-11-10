@@ -24,12 +24,20 @@ export function buildVault(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.tube(V(R + T, -2.5, -2.5), V(R + 9, 2.5, 2.5), ['-x'], b.exit);
 
   // The facility's induction placard, facing the entrance above the first lever.
-  b.placard(V(0, -6, R), V(0, 0, -1), '-Y', 'CUBE 0112 · ATTENDANT INDUCTION\nLEVERS TURN THE CUBE.\nTHE ARROW\'S WALL WILL FACE THE PLANET.', {
+  b.placard(V(0, -6, R), V(0, 0, -1), '-Y', [
+    'CUBE 0112 · ATTENDANT INDUCTION',
+    'LEVERS TURN THE CUBE.',
+    'THE ARROW\'S WALL WILL FACE THE PLANET.',
+  ].join('\n'), {
     width: 12,
   });
 
   b.addSwitch(V(0, -R + 1.5, R - 0.3), V(0, 0, -1), '+Z');
   b.addSwitch(V(R - 0.3, 0, R - 1.5), V(-1, 0, 0), '+X');
+
+  b.placard(V(-2, -R + 1.6, -R - 3), V(1, 0, 0), '-Y', 'CUBE 0112', { width: 2.6 });
+  // The Margin, low on the exit wall: only upright while standing on the +Z wall.
+  b.note(V(R, -6, 10), V(-1, 0, 0), '+Z', 'You\'ll get used to it.\nThe turning, I mean.');
 
   return b.finish({
     name: 'I · THE VAULT',

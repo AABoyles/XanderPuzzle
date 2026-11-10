@@ -48,6 +48,12 @@ export function buildTurnstile(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.addSwitch(V(W - 0.3, 0, 1.5), V(-1, 0, 0), '-Y');
   b.addSwitch(V(W - 0.3, 0, L - 1.5), V(-1, 0, 0), '-Y');
 
+  b.placard(V(-2, -W + 1.6, -3), V(1, 0, 0), '-Y', 'CUBE 0125', { width: 2.6 });
+  // Above the doorway on the start wall, beside lever S.
+  b.placard(V(0, 1, 0), V(0, 0, 1), '-Y', 'ROTATIONAL LEVER\nTURNS CLOCKWISE AS FACED', { width: 6 });
+  // On the ceiling just short of the trap hole, read walking towards it under +Y.
+  b.note(V(0, W, 8.5), V(0, -1, 0), '+Y', 'More of them are dark every time I fall.', { width: 6.5, top: V(0, 0, 1) });
+
   return b.finish({
     name: 'X · THE TURNSTILE',
     hint: 'A white lever turns gravity clockwise, as you face it. Same lever, different floor, different turn.',
