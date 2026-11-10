@@ -27,7 +27,7 @@ There is no linter or formatter. Match the existing style: 2-space indent, singl
 - `src/player/PlayerController.ts`: pointer-lock FPS controls and a kinematic body oriented by a smoothly interpolated "up" vector.
 - `src/level/Builder.ts`: the API chambers are written against (`box`, `slab`, `tube`, `grate`, `glass`, `barrier`, `addSwitch` (with `{ once }`), `addRelativeSwitch`, `addSequenceSwitch`, `addCrate`, `addPlate`, `addDoor`, `finish`), plus `V()` and the wall thickness `T`.
 - `src/gravity/axes.ts`: Babylon-free axis maths and the `GravitySequencer`; tested directly by Node like `boxPhysics.ts`.
-- `src/level/chambers/`: one file per chamber. `index.ts` exports `LEVELS` (the play order) and `buildSandbox`.
+- `src/level/chambers/`: one file per chamber. `index.ts` exports `CHAMBERS` (the play order, each with the name shown in the chamber select), `LEVELS` and `buildSandbox`.
 - `src/level/Dynamics.ts`: crates, pressure plates, doors and their per-frame update.
 - `src/level/GravitySwitch.ts`: the lever interactable.
 - `src/physics/boxPhysics.ts`: swept AABB physics for crates. It must stay free of Babylon imports so Node can test it directly.
@@ -40,7 +40,7 @@ There is no linter or formatter. Match the existing style: 2-space indent, singl
 
 1. Create `src/level/chambers/<name>.ts` exporting `build<Name>(scene, skin): BuiltLevel`. Start by copying a similar chamber; `chimney.ts` is a good, recent example.
 2. Construct a `Builder` with an accent `Color3`, lay out geometry with `slab`/`tube`/`box`, place levers with `addSwitch(position, wallNormal, targetAxis)`, and return `b.finish({ name, hint, spawnPosition, entranceAxis, exitAxis, exitCenter, exitRadius })`.
-3. Add it to `LEVELS` in `chambers/index.ts`, then update the chamber list in `README.md` and its status in `ROADMAP.md`.
+3. Add it to `CHAMBERS` in `chambers/index.ts` with the same `name` it passes to `finish()`, then update the chamber list in `README.md` and its status in `ROADMAP.md`.
 
 Conventions and pitfalls:
 
