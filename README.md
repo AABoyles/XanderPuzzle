@@ -15,7 +15,7 @@ On touch devices the controls appear automatically (desktop is unchanged); play 
 - **Left half:** drag to move (a floating joystick appears under your thumb).
 - **Right half:** drag to look.
 - **JUMP** and **USE** (bottom right; USE lights up when a lever is in reach), **RUN** (toggle, bottom left).
-- **↻** restarts the chamber and **☰** opens the chamber select (top right).
+- **↻** restarts the chamber, **☰** opens the chamber select and **⏸** opens the pause menu (top right).
 
 ### Gamepad controls
 
@@ -23,8 +23,24 @@ Any standard-mapping controller works; no pointer lock is needed. Press **A** or
 
 - **Left stick** moves, **right stick** looks, **LT** (or pressing the left stick) runs.
 - **A** jumps, **X** uses a lever, **Y** restarts the chamber.
-- **Start** pauses and resumes, **Back/Select** opens the chamber select (D-pad or left stick to choose, **A** to play, **B** to go back).
+- **Start** pauses and resumes (in the menu: D-pad or left stick to choose, left/right to adjust, **A** to select, **B** to go back), **Back/Select** opens the chamber select (D-pad or left stick to choose, **A** to play, **B** to go back).
 - **A** also advances from the win screen. On-screen prompts follow whichever device you used last.
+
+### Pause menu and settings
+
+**Esc** pauses (the browser releases the mouse, and the pause menu opens); everything freezes until you resume. On a gamepad press **Start**, on a touch device tap **⏸**. The menu has Resume, Restart chamber, Chamber select, Fullscreen (where the browser allows it), Settings and a Controls reference, which opens on the device you used last. Use the mouse, arrows/WASD with Enter, the gamepad, or touch. Resume and Enter capture the mouse again; if the browser refuses just after Esc, the menu stays open so you can try again.
+
+Settings apply immediately and are remembered in `localStorage` (`shiftbound.settings`; defaults are used if storage is unavailable): mouse sensitivity, touch look sensitivity and gamepad look speed (25%-300%), invert Y (all devices), master volume and mute, reduced motion (saved for the upcoming motion effects), and field of view (50-100 degrees; the default is the original view).
+
+### Install and play offline
+
+Shiftbound is an installable web app that works offline after the first visit.
+
+- **Chrome / Edge (desktop and Android):** use the browser's *Install app* option (address bar icon or menu).
+- **iPhone / iPad:** in Safari tap *Share*, then *Add to Home Screen*. iOS Safari has no fullscreen button, so this is how to get fullscreen there.
+- **Offline:** once loaded, the game is cached and starts without a connection.
+- **Updates:** a new version is picked up on the next launch, or choose *Update and reload* in the pause menu when the "Update available" notice appears. It never reloads mid-chamber; between chambers it installs on its own.
+- **Fullscreen:** a button on the start screen (touch) and an item in the pause menu, which also asks for landscape where the browser supports it.
 
 Fourteen chambers ship with the game, each teaching or testing one idea:
 
@@ -86,5 +102,8 @@ Gravity-driven crates, pressure plates and plate-controlled doors (`Builder.addC
 - `src/level/GravitySwitch.ts` — the wall-mounted lever interactable: fixed, relative or sequence, optionally one-shot.
 - `src/skins/Skin.ts` — the skins: per-axis surface materials, procedural textures, lighting, sky and post-processing.
 - `src/ui/HUD.ts` — Babylon GUI overlay: crosshair, interaction prompt, current-gravity indicator, start/win screens.
+- `src/ui/PauseMenu.ts` — the pause menu: resume, restart, chamber select, fullscreen, settings and the controls reference.
+- `src/settings.ts` — Babylon-free settings model (defaults, limits, parsing, load/save), tested by Node.
+- `src/pwa/` — fullscreen helpers, service-worker registration and the offline cache policy.
 - `src/main.ts` — scene bootstrap, skin switching, render loop, win-condition check.
 - `src/progress.ts` — Babylon-free unlock rule and best-time formatting for the chamber select, tested by Node.

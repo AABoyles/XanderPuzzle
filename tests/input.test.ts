@@ -180,3 +180,27 @@ test('GamepadInput menu edges: D-pad, stick and back/select', () => {
   g.read(0.016);
   assert.ok(!g.menu.up && !g.menu.down && !g.menu.back && !g.menu.select);
 });
+
+test('InputManager invertY flips look once for every device', () => {
+  const m = new InputManager([
+    fake('keyboard', { lookY: 0.2 }, { lookY: 0.2 }),
+    fake('gamepad', { lookY: 0.1 }, { lookY: 0.1 }),
+  ]);
+  assert.ok(Math.abs(m.read(0.016).lookY - 0.3) < 1e-9);
+  m.invertY = true;
+  assert.ok(Math.abs(m.read(0.016).lookY + 0.3) < 1e-9);
+});
+
+test('GamepadInput lookScale multiplies look speed and menu reports left/right', () => {
+  let p = pad([0, 0, 1, 0]);
+  const g = new GamepadInput(() => [p]);
+  g.read(0.1);
+  g.lookScale = 2;
+  assert.ok(Math.abs(g.read(0.1).lookX - LOOK_SPEED * 0.2) < 1e-9);
+  p = pad([0, 0, 0, 0], [14]);
+  g.read(0.016);
+  assert.ok(g.menu.left && !g.menu.right);
+  p = pad([0.9, 0, 0, 0]);
+  g.read(0.016);
+  assert.ok(g.menu.right);
+});

@@ -8,6 +8,8 @@ export class KeyboardMouseInput implements InputSource {
   public readonly device: InputDevice = 'keyboard';
   /** While true (e.g. a menu is open), clicking the canvas doesn't grab the pointer. */
   public pointerLockSuspended = false;
+  /** Multiplier on mouse look (the sensitivity setting). */
+  public lookScale = 1;
 
   private readonly keys = new Set<string>();
   private jumpQueued = false;
@@ -62,8 +64,8 @@ export class KeyboardMouseInput implements InputSource {
       ...emptyFrame(),
       moveX: (k.has('KeyD') ? 1 : 0) - (k.has('KeyA') ? 1 : 0),
       moveZ: (k.has('KeyW') ? 1 : 0) - (k.has('KeyS') ? 1 : 0),
-      lookX: locked ? this.mouseDX * MOUSE_SENSITIVITY : 0,
-      lookY: locked ? this.mouseDY * MOUSE_SENSITIVITY : 0,
+      lookX: locked ? this.mouseDX * MOUSE_SENSITIVITY * this.lookScale : 0,
+      lookY: locked ? this.mouseDY * MOUSE_SENSITIVITY * this.lookScale : 0,
       sprint: k.has('ShiftLeft'),
       jump: this.jumpQueued,
       interact: this.interactQueued,

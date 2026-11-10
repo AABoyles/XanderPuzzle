@@ -41,6 +41,7 @@ const CSS = `
 }
 .sb-restart { right: calc(12px + env(safe-area-inset-right)); }
 .sb-chambers { right: calc(68px + env(safe-area-inset-right)); font-size: 18px; }
+.sb-pause { right: calc(124px + env(safe-area-inset-right)); font-size: 18px; }
 .sb-rotate {
   display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.88); color: #fff; z-index: 5;
   align-items: center; justify-content: center; text-align: center; padding: 24px; font: 20px system-ui, sans-serif;
@@ -63,6 +64,9 @@ export class TouchInput implements InputSource {
   /** Fires once, when touch mode is first detected. */
   public onActivate: () => void = () => {};
   public onChambers: () => void = () => {};
+  public onPause: () => void = () => {};
+  /** Multiplier on drag-to-look (the sensitivity setting). */
+  public lookScale = 1;
 
   private isActive = false;
   private visible = false;
@@ -109,7 +113,8 @@ export class TouchInput implements InputSource {
     this.runBtn = this.el('div', 'sb-btn sb-run', 'RUN');
     const restart = this.el('div', 'sb-btn sb-small sb-restart', '↻');
     const chambers = this.el('div', 'sb-btn sb-small sb-chambers', '☰');
-    this.root.append(moveZone, lookZone, this.stick, jump, this.useBtn, this.runBtn, restart, chambers, rotate);
+    const pause = this.el('div', 'sb-btn sb-small sb-pause', '\u23F8');
+    this.root.append(moveZone, lookZone, this.stick, jump, this.useBtn, this.runBtn, restart, chambers, pause, rotate);
     document.body.appendChild(this.root);
 
     this.zone(moveZone, 'move');
@@ -122,6 +127,7 @@ export class TouchInput implements InputSource {
     });
     this.button(restart, () => (this.restartQueued = true));
     this.button(chambers, () => this.onChambers());
+    this.button(pause, () => this.onPause());
 
     const cancel = (e: PointerEvent) => this.release(e.pointerId);
     this.listen(window, 'pointerup', cancel as EventListener);
@@ -166,8 +172,8 @@ export class TouchInput implements InputSource {
     const f = emptyFrame();
     f.moveX = this.stickX;
     f.moveZ = this.stickY;
-    f.lookX = this.lookDX * LOOK_SENSITIVITY;
-    f.lookY = this.lookDY * LOOK_SENSITIVITY;
+    f.lookX = this.lookDX * LOOK_SENSITIVITY * this.lookScale;
+    f.lookY = this.lookDY * LOOK_SENSITIVITY * this.lookScale;
     f.sprint = this.sprint;
     f.jump = this.jumpQueued;
     f.interact = this.interactQueued;

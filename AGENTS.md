@@ -35,6 +35,9 @@ There is no linter or formatter. Match the existing style: 2-space indent, singl
 - `src/environment/`: what lies outside a chamber. `fall.ts` is the Babylon-free escape/fall maths (level bounds, `FallTracker`, planet distance), tested by Node like `boxPhysics.ts`; `SpaceBackdrop.ts` draws the stars, planet and speed streaks, visible only after an escape.
 - `src/skins/Skin.ts`: the skins (`axis`, `monolith`, `draft`, `neon`): per-axis materials, lighting, sky, post-processing.
 - `src/ui/HUD.ts`: Babylon GUI overlay.
+- `src/ui/PauseMenu.ts`: the pause menu (resume, restart, chamber select, fullscreen, update, settings, controls reference); added on top of the HUD's GUI texture. Keep its controls reference in sync with the real bindings.
+- `src/settings.ts`: Babylon-free settings model (`Settings`, defaults, limits, `parseSettings`/`loadSettings`/`saveSettings`, `stepSetting`), stored as JSON under `shiftbound.settings`; tested by Node.
+- `src/pwa/`: `cachePolicy.ts` Babylon-free cache naming/strategy tested by Node; `sw.template.js` service worker source that `build/pwaPlugin.ts` fills with the precache list to emit `dist/sw.js`; `register.ts` production-only registration and update flow; `fullscreen.ts` fullscreen/standalone/orientation helpers.
 - `tests/`: `node:test` unit tests. They import source with explicit `.ts` extensions (`../src/physics/boxPhysics.ts`).
 
 ## Adding or changing a chamber

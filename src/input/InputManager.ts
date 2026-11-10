@@ -6,6 +6,9 @@ export class InputManager {
   /** Called when `lastDevice` changes, so the HUD can switch its prompts. */
   public onDeviceChange: (device: InputDevice) => void = () => {};
 
+  /** Flips vertical look for every device (the invert-Y setting). */
+  public invertY = false;
+
   private device: InputDevice;
   private readonly sources: InputSource[];
 
@@ -35,7 +38,9 @@ export class InputManager {
       const i = frames.findIndex(frameHasInput);
       if (i >= 0) this.setLastDevice(this.sources[i].device);
     }
-    return mergeFrames(frames);
+    const merged = mergeFrames(frames);
+    if (this.invertY) merged.lookY = -merged.lookY;
+    return merged;
   }
 
   /** Throws away pending look deltas and button edges without changing `lastDevice`. */

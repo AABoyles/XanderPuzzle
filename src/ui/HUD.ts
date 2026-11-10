@@ -61,6 +61,8 @@ export class HUD {
   public onHoverLevel: (index: number) => void = () => {};
   /** The chamber select's back button was pressed. */
   public onCloseLevelSelect: () => void = () => {};
+  /** The start overlay's fullscreen button was pressed. */
+  public onToggleFullscreen: () => void = () => {};
 
   private readonly ui: AdvancedDynamicTexture;
   private readonly prompt: TextBlock;
@@ -78,6 +80,11 @@ export class HUD {
   private readonly hintLabel: TextBlock;
   private winTitle!: TextBlock;
   private winSubtitle!: TextBlock;
+  private readonly updateNotice: TextBlock;
+  private selectButton!: Button;
+  private fullscreenButton!: Button;
+  private fullscreenHint!: TextBlock;
+  private fullscreenMode: 'toggle' | 'hint' | 'none' = 'none';
   private readonly selectOverlay: Rectangle;
   private readonly selectScroll: ScrollViewer;
   private readonly selectList: StackPanel;
@@ -207,7 +214,7 @@ export class HUD {
     subtitle.lineSpacing = '6px';
     this.startOverlay.addControl(subtitle);
 
-    const selectButton = Button.CreateSimpleButton('openLevelSelect', 'CHAMBER SELECT  [L]');
+    const selectButton = (this.selectButton = Button.CreateSimpleButton('openLevelSelect', 'CHAMBER SELECT  [L]'));
     selectButton.width = '260px';
     selectButton.height = '44px';
     selectButton.top = '190px';
@@ -222,6 +229,41 @@ export class HUD {
     selectButton.pointerOutAnimation = () => (selectButton.background = 'rgba(20,28,40,0.85)');
     selectButton.onPointerClickObservable.add(() => this.onOpenLevelSelect());
     this.startOverlay.addControl(selectButton);
+
+    // Fullscreen (touch only): a button where the browser allows it, otherwise an install hint.
+    const fsButton = (this.fullscreenButton = Button.CreateSimpleButton('toggleFullscreen', 'FULLSCREEN'));
+    fsButton.width = '260px';
+    fsButton.height = '44px';
+    fsButton.top = '244px';
+    fsButton.cornerRadius = 6;
+    fsButton.color = 'rgba(255,255,255,0.6)';
+    fsButton.thickness = 1;
+    fsButton.background = 'rgba(20,28,40,0.85)';
+    fsButton.fontSize = 18;
+    fsButton.fontFamily = 'Consolas, monospace';
+    if (fsButton.textBlock) fsButton.textBlock.color = 'white';
+    fsButton.isVisible = false;
+    fsButton.onPointerClickObservable.add(() => this.onToggleFullscreen());
+    this.startOverlay.addControl(fsButton);
+    this.fullscreenHint = new TextBlock('fullscreenHint', 'Add to Home Screen for fullscreen');
+    this.fullscreenHint.color = '#ffd36b';
+    this.fullscreenHint.fontSize = 15;
+    this.fullscreenHint.height = '24px';
+    this.fullscreenHint.top = '244px';
+    this.fullscreenHint.isVisible = false;
+    this.startOverlay.addControl(this.fullscreenHint);
+
+    // Small notice while a new version is waiting; it is applied from the pause menu or between chambers.
+    this.updateNotice = new TextBlock('updateNotice', 'Update available \u2014 reload from the pause menu');
+    this.updateNotice.color = '#ffd36b';
+    this.updateNotice.fontSize = 13;
+    this.updateNotice.outlineColor = 'black';
+    this.updateNotice.outlineWidth = 3;
+    this.updateNotice.height = '20px';
+    this.updateNotice.top = '-36px';
+    this.updateNotice.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    this.updateNotice.isVisible = false;
+    this.ui.addControl(this.updateNotice);
 
     // Win overlay
     this.winOverlay = new Rectangle('winOverlay');
@@ -296,6 +338,11 @@ export class HUD {
     this.selectFooter.top = '-12px';
     this.selectFooter.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
     this.selectOverlay.addControl(this.selectFooter);
+  }
+
+  /** The GUI layer, so other overlays (the pause menu) can add themselves on top. */
+  public get texture(): AdvancedDynamicTexture {
+    return this.ui;
   }
 
   public get isLevelSelectOpen(): boolean {
@@ -389,9 +436,52 @@ export class HUD {
     this.refreshKeys();
     // Leave the top-right corner to the touch RESTART / CHAMBERS buttons.
     this.gravityBox.width = touch ? '210px' : '260px';
-    this.levelLabel.width = touch ? '40%' : '100%';
-    this.hintLabel.width = touch ? '40%' : '100%';
+    this.levelLabel.width = touch ? '34%' : '100%';
+    this.hintLabel.width = touch ? '34%' : '100%';
     this.hintLabel.textWrapping = touch;
+    this.layoutStartButtons();
+  }
+
+  /** What the start overlay offers for fullscreen; shown on touch devices only. */
+  public configureFullscreen(mode: 'toggle' | 'hint' | 'none'): void {
+    this.fullscreenMode = mode;
+    this.layoutStartButtons();
+  }
+
+  public setFullscreenState(on: boolean): void {
+    if (this.fullscreenButton.textBlock) this.fullscreenButton.textBlock.text = on ? 'EXIT FULLSCREEN' : 'FULLSCREEN';
+  }
+
+  /** Shows or hides the "update available" notice. */
+  public setUpdateNotice(visible: boolean): void {
+    this.updateNotice.isVisible = visible;
+  }
+
+  /** On touch the start overlay's buttons sit along the bottom edge, where landscape phones have room. */
+  private layoutStartButtons(): void {
+    const touch = this.device === 'touch';
+    const fs = touch ? this.fullscreenMode : 'none';
+    this.fullscreenButton.isVisible = fs === 'toggle';
+    this.fullscreenHint.isVisible = fs === 'hint';
+    const bottom = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    const center = Control.VERTICAL_ALIGNMENT_CENTER;
+    if (touch) {
+      const side = fs === 'toggle';
+      this.selectButton.verticalAlignment = bottom;
+      this.selectButton.top = fs === 'hint' ? '-44px' : '-16px';
+      this.selectButton.left = side ? '-140px' : '0px';
+      this.selectButton.width = side ? '260px' : '280px';
+      this.fullscreenButton.verticalAlignment = bottom;
+      this.fullscreenButton.top = '-16px';
+      this.fullscreenButton.left = '140px';
+      this.fullscreenHint.verticalAlignment = bottom;
+      this.fullscreenHint.top = '-14px';
+    } else {
+      this.selectButton.verticalAlignment = center;
+      this.selectButton.top = '190px';
+      this.selectButton.left = '0px';
+      this.selectButton.width = '260px';
+    }
   }
 
   public showWin(title: string, subtitle: string): void {
