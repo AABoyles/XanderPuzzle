@@ -37,8 +37,22 @@ export type SurfaceRole = 'shell' | 'feature' | 'alcove' | 'exit';
 /** Order used for per-face sub-materials. */
 export const AXIS_ORDER: GravityAxis[] = ['+X', '-X', '+Y', '-Y', '+Z', '-Z'];
 
+/** How the facility's stencilled placards are painted in a skin (the Margin's notes look the same in every skin). */
+export interface PlacardInk {
+  /** CSS colour of the paint. */
+  color: string;
+  /** Lettering drawn as an outline instead of filled. */
+  outline: boolean;
+  /** Paint flaked off in places. */
+  weathered: boolean;
+  /** Self-lit, so it glows rather than taking the scene's light. */
+  glow: boolean;
+}
+
 export interface SkinRuntime {
   readonly id: SkinId;
+  /** How stencilled placards are painted. */
+  readonly placardInk: PlacardInk;
   /** One material per gravity axis, in AXIS_ORDER. `accent` is the level's signature colour. */
   materials(role: SurfaceRole, accent: Color3): Material[];
   /** World units covered by one repeat of the surface texture. */
@@ -177,6 +191,7 @@ function applyEnvironment(scene: Scene, glow: GlowLayer, env: Environment) {
 abstract class BaseSkin implements SkinRuntime {
   abstract readonly id: SkinId;
   abstract readonly textureScale: number;
+  abstract readonly placardInk: PlacardInk;
   protected readonly cache = new Map<string, Material[]>();
   protected readonly owned: { dispose(): void }[] = [];
   protected env?: ReturnType<typeof applyEnvironment>;
@@ -257,6 +272,7 @@ const NEON_LEVER: Record<GravityAxis, Color3> = {
 class NeonSkin extends BaseSkin {
   readonly id = 'neon' as const;
   readonly textureScale = 1;
+  readonly placardInk: PlacardInk = { color: '#7fffd0', outline: false, weathered: false, glow: true };
   protected usesAccent = true;
 
   constructor(scene: Scene, glow: GlowLayer) {
@@ -324,6 +340,7 @@ const AXIS_LEVER: Record<GravityAxis, Color3> = {
 class AxisSkin extends BaseSkin {
   readonly id = 'axis' as const;
   readonly textureScale = 4;
+  readonly placardInk: PlacardInk = { color: '#3a3e47', outline: false, weathered: false, glow: false };
   private readonly tiles: DynamicTexture;
 
   constructor(scene: Scene, glow: GlowLayer) {
@@ -401,6 +418,7 @@ class AxisSkin extends BaseSkin {
 class MonolithSkin extends BaseSkin {
   readonly id = 'monolith' as const;
   readonly textureScale = 4;
+  readonly placardInk: PlacardInk = { color: '#ece6d8', outline: false, weathered: true, glow: false };
   private readonly concrete: DynamicTexture;
   private readonly bump: DynamicTexture;
 
@@ -526,6 +544,7 @@ const DRAFT_INK: Record<GravityAxis, Color3> = {
 class DraftSkin extends BaseSkin {
   readonly id = 'draft' as const;
   readonly textureScale = 2;
+  readonly placardInk: PlacardInk = { color: '#1c2333', outline: true, weathered: false, glow: false };
   private readonly sheets = new Map<string, DynamicTexture>();
 
   constructor(scene: Scene, glow: GlowLayer) {

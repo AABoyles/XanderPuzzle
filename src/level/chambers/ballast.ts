@@ -31,7 +31,7 @@ export function buildBallast(scene: Scene, skin: SkinRuntime): BuiltLevel {
   // The trough: two walls taller than the crate, open at the east end, running from the west wall.
   b.box(V(-R, -R, 2.5), V(-1, -R + 2, 3.2));
   b.box(V(-R, -R, 4.8), V(-1, -R + 2, 5.5));
-  b.addCrate(V(-3, -R + 0.75, 4));
+  b.addCrate(V(-3, -R + 0.75, 4), 1.5, { stamp: 'BALLAST MASS\nBM-2231' });
 
   const plate = b.addPlate(V(R, -R + 0.75, 4), V(-1, 0, 0), 2.5, true);
   b.addDoor(V(-2, -R, R), V(2, -R + 3, R + T), [plate]);

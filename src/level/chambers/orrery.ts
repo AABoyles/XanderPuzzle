@@ -55,7 +55,7 @@ export function buildOrrery(scene: Scene, skin: SkinRuntime): BuiltLevel {
   }
 
   const crate = V(0, -H + 0.75, 6);
-  b.addCrate(crate);
+  b.addCrate(crate, 1.5, { stamp: 'BALLAST MASS\nBM-2390' });
   const plate = b.addPlate(V(-H + 0.75, H - 0.75, -H), V(0, 0, 1), 2.5, true);
   b.addDoor(V(-2, -8, -20), V(2, -7, -16), [plate]);
 

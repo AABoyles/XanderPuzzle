@@ -17,6 +17,7 @@ import { KeyboardMouseInput } from './input/KeyboardMouseInput';
 import { TouchInput } from './input/TouchInput';
 import { PlayerController } from './player/PlayerController';
 import { canFullscreen, isFullscreen, isIOS, isStandalone, onFullscreenChange, toggleFullscreen } from './pwa/fullscreen';
+import { loadFonts } from './level/fonts';
 import { darkFraction, dutyLine, recoveryLine, winTitle, workLog } from './narrative';
 import { registerServiceWorker } from './pwa/register';
 import { shiftTone } from './gravity/shiftSound';
@@ -98,6 +99,8 @@ let levelIndex = sandbox ? 0 : Math.min(resumeIndex(progress, CHAMBER_IDS), LEVE
 const skinParam = params.get('skin') as SkinId | null;
 let skinIndex = skinParam && SKIN_IDS.includes(skinParam) ? SKIN_IDS.indexOf(skinParam) : Math.floor(store.get('skin') ?? 0) % SKIN_IDS.length;
 let skin = createSkin(SKIN_IDS[skinIndex], scene, glow);
+// Placards draw at once in fallback fonts and redraw when the bundled ones arrive.
+void loadFonts();
 let level = LEVELS[levelIndex](scene, skin);
 const keyboardMouse = new KeyboardMouseInput(canvas);
 const touch = new TouchInput();

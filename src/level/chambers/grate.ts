@@ -39,7 +39,7 @@ export function buildGrate(scene: Scene, skin: SkinRuntime): BuiltLevel {
   // The plate on the lower deck, visible through the floor; the crate starts on the glass.
   const plate = b.addPlate(V(6.5, lo, 4), V(0, 1, 0), 2.5, true);
   b.addDoor(V(door.x[0], door.y[0], R), V(door.x[1], door.y[1], R + T), [plate]);
-  b.addCrate(V(-4, F + 0.75, 4));
+  b.addCrate(V(-4, F + 0.75, 4), 1.5, { stamp: 'BALLAST MASS\nBM-2307' });
 
   // East wall: shift east. South wall: shift back down once you have landed on the east wall.
   b.addSwitch(V(R - 0.3, F + 1.5, -4), V(-1, 0, 0), '+X');

@@ -7,6 +7,7 @@ import { setupHeadless } from './helpers/headless.ts';
 import { bodyAabb, overlaps, sweep } from '../src/physics/boxPhysics.ts';
 import type { Aabb } from '../src/physics/boxPhysics.ts';
 import { AXES, axisVec } from '../src/gravity/axes.ts';
+import { placardCorners } from '../src/level/placardText.ts';
 import type { GravityAxis } from '../src/gravity/axes.ts';
 
 setupHeadless();
@@ -119,6 +120,25 @@ for (const [index, chamber] of CHAMBERS.entries()) {
           d.plates.forEach((p) => assert.ok(dynamics.plates.includes(p), `door ${i} refers to a plate not in the level`));
         });
         if (dynamics.doors.length) assert.ok(dynamics.plates.length > 0, 'doors but no plates');
+
+        // Placards: every corner lies on a real face pointing the placard's way, with open space in front of it.
+        for (const pl of level.placards) {
+          const k = pl.normal.findIndex((c) => c !== 0);
+          const sign = pl.normal[k];
+          const label = `placard "${pl.text.split('\n')[0]}"`;
+          // Corners pulled in a hair, so a placard that exactly meets a face's edge still counts as on it.
+          const corners = placardCorners(pl.at, pl.frame, pl.width - 1e-3, pl.height - 1e-3);
+          for (const c of [pl.at, ...corners]) {
+            const onFace = solids.some(
+              (s) =>
+                Math.abs((sign > 0 ? s.max[k] : s.min[k]) - c[k]) < 1e-6 &&
+                [0, 1, 2].every((i) => i === k || (c[i] >= s.min[i] - 1e-6 && c[i] <= s.max[i] + 1e-6)),
+            );
+            assert.ok(onFace, `${label}: ${c} is not on a face with normal ${pl.normal}`);
+            const front = c.map((v, i) => v + pl.normal[i] * 0.05);
+            assert.ok(!solids.some((s) => inside(s, front)), `${label}: ${c} is covered by a solid`);
+          }
+        }
       } finally {
         level.dispose();
       }

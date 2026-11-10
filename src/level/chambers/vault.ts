@@ -23,6 +23,11 @@ export function buildVault(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.box(V(-2, -R - T, -R - T), V(2, -R, -R), b.alcove);
   b.tube(V(R + T, -2.5, -2.5), V(R + 9, 2.5, 2.5), ['-x'], b.exit);
 
+  // The facility's induction placard, facing the entrance above the first lever.
+  b.placard(V(0, -6, R), V(0, 0, -1), '-Y', 'CUBE 0112 · ATTENDANT INDUCTION\nLEVERS TURN THE CUBE.\nTHE ARROW\'S WALL WILL FACE THE PLANET.', {
+    width: 12,
+  });
+
   b.addSwitch(V(0, -R + 1.5, R - 0.3), V(0, 0, -1), '+Z');
   b.addSwitch(V(R - 0.3, 0, R - 1.5), V(-1, 0, 0), '+X');
 
