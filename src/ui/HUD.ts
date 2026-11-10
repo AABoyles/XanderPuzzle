@@ -1,4 +1,13 @@
-import { AdvancedDynamicTexture, Control, Ellipse, Rectangle, TextBlock } from '@babylonjs/gui';
+import {
+  AdvancedDynamicTexture,
+  Button,
+  Control,
+  Ellipse,
+  Rectangle,
+  ScrollViewer,
+  StackPanel,
+  TextBlock,
+} from '@babylonjs/gui';
 import { GravityAxis } from '../gravity/GravitySystem';
 
 const AXIS_LABEL: Record<GravityAxis, string> = {
@@ -10,7 +19,27 @@ const AXIS_LABEL: Record<GravityAxis, string> = {
   '-Z': 'SOUTH WALL',
 };
 
+/** One row of the chamber select list. */
+export interface ChamberEntry {
+  name: string;
+  /** Best time, or "not completed". */
+  best: string;
+  completed: boolean;
+  unlocked: boolean;
+}
+
+const ROW_HEIGHT = 52;
+
 export class HUD {
+  /** The start overlay's chamber select button was pressed. */
+  public onOpenLevelSelect: () => void = () => {};
+  /** A chamber row was clicked or tapped. */
+  public onPickLevel: (index: number) => void = () => {};
+  /** The pointer moved onto a chamber row. */
+  public onHoverLevel: (index: number) => void = () => {};
+  /** The chamber select's back button was pressed. */
+  public onCloseLevelSelect: () => void = () => {};
+
   private readonly ui: AdvancedDynamicTexture;
   private readonly prompt: TextBlock;
   private readonly gravityLabel: TextBlock;
@@ -22,6 +51,12 @@ export class HUD {
   private readonly hintLabel: TextBlock;
   private winTitle!: TextBlock;
   private winSubtitle!: TextBlock;
+  private readonly selectOverlay: Rectangle;
+  private readonly selectScroll: ScrollViewer;
+  private readonly selectList: StackPanel;
+  private readonly selectFooter: TextBlock;
+  private selectRows: Button[] = [];
+  private selectEntries: ChamberEntry[] = [];
 
   constructor() {
     this.ui = AdvancedDynamicTexture.CreateFullscreenUI('hud');
@@ -123,7 +158,7 @@ export class HUD {
 
     const subtitle = new TextBlock(
       'subtitle',
-      'Click to look around  •  WASD to move  •  Shift to run  •  Space to jump\nWalk up to a lever and press E to rotate gravity 90°\nR restarts the chamber\n\nClick anywhere to begin',
+      'Click to look around  •  WASD to move  •  Shift to run  •  Space to jump\nWalk up to a lever and press E to rotate gravity 90°\nR restarts the chamber  •  L opens chamber select\n\nClick anywhere to begin',
     );
     subtitle.color = '#d8e6ff';
     subtitle.fontSize = 20;
@@ -131,6 +166,22 @@ export class HUD {
     subtitle.textWrapping = true;
     subtitle.lineSpacing = '6px';
     this.startOverlay.addControl(subtitle);
+
+    const selectButton = Button.CreateSimpleButton('openLevelSelect', 'CHAMBER SELECT  [L]');
+    selectButton.width = '260px';
+    selectButton.height = '44px';
+    selectButton.top = '190px';
+    selectButton.cornerRadius = 6;
+    selectButton.color = 'rgba(255,255,255,0.6)';
+    selectButton.thickness = 1;
+    selectButton.background = 'rgba(20,28,40,0.85)';
+    selectButton.fontSize = 18;
+    selectButton.fontFamily = 'Consolas, monospace';
+    if (selectButton.textBlock) selectButton.textBlock.color = 'white';
+    selectButton.pointerEnterAnimation = () => (selectButton.background = 'rgba(60,80,110,0.9)');
+    selectButton.pointerOutAnimation = () => (selectButton.background = 'rgba(20,28,40,0.85)');
+    selectButton.onPointerClickObservable.add(() => this.onOpenLevelSelect());
+    this.startOverlay.addControl(selectButton);
 
     // Win overlay
     this.winOverlay = new Rectangle('winOverlay');
@@ -153,6 +204,128 @@ export class HUD {
     winSubtitle.fontSize = 22;
     winSubtitle.top = '30px';
     this.winOverlay.addControl(winSubtitle);
+
+    // Chamber select overlay
+    this.selectOverlay = new Rectangle('selectOverlay');
+    this.selectOverlay.width = 1;
+    this.selectOverlay.height = 1;
+    this.selectOverlay.thickness = 0;
+    this.selectOverlay.background = 'rgba(4,6,12,0.96)';
+    this.selectOverlay.isVisible = false;
+    this.ui.addControl(this.selectOverlay);
+
+    const selectTitle = new TextBlock('selectTitle', 'CHAMBER SELECT');
+    selectTitle.color = 'white';
+    selectTitle.fontSize = 36;
+    selectTitle.fontWeight = 'bold';
+    selectTitle.height = '60px';
+    selectTitle.top = '24px';
+    selectTitle.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    this.selectOverlay.addControl(selectTitle);
+
+    this.selectScroll = new ScrollViewer('selectScroll');
+    this.selectScroll.thickness = 0;
+    this.selectScroll.barSize = 10;
+    this.selectScroll.barColor = 'rgba(255,255,255,0.4)';
+    this.selectScroll.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    this.selectScroll.top = '96px';
+    this.selectOverlay.addControl(this.selectScroll);
+
+    this.selectList = new StackPanel('selectList');
+    this.selectList.isVertical = true;
+    this.selectScroll.addControl(this.selectList);
+
+    const back = Button.CreateSimpleButton('closeLevelSelect', 'BACK');
+    back.width = '140px';
+    back.height = '40px';
+    back.top = '-44px';
+    back.cornerRadius = 6;
+    back.color = 'rgba(255,255,255,0.6)';
+    back.thickness = 1;
+    back.background = 'rgba(20,28,40,0.85)';
+    back.fontSize = 16;
+    if (back.textBlock) back.textBlock.color = 'white';
+    back.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    back.onPointerClickObservable.add(() => this.onCloseLevelSelect());
+    this.selectOverlay.addControl(back);
+
+    this.selectFooter = new TextBlock('selectFooter', '');
+    this.selectFooter.color = 'rgba(255,255,255,0.65)';
+    this.selectFooter.fontSize = 14;
+    this.selectFooter.height = '24px';
+    this.selectFooter.top = '-12px';
+    this.selectFooter.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    this.selectOverlay.addControl(this.selectFooter);
+  }
+
+  public get isLevelSelectOpen(): boolean {
+    return this.selectOverlay.isVisible;
+  }
+
+  /** Shows the chamber list with `selected` highlighted. */
+  public showLevelSelect(entries: ChamberEntry[], selected: number, footer: string): void {
+    for (const row of this.selectRows) row.dispose();
+    this.selectEntries = entries;
+    this.selectRows = entries.map((entry, i) => this.createChamberRow(entry, i));
+    for (const row of this.selectRows) this.selectList.addControl(row);
+
+    const size = this.ui.getSize();
+    const width = Math.max(240, Math.min(600, size.width - 32));
+    this.selectList.width = `${width - 14}px`;
+    this.selectScroll.width = `${width}px`;
+    this.selectScroll.height = `${Math.max(ROW_HEIGHT, Math.min(entries.length * (ROW_HEIGHT + 8), size.height - 210))}px`;
+    this.selectFooter.text = footer;
+    this.selectOverlay.isVisible = true;
+    this.highlightLevel(selected);
+  }
+
+  public hideLevelSelect(): void {
+    this.selectOverlay.isVisible = false;
+  }
+
+  /** Moves the keyboard/gamepad highlight to row `index`, scrolling it into view. */
+  public highlightLevel(index: number): void {
+    this.selectRows.forEach((row, i) => {
+      const unlocked = this.selectEntries[i].unlocked;
+      row.thickness = i === index ? 2 : 1;
+      row.color = i === index ? '#ffffff' : 'rgba(255,255,255,0.25)';
+      row.background = i === index && unlocked ? 'rgba(60,80,110,0.9)' : 'rgba(20,28,40,0.8)';
+    });
+    const n = this.selectRows.length;
+    if (n > 1) this.selectScroll.verticalBar.value = index / (n - 1);
+  }
+
+  private createChamberRow(entry: ChamberEntry, index: number): Button {
+    const row = new Button(`chamber${index}`);
+    row.height = `${ROW_HEIGHT + 8}px`;
+    row.paddingTop = '4px';
+    row.paddingBottom = '4px';
+    row.cornerRadius = 6;
+    row.alpha = entry.unlocked ? 1 : 0.45;
+    row.hoverCursor = entry.unlocked ? 'pointer' : 'not-allowed';
+    row.pointerEnterAnimation = () => this.onHoverLevel(index);
+    row.pointerOutAnimation = () => {};
+    row.pointerDownAnimation = () => {};
+    row.pointerUpAnimation = () => {};
+
+    const name = new TextBlock(`chamberName${index}`, entry.name);
+    name.color = 'white';
+    name.fontSize = 18;
+    name.fontFamily = 'Consolas, monospace';
+    name.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    name.paddingLeft = '16px';
+    row.addControl(name);
+
+    const status = new TextBlock(`chamberStatus${index}`, entry.unlocked ? entry.best : 'LOCKED');
+    status.color = !entry.unlocked ? '#ff9d9d' : entry.completed ? '#9dffb0' : '#aab8cc';
+    status.fontSize = 15;
+    status.fontFamily = 'Consolas, monospace';
+    status.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+    status.paddingRight = '16px';
+    row.addControl(status);
+
+    row.onPointerClickObservable.add(() => this.onPickLevel(index));
+    return row;
   }
 
   public hideStartOverlay(): void {
@@ -184,7 +357,7 @@ export class HUD {
   }
 
   public setSkin(label: string): void {
-    this.keysLabel.text = `WASD move · Shift run · Space jump · E use · R restart · K skin${label ? `: ${label}` : ''}`;
+    this.keysLabel.text = `WASD move · Shift run · Space jump · E use · R restart · L chambers · K skin${label ? `: ${label}` : ''}`;
   }
 
   public setGravityAxis(axis: GravityAxis, color = '#bfe3ff'): void {

@@ -1,8 +1,9 @@
 import { Color4, Engine, GlowLayer, Scene, Vector3 } from '@babylonjs/core';
 import { GravitySystem } from './gravity/GravitySystem';
-import { buildSandbox, LEVELS as CHAMBERS } from './level/chambers';
+import { buildSandbox, CHAMBERS, LEVELS as CHAMBER_LEVELS } from './level/chambers';
 import { PlayerController } from './player/PlayerController';
 import { createSkin, SKIN_IDS, SKIN_LABELS, SkinId } from './skins/Skin';
+import { formatBest, furthestCleared, isUnlocked, recordCleared } from './progress';
 import { HUD } from './ui/HUD';
 
 const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement;
@@ -17,8 +18,9 @@ glow.intensity = 0.7;
 
 const gravity = new GravitySystem('-Y', 22);
 // `?sandbox` loads the physics test room instead of the chambers.
-const sandbox = new URLSearchParams(location.search).has('sandbox');
-const LEVELS = sandbox ? [buildSandbox] : CHAMBERS;
+const params = new URLSearchParams(location.search);
+const sandbox = params.has('sandbox');
+const LEVELS = sandbox ? [buildSandbox] : CHAMBER_LEVELS;
 
 const store = {
   get(key: string): number | undefined {
@@ -37,10 +39,21 @@ const store = {
     }
   },
 };
+// Without storage there is no progress to gate on, so every chamber is open; `?unlockall` does the same for playtests.
+const storageAvailable = (() => {
+  try {
+    localStorage.setItem('shiftbound.probe', '1');
+    localStorage.removeItem('shiftbound.probe');
+    return true;
+  } catch {
+    return false;
+  }
+})();
+const unlockAll = params.has('unlockall') || !storageAvailable;
 // Resume at the last chamber reached.
 let levelIndex = sandbox ? 0 : Math.min(Math.max(Math.floor(store.get('level') ?? 0), 0), LEVELS.length - 1);
 // Skin: `?skin=axis|monolith|draft|neon`, else the last one picked with K, else Axis.
-const skinParam = new URLSearchParams(location.search).get('skin') as SkinId | null;
+const skinParam = params.get('skin') as SkinId | null;
 let skinIndex = skinParam && SKIN_IDS.includes(skinParam) ? SKIN_IDS.indexOf(skinParam) : Math.floor(store.get('skin') ?? 0) % SKIN_IDS.length;
 let skin = createSkin(SKIN_IDS[skinIndex], scene, glow);
 let level = LEVELS[levelIndex](scene, skin);
@@ -65,6 +78,9 @@ function startLevel(index: number): void {
   levelIndex = index;
   if (!sandbox) store.set('level', index);
   level = LEVELS[levelIndex](scene, skin);
+  if (import.meta.env.DEV && !sandbox && level.name !== CHAMBERS[index].name) {
+    console.warn(`CHAMBERS[${index}].name is '${CHAMBERS[index].name}' but the chamber is named '${level.name}'`);
+  }
   gravity.setAxis(level.entranceAxis);
   player.reset(level.spawnPosition);
   hud.setLevel(level.name, level.hint);
@@ -91,12 +107,84 @@ function advance(): void {
   startLevel(finishedAll() ? 0 : levelIndex + 1);
 }
 
+// --- Chamber select ------------------------------------------------------------------------------
+let selectIndex = 0;
+const levelSelectOpen = () => hud.isLevelSelectOpen;
+const chamberUnlocked = (index: number) => isUnlocked(index, furthestCleared(store, LEVELS.length), unlockAll);
+
+function openLevelSelect(): void {
+  if (sandbox || levelSelectOpen()) return;
+  player.pointerLockSuspended = true;
+  if (document.pointerLockElement) document.exitPointerLock();
+  hud.hideStartOverlay();
+  selectIndex = levelIndex;
+  const furthest = furthestCleared(store, LEVELS.length);
+  const entries = CHAMBERS.map((c, i) => {
+    return {
+      name: c.name,
+      best: formatBest(store.get(`best.${i}`)),
+      completed: i <= furthest,
+      unlocked: isUnlocked(i, furthest, unlockAll),
+    };
+  });
+  const devices = 'Arrows/D-pad choose · Enter/A play · Esc/B back';
+  hud.showLevelSelect(entries, selectIndex, unlockAll && storageAvailable ? `${devices} · all unlocked` : devices);
+}
+
+function closeLevelSelect(): void {
+  if (!levelSelectOpen()) return;
+  hud.hideLevelSelect();
+  player.pointerLockSuspended = false;
+  if (!hasWon && document.pointerLockElement !== canvas) hud.showStartOverlay();
+}
+
+function moveSelection(delta: number): void {
+  selectIndex = Math.min(Math.max(selectIndex + delta, 0), CHAMBERS.length - 1);
+  hud.highlightLevel(selectIndex);
+}
+
+/** Starts chamber `index` if it's unlocked. `grabPointer` is false where the browser won't allow it (gamepad). */
+function pickLevel(index: number, grabPointer = true): void {
+  if (!chamberUnlocked(index)) {
+    beep(140, 90, 0.15, 'square', 0.08);
+    return;
+  }
+  closeLevelSelect();
+  startLevel(index);
+  if (grabPointer) {
+    // Called from a click or key press, so the browser treats it as a user gesture; failure just leaves the overlay.
+    Promise.resolve(canvas.requestPointerLock()).catch(() => {});
+  }
+}
+
+hud.onOpenLevelSelect = openLevelSelect;
+hud.onCloseLevelSelect = closeLevelSelect;
+hud.onPickLevel = (i) => pickLevel(i);
+hud.onHoverLevel = (i) => {
+  selectIndex = i;
+  hud.highlightLevel(i);
+};
+
 document.addEventListener('pointerlockchange', () => {
   if (document.pointerLockElement === canvas) hud.hideStartOverlay();
-  else if (!hasWon) hud.showStartOverlay();
+  else if (!hasWon && !levelSelectOpen()) hud.showStartOverlay();
 });
-canvas.addEventListener('click', advance);
+canvas.addEventListener('click', () => {
+  if (!levelSelectOpen()) advance();
+});
 window.addEventListener('keydown', (e) => {
+  if (levelSelectOpen()) {
+    if (e.code === 'ArrowUp' || e.code === 'KeyW') moveSelection(-1);
+    else if (e.code === 'ArrowDown' || e.code === 'KeyS') moveSelection(1);
+    else if (e.code === 'Home') moveSelection(-CHAMBERS.length);
+    else if (e.code === 'End') moveSelection(CHAMBERS.length);
+    else if (e.code === 'Enter' || e.code === 'NumpadEnter') pickLevel(selectIndex);
+    else if (e.code === 'Escape' || e.code === 'KeyL' || e.code === 'Backspace') closeLevelSelect();
+    else if (e.code === 'KeyK') setSkin(skinIndex + (e.shiftKey ? -1 : 1));
+    e.preventDefault();
+    return;
+  }
+  if (e.code === 'KeyL') openLevelSelect();
   if (e.code === 'KeyR' && !hasWon) startLevel(levelIndex);
   if (e.code === 'KeyK') setSkin(skinIndex + (e.shiftKey ? -1 : 1));
   if (e.code === 'Enter') advance();
@@ -122,9 +210,39 @@ function beep(from: number, to: number, duration: number, type: OscillatorType =
   }
 }
 
+// Gamepad: Back/Select opens the chamber select; in it the D-pad or left stick moves, A plays and B goes back.
+// (Full gamepad play is #9; this only drives the menu.)
+const padHeld = new Set<string>();
+function pollGamepadMenu(): void {
+  const pads = typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : [];
+  const now = new Set<string>();
+  for (const pad of pads) {
+    if (!pad) continue;
+    const pressed = (i: number) => pad.buttons[i]?.pressed ?? false;
+    const stickY = pad.axes[1] ?? 0;
+    if (pressed(12) || stickY < -0.6) now.add('up');
+    if (pressed(13) || stickY > 0.6) now.add('down');
+    if (pressed(0)) now.add('a');
+    if (pressed(1)) now.add('b');
+    if (pressed(8)) now.add('select');
+  }
+  const tapped = (k: string) => now.has(k) && !padHeld.has(k);
+  if (levelSelectOpen()) {
+    if (tapped('up')) moveSelection(-1);
+    if (tapped('down')) moveSelection(1);
+    if (tapped('a')) pickLevel(selectIndex, false);
+    if (tapped('b') || tapped('select')) closeLevelSelect();
+  } else if (tapped('select')) {
+    openLevelSelect();
+  }
+  padHeld.clear();
+  for (const k of now) padHeld.add(k);
+}
+
 engine.runRenderLoop(() => {
   const dt = engine.getDeltaTime() / 1000;
-  if (dt > 0 && !hasWon) {
+  pollGamepadMenu();
+  if (dt > 0 && !hasWon && !levelSelectOpen()) {
     levelTime += dt;
     const wasGrounded = player.isGrounded;
     player.update(dt);
@@ -160,11 +278,15 @@ engine.runRenderLoop(() => {
       beep(440, 880, 0.6, 'sine', 0.15);
       const best = store.get(`best.${levelIndex}`);
       const isBest = best === undefined || levelTime < best;
-      if (isBest && !sandbox) store.set(`best.${levelIndex}`, levelTime);
+      if (!sandbox) {
+        if (isBest) store.set(`best.${levelIndex}`, levelTime);
+        recordCleared(store, levelIndex, LEVELS.length);
+      }
       const bestText = isBest ? 'new best!' : `best ${best.toFixed(1)}s`;
       const stats = `${levelTime.toFixed(1)}s (${bestText}) · ${shifts} gravity shift${shifts === 1 ? '' : 's'}`;
-      if (finishedAll()) hud.showWin('ALL CHAMBERS CLEARED', `${stats}\n\nClick or press Enter to play again`);
-      else hud.showWin('CHAMBER CLEARED', `${stats}\n\nClick or press Enter for the next chamber`);
+      const select = sandbox ? '' : '\nL for chamber select';
+      if (finishedAll()) hud.showWin('ALL CHAMBERS CLEARED', `${stats}\n\nClick or press Enter to play again${select}`);
+      else hud.showWin('CHAMBER CLEARED', `${stats}\n\nClick or press Enter for the next chamber${select}`);
     }
   }
 
@@ -182,6 +304,8 @@ if (import.meta.env.DEV) {
     hasWon: () => hasWon,
     level: () => levelIndex,
     startLevel,
+    openLevelSelect,
+    levelSelectOpen,
     look: (yaw: number, pitch: number) => player.setLook(yaw, pitch),
     setSkin: (id: SkinId) => setSkin(SKIN_IDS.indexOf(id)),
     crates: () => level.dynamics.crates.map((c) => [...c.body.center]),
