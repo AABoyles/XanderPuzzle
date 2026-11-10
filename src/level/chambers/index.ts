@@ -3,6 +3,7 @@ import { buildAtrium } from './atrium';
 import { buildBallast } from './ballast';
 import { buildChimney } from './chimney';
 import { buildCounterweight } from './counterweight';
+import { buildDescent } from './descent';
 import { buildDivide } from './divide';
 import { buildGrate } from './grate';
 import { buildLockout } from './lockout';
@@ -36,6 +37,7 @@ export const CHAMBERS: { id: string; cube: string; name: string; build: LevelFac
   { id: 'grate', cube: '0130', name: 'XII · THE GRATE', build: buildGrate },
   { id: 'tide', cube: '0134', name: 'XIII · THE TIDE', build: buildTide },
   { id: 'orrery', cube: '0140', name: 'XIV · THE ORRERY', build: buildOrrery },
+  { id: 'descent', cube: '0147', name: 'XV · THE DESCENT', build: buildDescent },
 ];
 
 export const LEVELS: LevelFactory[] = CHAMBERS.map((c) => c.build);

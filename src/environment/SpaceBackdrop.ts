@@ -7,11 +7,13 @@ import { GlowLayer } from '@babylonjs/core/Layers/glowLayer';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
 import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder';
 import { CreateSphere } from '@babylonjs/core/Meshes/Builders/sphereBuilder';
+import { CreateTorus } from '@babylonjs/core/Meshes/Builders/torusBuilder';
 import { ParticleSystem } from '@babylonjs/core/Particles/particleSystem';
 import { Scene } from '@babylonjs/core/scene';
 import { ShaderMaterial } from '@babylonjs/core/Materials/shaderMaterial';
 import { Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector';
-import { cubeAngle, FIELD_COUNT, fieldBasis, layoutField, toWorld } from './ballastField';
+import { chamberHull, cubeAngle, FIELD_COUNT, fieldBasis, layoutField, toWorld } from './ballastField';
+import type { Aabb } from '../physics/boxPhysics';
 import type { FieldCube } from './ballastField';
 import type { Vec3 } from './fall';
 
@@ -89,6 +91,7 @@ const STARS_FRAGMENT = `
   precision highp float;
   varying vec3 vDir;
   uniform float fade;
+  uniform float shine;
   uniform float time;
   ${COMMON}
 
@@ -129,7 +132,8 @@ const STARS_FRAGMENT = `
     float halo = pow(sd, 90.0) * 0.55 + pow(sd, 10.0) * 0.1;
     col += vec3(1.0, 0.95, 0.85) * disc * 2.0 + vec3(1.0, 0.8, 0.55) * halo;
 
-    gl_FragColor = vec4(min(col, vec3(1.5)), fade);
+    // Inside a chamber (shine 0) the sky through a hole is pitch black; the stars come out after an escape.
+    gl_FragColor = vec4(min(col * shine, vec3(1.5)), fade);
   }
 `;
 
@@ -290,17 +294,53 @@ registerShader('spacePlanet', PLANET_VERTEX, PLANET_FRAGMENT);
 registerShader('spaceHalo', HALO_VERTEX, HALO_FRAGMENT);
 registerShader('spaceCube', CUBE_VERTEX, CUBE_FRAGMENT);
 
+// The Crown (NARRATIVE.md): a huge ring overhead, never lit. Only a faint sunlit sheen picks it out against the stars.
+const CROWN_VERTEX = `
+  precision highp float;
+  attribute vec3 position;
+  attribute vec3 normal;
+  uniform mat4 worldViewProjection;
+  uniform mat4 world;
+  varying vec3 vN;
+  void main() {
+    vN = mat3(world) * normal;
+    gl_Position = worldViewProjection * vec4(position, 1.0);
+  }
+`;
+
+const CROWN_FRAGMENT = `
+  precision highp float;
+  varying vec3 vN;
+  uniform float fade;
+  ${COMMON}
+
+  void main() {
+    float sheen = pow(max(dot(normalize(vN), SUN), 0.0), 3.0);
+    vec3 col = vec3(0.012, 0.014, 0.02) + vec3(0.09, 0.1, 0.13) * sheen;
+    gl_FragColor = vec4(col, fade * 0.95);
+  }
+`;
+
+registerShader('spaceCrown', CROWN_VERTEX, CROWN_FRAGMENT);
+
+/** The Crown hangs this far above the camera (opposite the planet), with this diameter: inside the sky sphere. */
+const CROWN_DISTANCE = 330;
+const CROWN_DIAMETER = 440;
+
 /**
  * The outer-space scene seen after falling out of a chamber: stars and a sun, a procedural planet with an
- * atmosphere, the ballast field's other cubes (see `ballastField.ts`), and speed streaks.
+ * atmosphere, the ballast field's other cubes (see `ballastField.ts`), the Crown, and speed streaks. Inside a chamber
+ * the star sphere is drawn black over the skin's sky, and the planet stays where gravity points: that is all a hole
+ * shows (black, or the planet through a hole in the floor).
  *
  * Layering: every skin draws an opaque, depth-writing, `infiniteDistance` sky sphere of diameter 900 (radius 450)
  * around the camera. Everything here lives inside that radius (stars at 430, the planet's visible surface at most
  * ~370 away), so it passes the depth test against the sky, and being in rendering group 0 it is still depth-tested
  * against level geometry. All of it is transparent, so it draws after the opaque sky; `alphaIndex` orders it:
- * stars (0), planet (1), atmosphere halo (2), field cubes (3, depth-tested against the planet and each other), then
- * the particle streaks. Nothing writes depth except the planet, and
- * nothing is affected by fog or the glow layer. At visibility 0 the meshes are disabled and the particles stopped.
+ * stars (0), the Crown overhead (0.5), planet (1), atmosphere halo (2), field cubes (3, depth-tested against the
+ * planet and each other), then the particle streaks. Nothing writes depth except the planet, and
+ * nothing is affected by fog or the glow layer (except the hull, which occludes glow). At visibility 0 only the black
+ * sky, the planet and its halo are enabled; the rest are disabled and the particles stopped.
  */
 export class SpaceBackdrop {
   private readonly stars: Mesh;
@@ -309,9 +349,17 @@ export class SpaceBackdrop {
   private readonly starsMat: ShaderMaterial;
   private readonly planetMat: ShaderMaterial;
   private readonly haloMat: ShaderMaterial;
+  private readonly crown: Mesh;
+  private readonly crownMat: ShaderMaterial;
+  private readonly crownTurn = new Quaternion();
   /** One box per field cube, laid out afresh at each escape; `cubeMats` are [lit, dark]. */
   private readonly cubeMeshes: Mesh[] = [];
   private readonly cubeMats: [ShaderMaterial, ShaderMaterial];
+  /**
+   * The outside of the chamber the player is in, dressed as a lit field cube. Its faces point outwards and back faces
+   * are culled, so it is invisible from inside the chamber (or looking out of a hole) and only seen after a fall.
+   */
+  private readonly hull: Mesh;
   private field: FieldCube[] = [];
   /** Where the fall began and the field's axes, fixed for the whole fall so the player falls past the field. */
   private fieldOrigin: Vec3 = [0, 0, 0];
@@ -324,7 +372,8 @@ export class SpaceBackdrop {
   private readonly streakEmitter = new Vector3();
   private readonly streakDir = new Vector3();
   private readonly glow: GlowLayer;
-  private enabled = true;
+  /** True while the player is outside the chamber: the field, Crown, hull and streaks show only then. */
+  private outside = true;
   private streaming = false;
   private time = 0;
 
@@ -342,7 +391,7 @@ export class SpaceBackdrop {
       { vertex: 'spaceStars', fragment: 'spaceStars' },
       {
         attributes: ['position'],
-        uniforms: ['worldViewProjection', 'fade', 'time'],
+        uniforms: ['worldViewProjection', 'fade', 'shine', 'time'],
         needAlphaBlending: true,
       },
     );
@@ -390,6 +439,24 @@ export class SpaceBackdrop {
     this.halo.material = this.haloMat;
     this.halo.alphaIndex = 2;
 
+    this.crown = CreateTorus('spaceCrown', { diameter: CROWN_DIAMETER, thickness: 28, tessellation: 96 }, scene);
+    this.crownMat = new ShaderMaterial(
+      'spaceCrownMat',
+      scene,
+      { vertex: 'spaceCrown', fragment: 'spaceCrown' },
+      {
+        attributes: ['position', 'normal'],
+        uniforms: ['worldViewProjection', 'world', 'fade'],
+        needAlphaBlending: true,
+      },
+    );
+    this.crownMat.disableDepthWrite = true;
+    this.crownMat.fogEnabled = false;
+    this.crown.material = this.crownMat;
+    this.crown.rotationQuaternion = new Quaternion();
+    // After the stars, before the planet; it is always opposite the planet, so the two never overlap.
+    this.crown.alphaIndex = 0.5;
+
     const cubeMat = (lit: number): ShaderMaterial => {
       const mat = new ShaderMaterial(
         lit ? 'spaceCubeLitMat' : 'spaceCubeDarkMat',
@@ -413,8 +480,14 @@ export class SpaceBackdrop {
       cube.rotationQuaternion = new Quaternion();
       cube.alphaIndex = 3;
     }
+    this.hull = CreateBox('spaceHull', { size: 1 }, scene);
+    this.hull.material = this.cubeMats[0];
+    this.hull.alphaIndex = 3;
+    // Unlike the other backdrop meshes, the hull stays in the glow layer: it draws there as a black occluder, so the
+    // glow of the chamber inside does not bleed through it.
+    this.hull.isPickable = false;
 
-    for (const mesh of [this.stars, this.planet, this.halo, ...this.cubeMeshes]) {
+    for (const mesh of [this.stars, this.planet, this.halo, this.crown, ...this.cubeMeshes]) {
       mesh.isPickable = false;
       mesh.checkCollisions = false;
       mesh.receiveShadows = false;
@@ -461,19 +534,21 @@ export class SpaceBackdrop {
     ps.disposeOnStop = false;
     this.streaks = ps;
 
-    this.setActive(false);
+    this.setOutside(false);
   }
 
+  /**
+   * Inside a chamber (visibility 0) only the black sky and the planet show, and only through holes: a hole in a wall or
+   * ceiling is pitch black, one in the current floor shows the planet below. After an escape the stars, the field, the
+   * Crown, the chamber's hull and the streaks fade in with `visibility`.
+   */
   update(frame: BackdropFrame): void {
     const vis = Math.min(Math.max(frame.visibility, 0), 1);
-    if (vis <= 0) {
-      this.setActive(false);
-      return;
-    }
-    if (!this.enabled) this.layOutField(frame);
-    this.setActive(true);
+    const out = vis > 0;
+    if (out && !this.outside) this.layOutField(frame);
+    this.setOutside(out);
     this.time += frame.dt;
-    this.updateField(frame.cameraPosition, vis);
+    if (out) this.updateField(frame.cameraPosition, vis);
 
     const { cameraPosition: cam, planetDirection: dir } = frame;
     const px = cam.x + dir.x * frame.planetDistance;
@@ -482,14 +557,22 @@ export class SpaceBackdrop {
     this.planet.position.set(px, py, pz);
     this.halo.position.set(px, py, pz);
 
-    this.starsMat.setFloat('fade', vis);
+    this.starsMat.setFloat('fade', 1);
+    this.starsMat.setFloat('shine', vis);
     this.starsMat.setFloat('time', this.time);
-    this.planetMat.setFloat('fade', vis);
+    this.planetMat.setFloat('fade', 1);
     this.planetMat.setFloat('lights', frame.planetLights ?? 0);
     this.planetMat.setVector3('camPos', cam);
-    this.haloMat.setFloat('fade', vis);
+    this.haloMat.setFloat('fade', 1);
     this.haloMat.setVector3('camPos', cam);
     this.haloMat.setVector3('planetCenter', this.planet.position);
+
+    // The Crown: overhead, its ring square to the fall line.
+    const up = CROWN_DISTANCE;
+    this.crown.position.set(cam.x - dir.x * up, cam.y - dir.y * up, cam.z - dir.z * up);
+    Quaternion.FromUnitVectorsToRef(Vector3.Up(), dir, this.crownTurn);
+    this.crown.rotationQuaternion!.copyFrom(this.crownTurn);
+    this.crownMat.setFloat('fade', vis);
 
     // Streaks: emitted ahead of the camera, moving away from the planet, so they rush past "upwards".
     const strength = Math.min(Math.max(frame.speed / 150, 0), 1) * vis;
@@ -516,24 +599,32 @@ export class SpaceBackdrop {
     this.stopStreaks();
     this.streaks.dispose();
     this.streakTex.dispose();
-    for (const mesh of [this.stars, this.planet, this.halo, ...this.cubeMeshes]) {
+    for (const mesh of [this.stars, this.planet, this.halo, this.crown, ...this.cubeMeshes]) {
       this.glow.removeExcludedMesh(mesh);
       mesh.dispose();
     }
+    this.hull.dispose();
     for (const mat of this.cubeMats) mat.dispose();
+    this.crownMat.dispose();
     this.starsMat.dispose();
     this.planetMat.dispose();
     this.haloMat.dispose();
   }
 
-  private setActive(on: boolean): void {
-    if (on === this.enabled) return;
-    this.enabled = on;
-    this.stars.setEnabled(on);
-    this.planet.setEnabled(on);
-    this.halo.setEnabled(on);
+  private setOutside(on: boolean): void {
+    if (on === this.outside) return;
+    this.outside = on;
+    this.crown.setEnabled(on);
+    this.hull.setEnabled(on);
     this.cubeMeshes.forEach((mesh, i) => mesh.setEnabled(on && i < this.field.length));
     if (!on) this.stopStreaks();
+  }
+
+  /** Wraps the chamber with these bounds in its outer hull. Call whenever a chamber is built. */
+  public setChamber(bounds: Aabb): void {
+    const { center, size } = chamberHull(bounds);
+    this.hull.position.fromArray(center);
+    this.hull.scaling.setAll(size);
   }
 
   /** A new field for each fall, anchored where it starts and turned so its "up" points away from the planet. */

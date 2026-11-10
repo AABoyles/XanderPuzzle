@@ -1,3 +1,4 @@
+import type { Aabb } from '../physics/boxPhysics';
 import type { Vec3 } from './fall';
 import { random } from '../random.ts';
 
@@ -77,6 +78,20 @@ export function fieldBasis(down: Readonly<Vec3>): { x: Vec3; y: Vec3; z: Vec3 } 
   const z = normalize(cross(ref, y));
   const x = cross(y, z);
   return { x, y, z };
+}
+
+/**
+ * The outer hull of the chamber the player is in: a cube around its bounds, so from outside it looks like every other
+ * cube in the field. Centred on the bounds, as wide as their longest side plus `margin` all round.
+ */
+export function chamberHull(bounds: Aabb, margin = 1): { center: Vec3; size: number } {
+  const center: Vec3 = [0, 0, 0];
+  let size = 0;
+  for (let i = 0; i < 3; i++) {
+    center[i] = (bounds.min[i] + bounds.max[i]) / 2;
+    size = Math.max(size, bounds.max[i] - bounds.min[i]);
+  }
+  return { center, size: size + margin * 2 };
 }
 
 /** World position of a field-frame point, given the frame's origin and basis. */

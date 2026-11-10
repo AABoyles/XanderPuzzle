@@ -16,6 +16,9 @@ export const FADE_TIME = 0.5;
 /** Distance from the camera to the planet's centre at the start and at the end of the fall. */
 export const PLANET_FAR = 400;
 export const PLANET_NEAR = 190;
+/** The final fall out of the Descent: long, and it ends just above the planet's surface (radius 150). */
+export const DESCENT_DURATION = 25;
+export const PLANET_LAST = 162;
 
 /** The box enclosing every solid of a level. */
 export function boundsOf(solids: readonly Aabb[]): Aabb {
@@ -42,6 +45,8 @@ export function distanceOutside(bounds: Aabb, p: Readonly<Vec3>): number {
 
 /** Tracks one escape: whether the player is outside, for how long, and how visible space is. */
 export class FallTracker {
+  /** Seconds a fall lasts before it is over. */
+  public duration = FALL_DURATION;
   /** Seconds since the player escaped; 0 while they are inside. */
   public time = 0;
   /** 0 in normal play, rising to 1 shortly after an escape. */
@@ -53,7 +58,7 @@ export class FallTracker {
 
   /** True once the fall has run its course and the player should be respawned. */
   public get finished(): boolean {
-    return this.time >= FALL_DURATION;
+    return this.time >= this.duration;
   }
 
   /** Advance by `dt` seconds, given how far outside the level bounds the player is now. */
@@ -74,11 +79,14 @@ export class FallTracker {
   }
 }
 
-/** Distance to the planet's centre `time` seconds into the fall: it closes in, fastest at first. */
-export function planetDistance(time: number): number {
-  const t = Math.min(Math.max(time / FALL_DURATION, 0), 1);
+/**
+ * Distance to the planet's centre `time` seconds into a fall lasting `duration`: it closes in, fastest at first, to
+ * `near` at the end.
+ */
+export function planetDistance(time: number, duration = FALL_DURATION, near = PLANET_NEAR): number {
+  const t = Math.min(Math.max(time / duration, 0), 1);
   const eased = 1 - (1 - t) * (1 - t);
-  return PLANET_FAR + (PLANET_NEAR - PLANET_FAR) * eased;
+  return PLANET_FAR + (near - PLANET_FAR) * eased;
 }
 
 /**

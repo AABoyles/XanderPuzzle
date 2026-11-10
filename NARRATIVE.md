@@ -134,7 +134,7 @@ The finale chamber holds a model of the whole field: the cubes and the Crown abo
 
 The Margin's notes stop in the Orrery, one short of the end.
 
-### Epilogue · XV · The Descent (new chamber)
+### Epilogue · XV · The Descent
 
 The game has taught that falling is failure. It has also taught you to steer while falling (the Chimney). The last chamber turns the second lesson against the first.
 
@@ -228,10 +228,19 @@ The cubes show their age. The Margin turns personal and frightened.
 
 | Chamber | Voice | Text | Where | Why |
 | --- | --- | --- | --- | --- |
-| XIV · Orrery | S | `FIELD ALIGNMENT: 35% OF CUBES RESPONDING` / `ATTENDANT SUPPLY INCREASED TO COMPENSATE` | North wall, under +Z. On route. | The machine compensates for the dark cubes by printing more of you. The 35% matches the dark share of the field at this chamber. |
+| XIV · Orrery | S | `FIELD ALIGNMENT: 39% OF CUBES RESPONDING` / `ATTENDANT SUPPLY INCREASED TO COMPENSATE` | North wall, under +Z. On route. | The machine compensates for the dark cubes by printing more of you. The 39% matches the dark share of the field at this chamber; `npm test` keeps them in step. |
 | XIV · Orrery | — | A fixed crate stamped `BALLAST MASS` / `AT-0416` | On the ceiling beside the walk to the relative lever, under +Y. On route. | **The reveal.** It's one number below your serial. |
 | XIV · Orrery | S | `THANK YOU FOR YOUR` / `CONTINUED ALIGNMENT.` | Beside the AT-0416 crate, under +Y. | Leave it at that. |
 | XIV · Orrery | M | *If you're reading this, I didn't* | West wall, far from the lever there, under -X. Off route. | The Margin's last note, cut off mid-line. Its final word, "Steer.", waits in the Descent. |
+
+### Epilogue · The Descent
+
+| Chamber | Voice | Text | Where | Why |
+| --- | --- | --- | --- | --- |
+| XV · Descent | S | `CUBE 0147 · BALANCE ACCESS` / `AUTHORISED SHIFTS ONLY` | +Z wall facing the entrance, under -Y. On route. | The facility's last welcome. |
+| XV · Descent | S (log) | `ATTENDANT, THIS SHIFT IS NOT ON SCHEDULE.`, then `CUBE 0147 OUT OF TRIM. PLEASE RETURN TO YOUR STATION.` | HUD log line on each lever throw (`descentAlarm`). | It objects, politely and with growing alarm. |
+| XV · Descent | M | *Steer.* | The lip of the ceiling hole, under +Y. On route, the last thing you read. | The Margin's last word. |
+| XV · Descent | S (log) | `ATTENDANT NOT RECOVERED.` | The end card, as the fall ends. | The recovery log, one last time. |
 
 ### For playtesting
 
@@ -245,11 +254,11 @@ The cubes show their age. The Margin turns personal and frightened.
 In rough order of cost:
 
 1. **Text only.** *Status: built.* The Stencil's strings live in `src/narrative.ts`; each chamber's cube serial is the `cube` field in `CHAMBERS` (gaps in the numbering are cubes that went dark, widening each act). The HUD shows a log line under the hint: the duty line when a chamber starts, the recovery line after a fall. Rewrite the hints and the win and fall messages. Add the Stencil's log lines to the HUD for the `falling` → reset transition (keep a recovery count per run in `main.ts`, not in saved progress). Give each chamber a cube serial number for the chamber select. Keep the strings in a Babylon-free module so Node can test them.
-2. **Fall vista.** *Status: built, except the cube with your hole.* `src/environment/ballastField.ts` lays out 48 cubes around the fall line for each fall (Babylon-free, tested by Node), and `SpaceBackdrop` draws them: lit cubes glow at their seams and turn a quarter turn every few seconds; dark ones tumble. The dark share grows from 15% at the first chamber to 65% at the last (`darkFraction` in `src/narrative.ts`). Add drifting and tumbling cubes to `SpaceBackdrop`. It only shows after an escape, so this costs nothing in normal play.
+2. **Fall vista.** *Status: built, except the cube with your hole.* `src/environment/ballastField.ts` lays out 48 cubes around the fall line for each fall (Babylon-free, tested by Node), and `SpaceBackdrop` draws them: lit cubes glow at their seams and turn a quarter turn every few seconds; dark ones tumble. The chamber you just left is wrapped in a hull dressed the same way (`chamberHull`), so from outside it is one of them; the hull is invisible from inside. The dark share grows from 15% at the first chamber to 65% at the last (`darkFraction` in `src/narrative.ts`). Add drifting and tumbling cubes to `SpaceBackdrop`. It only shows after an escape, so this costs nothing in normal play.
 3. **Facing text.** *Status: built; the writing pass is next.* `b.placard(at, normal, readAs, text)` and `b.note(...)` paint text on a face as a canvas texture on a thin plane, upright under `readAs` (floor and ceiling text takes a `top`). Stencils use the bundled Allerta Stencil, painted per skin (`placardInk`: grey paint in Axis, flaking white in Monolith, ink outline in Draft, glowing in Neon). Notes use the bundled Caveat in red grease pencil with a per-letter wobble, the same in every skin. `npm test` checks that each one sits on a real, uncovered face. So far there are two: the induction placard in the Vault, and a note in the Shaft on the face overhead during the climb. The writing pass is done: see "Chamber script" above.
 4. **Crate serials.** *Status: built.* `addCrate(center, size, { stamp })` stencils every face. Every crate is stamped `BALLAST MASS` with a `BM-` serial; the `AT-0416` crate waits for the reveal.
 5. **Planet lights.** *Status: built.* The planet's night side is dark through Acts I and II. From the Turnstile (the first chamber of Act III) a few lights appear, more each chamber, until the Orrery. `planetLights` in `src/narrative.ts` sets how many; `SpaceBackdrop` draws them as small warm points.
-6. **The Descent.** *Status: not started; needs its own plan.* Build a new chamber with a new permanent `id`, an exit that is a hole into space, a fall long enough to read, and an ending screen. This needs a `GameState` path where a fall ends the game instead of resetting it. Add a state or event there and test it in `tests/gameState.test.ts`.
+6. **The Descent.** *Status: built.* `descent.ts` (id `descent`, cube `0147`): route `-Y → +X → +Y` on two one-shot levers, out through a hole in the ceiling. The chamber is marked `ending`, so leaving it starts the `descending` state (live, but R does nothing) and saves the clear. The fall lasts 25 s (`DESCENT_DURATION`) and ends just above the planet; then the `ended` state shows the end card, and any confirm returns to the title. The Crown is a dark ring overhead in every fall, drawn by `SpaceBackdrop`. The e2e suite plays the whole ending, using `__debug.endFall()` to skip the 25 s.
 
 ## Rules for writers
 

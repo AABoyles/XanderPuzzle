@@ -178,3 +178,44 @@ test('GameState holds the state and reports accepted changes only', () => {
   assert.equal(g.kind, 'paused');
   assert.deepEqual(seen, [['title', 'playing', 'begin'], ['playing', 'paused', 'pause']]);
 });
+
+test('the final fall: descend from play or a fall, no restart or win, and it ends on the end card', () => {
+  assert.equal(kinds(transition(playing, { type: 'descend' })), 'descending');
+  assert.equal(kinds(transition(falling, { type: 'descend' })), 'descending');
+  assert.equal(kinds(transition(INITIAL_STATE, { type: 'descend' })), 'descending');
+  for (const s of [paused, won, select]) assert.equal(transition(s, { type: 'descend' }), null, s.kind);
+  const descending = run({ type: 'begin' }, { type: 'descend' });
+  for (const type of ['restart', 'win', 'fell', 'recovered', 'respawn', 'advance'] as const) {
+    assert.equal(transition(descending, { type } as GameEvent), null, type);
+  }
+  // Pausing over it keeps it, and the pause menu's restart is refused too.
+  const pausedDescent = transition(descending, { type: 'pause' })!;
+  assert.equal(pausedDescent.kind, 'paused');
+  assert.equal(transition(pausedDescent, { type: 'restart' }), null);
+  assert.equal(kinds(transition(pausedDescent, { type: 'resume' })), 'descending');
+  assert.equal(kinds(transition(descending, { type: 'controlLost' })), 'paused');
+  assert.equal(kinds(transition(descending, { type: 'end' })), 'ended');
+  assert.equal(transition(playing, { type: 'end' }), null);
+});
+
+test('the end card: frozen in place, overlay up, and advance returns to a fresh title', () => {
+  const ended = run({ type: 'begin' }, { type: 'descend' }, { type: 'end' });
+  assert.equal(simulates(ended, 'keyboard'), false);
+  assert.equal(isFrozen(ended, 'keyboard'), false);
+  assert.equal(showsTouchControls(ended), false);
+  assert.equal(escapePauses(ended), false);
+  assert.deepEqual(viewOf(ended), { title: false, pause: false, select: false, win: false, ending: true });
+  for (const type of ['restart', 'win', 'pause', 'descend', 'end'] as const) {
+    assert.equal(transition(ended, { type } as GameEvent), null, type);
+  }
+  const title = transition(ended, { type: 'advance' })!;
+  assert.equal(title.kind, 'title');
+  assert.equal(title.begun, false);
+  // The chamber select opens over the end card and returns to it.
+  const sel = transition(ended, { type: 'openChambers' })!;
+  assert.equal(viewOf(sel).ending, true);
+  assert.equal(kinds(transition(sel, { type: 'closeChambers', resume: true })), 'ended');
+  const descending = run({ type: 'begin' }, { type: 'descend' });
+  assert.equal(simulates(descending, 'keyboard'), true);
+  assert.equal(showsTouchControls(descending), true);
+});

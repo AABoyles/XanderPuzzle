@@ -31,6 +31,11 @@ export interface BuiltLevel {
   switches: GravitySwitch[];
   exitCenter: Vector3;
   exitRadius: number;
+  /**
+   * Leaving this chamber ends the game (the Descent): its exit is a hole into space, so `exitCenter` marks the hole
+   * rather than a trigger, and the fall out of it is the final one.
+   */
+  ending?: boolean;
   dynamics: LevelDynamics;
   /** The static boxes crates collide with (shell, features, glass, barriers; not grates). Used by the headless tests. */
   solids: Aabb[];
