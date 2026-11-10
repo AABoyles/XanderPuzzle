@@ -28,6 +28,8 @@ export interface BuiltLevel {
   exitCenter: Vector3;
   exitRadius: number;
   dynamics: LevelDynamics;
+  /** The static boxes crates collide with (shell, features, glass, barriers; not grates). Used by the headless tests. */
+  solids: Aabb[];
   /** The box enclosing all of the level's geometry; a player well outside it has fallen out. */
   bounds: Aabb;
   /** The timed gravity cycle started by this level's sequence lever, if it has one. */
@@ -271,11 +273,12 @@ export class Builder {
     return door;
   }
 
-  public finish(info: Omit<BuiltLevel, 'switches' | 'dispose' | 'dynamics' | 'bounds' | 'update' | 'sequencer'>): BuiltLevel {
+  public finish(info: Omit<BuiltLevel, 'switches' | 'dispose' | 'dynamics' | 'solids' | 'bounds' | 'update' | 'sequencer'>): BuiltLevel {
     return {
       ...info,
       switches: this.switches,
       dynamics: this.dynamics,
+      solids: this.solids,
       bounds: boundsOf(this.solids),
       sequencer: this.sequencer,
       update: (dt, gravity, playerPos) => this.dynamics.update(dt, gravity, playerPos),
