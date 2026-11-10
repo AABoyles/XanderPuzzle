@@ -17,6 +17,15 @@ On touch devices the controls appear automatically (desktop is unchanged); play 
 - **JUMP** and **USE** (bottom right; USE lights up when a lever is in reach), **RUN** (toggle, bottom left).
 - **↻** restarts the chamber and **☰** opens the chamber select (top right).
 
+### Gamepad controls
+
+Any standard-mapping controller works; no pointer lock is needed. Press **A** or **Start** to begin.
+
+- **Left stick** moves, **right stick** looks, **LT** (or pressing the left stick) runs.
+- **A** jumps, **X** uses a lever, **Y** restarts the chamber.
+- **Start** pauses and resumes, **Back/Select** opens the chamber select (D-pad or left stick to choose, **A** to play, **B** to go back).
+- **A** also advances from the win screen. On-screen prompts follow whichever device you used last.
+
 Fourteen chambers ship with the game, each teaching or testing one idea:
 
 1. **The Vault** (`-Y → +Z → +X`) — a hollow cube; drop through the hole in the final "floor".
@@ -68,7 +77,7 @@ Gravity-driven crates, pressure plates and plate-controlled doors (`Builder.addC
 
 - `src/gravity/GravitySystem.ts` — owns the single "which way is down" axis and notifies listeners when it changes.
 - `src/gravity/axes.ts` — dependency-free axis maths (quarter-turn rotation for relative levers) and the timed `GravitySequencer`.
-- `src/input/` — `InputSource` (the shared frame of move/look/jump/use that every device produces, dependency-free and unit-tested), `KeyboardMouseInput` (WASD, pointer-lock mouse look) and `TouchInput` (on-screen controls).
+- `src/input/` — `InputSource` (the shared frame of move/look/jump/use/restart/pause that every device produces, dependency-free and unit-tested), `InputManager` (reads and merges the sources once per frame and tracks the last-used device), `KeyboardMouseInput` (WASD, pointer-lock mouse look), `TouchInput` (on-screen controls) and `GamepadInput` (standard-mapping pads).
 - `src/player/PlayerController.ts` — reads and merges the input sources, and drives a kinematic body whose movement basis, ground checks, and camera orientation all derive from a smoothly-interpolated "up" vector, so a gravity flip reads as a coherent tumble into the new orientation rather than a snap.
 - `src/level/Builder.ts` — the `Builder` that chambers are written against: `slab` (wall with optional hole), `tube` (corridor/chamber), `box`, `grate`/`glass`/`barrier`, `addSwitch`/`addRelativeSwitch`/`addSequenceSwitch`, `addCrate`/`addPlate`/`addDoor`.
 - `src/level/chambers/` — one file per chamber; `index.ts` holds `CHAMBERS`, the play order with each chamber's name (shown in the chamber select). To add a chamber, add a file and list it there.

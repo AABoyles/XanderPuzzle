@@ -24,7 +24,7 @@ There is no linter or formatter. Match the existing style: 2-space indent, singl
 
 - `src/main.ts`: scene bootstrap, level loading and progression, skin switching, render loop, win check, `localStorage` persistence (keys prefixed `shiftbound.`).
 - `src/gravity/GravitySystem.ts`: the single current gravity axis and its change listeners.
-- `src/input/`: `InputSource.ts` is the Babylon-free input interface (`InputFrame`, `mergeFrames`, `stickVector`), tested by Node like `boxPhysics.ts`; `KeyboardMouseInput.ts` and `TouchInput.ts` implement it, and a future gamepad source should too.
+- `src/input/`: `InputSource.ts` is the Babylon-free input interface (`InputFrame`, `mergeFrames`, `stickVector`, deadzone/look-curve maths) and `InputManager.ts` reads and merges the sources once per frame and tracks the last-used device (`lastDevice`, which drives HUD wording); both are tested by Node like `boxPhysics.ts` (import with explicit `.ts` extensions and no constructor parameter properties). `KeyboardMouseInput.ts`, `TouchInput.ts` and `GamepadInput.ts` implement `InputSource`; `main.ts` reads the manager once per frame and passes the frame to `PlayerController.update`.
 - `src/player/PlayerController.ts`: merges the input sources' frames and drives a kinematic body oriented by a smoothly interpolated "up" vector.
 - `src/level/Builder.ts`: the API chambers are written against (`box`, `slab`, `tube`, `grate`, `glass`, `barrier`, `addSwitch` (with `{ once }`), `addRelativeSwitch`, `addSequenceSwitch`, `addCrate`, `addPlate`, `addDoor`, `finish`), plus `V()` and the wall thickness `T`.
 - `src/gravity/axes.ts`: Babylon-free axis maths and the `GravitySequencer`; tested directly by Node like `boxPhysics.ts`.

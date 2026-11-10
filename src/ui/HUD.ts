@@ -9,6 +9,7 @@ import {
   TextBlock,
 } from '@babylonjs/gui';
 import { GravityAxis } from '../gravity/GravitySystem';
+import type { InputDevice } from '../input/InputSource';
 
 const AXIS_LABEL: Record<GravityAxis, string> = {
   '+X': 'EAST WALL',
@@ -30,7 +31,26 @@ export interface ChamberEntry {
 
 const ROW_HEIGHT = 52;
 const DESKTOP_SUBTITLE =
-  'Click to look around  •  WASD to move  •  Shift to run  •  Space to jump\nWalk up to a lever and press E to rotate gravity 90°\nR restarts the chamber  •  L opens chamber select\n\nClick anywhere to begin';
+  'Click to look around  \u2022  WASD to move  \u2022  Shift to run  \u2022  Space to jump\nWalk up to a lever and press E to rotate gravity 90\u00B0\nR restarts the chamber  \u2022  L opens chamber select\n\nClick anywhere to begin';
+const TOUCH_SUBTITLE =
+  'Left thumb: move  \u2022  Right side: drag to look\nJUMP to jump  \u2022  USE at a lever to rotate gravity 90\u00B0\n\nTap anywhere to begin';
+const GAMEPAD_SUBTITLE =
+  'Left stick move  \u2022  Right stick look  \u2022  LT run  \u2022  A jump\nWalk up to a lever and press X to rotate gravity 90\u00B0\nY restarts  \u2022  Back opens chamber select  \u2022  Start pauses\n\nPress A to begin';
+const KEYS_LABEL: Record<InputDevice, string> = {
+  keyboard: 'WASD move \u00B7 Shift run \u00B7 Space jump \u00B7 E use \u00B7 R restart \u00B7 L chambers \u00B7 K skin',
+  touch: '',
+  gamepad: 'L-stick move \u00B7 R-stick look \u00B7 LT run \u00B7 A jump \u00B7 X use \u00B7 Y restart \u00B7 Back chambers',
+};
+const SUBTITLES: Record<InputDevice, string> = {
+  keyboard: DESKTOP_SUBTITLE,
+  touch: TOUCH_SUBTITLE,
+  gamepad: GAMEPAD_SUBTITLE,
+};
+const USE_PROMPT: Record<InputDevice, string> = {
+  keyboard: 'Press [E] to shift gravity',
+  touch: 'Tap [USE] to shift gravity',
+  gamepad: 'Press [X] to shift gravity',
+};
 
 export class HUD {
   /** The start overlay's chamber select button was pressed. */
@@ -49,7 +69,8 @@ export class HUD {
   private keysLabel!: TextBlock;
   private subtitle!: TextBlock;
   private gravityBox!: Rectangle;
-  private touchMode = false;
+  private device: InputDevice = 'keyboard';
+  private skinLabel = '';
   private readonly startOverlay: Rectangle;
   private readonly winOverlay: Rectangle;
   private readonly sequenceLabel: TextBlock;
@@ -359,18 +380,18 @@ export class HUD {
     return this.startOverlay.isVisible;
   }
 
-  /** Switches prompts and labels to touch wording, and keeps the key list out from under the buttons. */
-  public setTouchMode(on: boolean): void {
-    this.touchMode = on;
-    this.subtitle.text = on
-      ? 'Left thumb: move  \u2022  Right side: drag to look\nJUMP to jump  \u2022  USE at a lever to rotate gravity 90\u00B0\n\nTap anywhere to begin'
-      : DESKTOP_SUBTITLE;
-    this.keysLabel.isVisible = !on;
+  /** Switches prompts and labels to the wording of the device in use; touch also frees the top-right corner. */
+  public setDevice(device: InputDevice): void {
+    this.device = device;
+    const touch = device === 'touch';
+    this.subtitle.text = SUBTITLES[device];
+    this.keysLabel.isVisible = !touch;
+    this.refreshKeys();
     // Leave the top-right corner to the touch RESTART / CHAMBERS buttons.
-    this.gravityBox.width = on ? '210px' : '260px';
-    this.levelLabel.width = on ? '40%' : '100%';
-    this.hintLabel.width = on ? '40%' : '100%';
-    this.hintLabel.textWrapping = on;
+    this.gravityBox.width = touch ? '210px' : '260px';
+    this.levelLabel.width = touch ? '40%' : '100%';
+    this.hintLabel.width = touch ? '40%' : '100%';
+    this.hintLabel.textWrapping = touch;
   }
 
   public showWin(title: string, subtitle: string): void {
@@ -390,11 +411,18 @@ export class HUD {
 
   public setPrompt(visible: boolean, text?: string): void {
     this.prompt.isVisible = visible;
-    this.prompt.text = text ?? (this.touchMode ? 'Tap [USE] to shift gravity' : 'Press [E] to shift gravity');
+    this.prompt.text = text ?? USE_PROMPT[this.device];
   }
 
   public setSkin(label: string): void {
-    this.keysLabel.text = `WASD move · Shift run · Space jump · E use · R restart · L chambers · K skin${label ? `: ${label}` : ''}`;
+    this.skinLabel = label;
+    this.refreshKeys();
+  }
+
+  private refreshKeys(): void {
+    // Skins are switched with K on a keyboard only.
+    const label = this.device === 'keyboard' && this.skinLabel ? `: ${this.skinLabel}` : '';
+    this.keysLabel.text = KEYS_LABEL[this.device] + label;
   }
 
   public setGravityAxis(axis: GravityAxis, color = '#bfe3ff'): void {

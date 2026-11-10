@@ -10,7 +10,8 @@ import {
   Vector3,
 } from '@babylonjs/core';
 import { GravitySystem } from '../gravity/GravitySystem';
-import { InputSource, mergeFrames } from '../input/InputSource';
+import type { InputManager } from '../input/InputManager';
+import type { InputFrame } from '../input/InputSource';
 
 const RADIUS = 0.5;
 const EYE_OFFSET = 0.35; // above the collider center
@@ -37,7 +38,7 @@ export class PlayerController {
   public readonly camera: UniversalCamera;
 
   private readonly scene: Scene;
-  private readonly inputs: InputSource[];
+  private readonly input: InputManager;
   private readonly gravity: GravitySystem;
 
   private alignRot = Quaternion.Identity();
@@ -49,9 +50,9 @@ export class PlayerController {
   private jumpQueued = false;
   private interactQueued = false;
 
-  constructor(scene: Scene, gravity: GravitySystem, spawnPosition: Vector3, inputs: InputSource[]) {
+  constructor(scene: Scene, gravity: GravitySystem, spawnPosition: Vector3, input: InputManager) {
     this.scene = scene;
-    this.inputs = inputs;
+    this.input = input;
     this.gravity = gravity;
 
     // Initialise the alignment so the player already faces the level's natural up.
@@ -93,7 +94,7 @@ export class PlayerController {
     this.jumpQueued = false;
     this.interactQueued = false;
     // Drain pending edges and look deltas so a queued press doesn't fire after the restart.
-    for (const input of this.inputs) input.read();
+    this.input.drain();
   }
 
   /** Sets the view direction relative to the current up (radians; positive pitch looks down). */
@@ -106,7 +107,8 @@ export class PlayerController {
     return this.grounded;
   }
 
-  public update(dt: number): void {
+  /** Advances one frame. `input` is this frame's merged input, read once by the caller. */
+  public update(dt: number, input: InputFrame): void {
     dt = Math.min(dt, 1 / 20);
 
     // --- Smoothly chase the level's true "up" -------------------------------------------------
@@ -134,7 +136,6 @@ export class PlayerController {
     const up = rotate(Vector3.Up(), this.alignRot);
 
     // --- Look ------------------------------------------------------------------------------------
-    const input = mergeFrames(this.inputs.map((i) => i.read()));
     if (input.jump) this.jumpQueued = true;
     if (input.interact) this.interactQueued = true;
     this.yaw += input.lookX;

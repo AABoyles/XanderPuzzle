@@ -1,4 +1,5 @@
-import { emptyFrame, InputFrame, InputSource, stickVector } from './InputSource';
+import { emptyFrame, stickVector } from './InputSource.ts';
+import type { InputDevice, InputFrame, InputSource } from './InputSource.ts';
 
 /** Radians of yaw/pitch per pixel dragged on the look zone. */
 export const LOOK_SENSITIVITY = 0.005;
@@ -58,9 +59,9 @@ interface Drag {
 
 /** Touch controls: floating move stick (left), drag-to-look (right), JUMP / USE / RUN buttons. */
 export class TouchInput implements InputSource {
+  public readonly device: InputDevice = 'touch';
   /** Fires once, when touch mode is first detected. */
   public onActivate: () => void = () => {};
-  public onRestart: () => void = () => {};
   public onChambers: () => void = () => {};
 
   private isActive = false;
@@ -73,6 +74,7 @@ export class TouchInput implements InputSource {
   private lookDY = 0;
   private jumpQueued = false;
   private interactQueued = false;
+  private restartQueued = false;
   private sprint = false;
 
   private readonly style: HTMLStyleElement;
@@ -118,13 +120,16 @@ export class TouchInput implements InputSource {
       this.sprint = !this.sprint;
       this.runBtn.classList.toggle('sb-toggled', this.sprint);
     });
-    this.button(restart, () => this.onRestart());
+    this.button(restart, () => (this.restartQueued = true));
     this.button(chambers, () => this.onChambers());
 
     const cancel = (e: PointerEvent) => this.release(e.pointerId);
     this.listen(window, 'pointerup', cancel as EventListener);
     this.listen(window, 'pointercancel', cancel as EventListener);
     this.listen(window, 'blur', () => this.reset());
+    this.listen(document, 'visibilitychange', () => {
+      if (document.hidden) this.reset();
+    });
     this.listen(document, 'contextmenu', ((e: Event) => {
       if (this.isActive) e.preventDefault();
     }) as EventListener);
@@ -157,7 +162,7 @@ export class TouchInput implements InputSource {
     this.useBtn.classList.toggle('sb-hot', available);
   }
 
-  public read(): InputFrame {
+  public read(_dt: number): InputFrame {
     const f = emptyFrame();
     f.moveX = this.stickX;
     f.moveZ = this.stickY;
@@ -166,8 +171,9 @@ export class TouchInput implements InputSource {
     f.sprint = this.sprint;
     f.jump = this.jumpQueued;
     f.interact = this.interactQueued;
+    f.restart = this.restartQueued;
     this.lookDX = this.lookDY = 0;
-    this.jumpQueued = this.interactQueued = false;
+    this.jumpQueued = this.interactQueued = this.restartQueued = false;
     return f;
   }
 
@@ -270,7 +276,7 @@ export class TouchInput implements InputSource {
     this.buttonPointers.clear();
     this.endStick();
     this.lookDX = this.lookDY = 0;
-    this.jumpQueued = this.interactQueued = false;
+    this.jumpQueued = this.interactQueued = this.restartQueued = false;
     this.sprint = false;
     this.runBtn.classList.remove('sb-toggled');
   }
