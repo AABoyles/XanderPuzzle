@@ -1,13 +1,11 @@
-import {
-  AdvancedDynamicTexture,
-  Button,
-  Control,
-  Ellipse,
-  Rectangle,
-  ScrollViewer,
-  StackPanel,
-  TextBlock,
-} from '@babylonjs/gui';
+import { AdvancedDynamicTexture } from '@babylonjs/gui/2D/advancedDynamicTexture';
+import { Button } from '@babylonjs/gui/2D/controls/button';
+import { Control } from '@babylonjs/gui/2D/controls/control';
+import { Ellipse } from '@babylonjs/gui/2D/controls/ellipse';
+import { Rectangle } from '@babylonjs/gui/2D/controls/rectangle';
+import { ScrollViewer } from '@babylonjs/gui/2D/controls/scrollViewers/scrollViewer';
+import { StackPanel } from '@babylonjs/gui/2D/controls/stackPanel';
+import { TextBlock } from '@babylonjs/gui/2D/controls/textBlock';
 import { GravityAxis } from '../gravity/GravitySystem';
 import type { InputDevice } from '../input/InputSource';
 

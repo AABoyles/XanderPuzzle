@@ -1,4 +1,9 @@
-import { Color4, Engine, GlowLayer, Scene, Vector3 } from '@babylonjs/core';
+import './babylonSideEffects';
+import { Color4 } from '@babylonjs/core/Maths/math.color';
+import { Engine } from '@babylonjs/core/Engines/engine';
+import { GlowLayer } from '@babylonjs/core/Layers/glowLayer';
+import { Scene } from '@babylonjs/core/scene';
+import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { chaseDirection, distanceOutside, FallTracker, planetDistance, Vec3 } from './environment/fall';
 import { SpaceBackdrop } from './environment/SpaceBackdrop';
 import { GameState, escapePauses, isFrozen, showsTouchControls, simulates, viewOf } from './game/GameState';
@@ -687,6 +692,7 @@ if (import.meta.env.DEV) {
         target: sw.targetFor(gravity.axis),
         spent: sw.spent,
         inRange: sw.isInRange(player.position),
+        position: sw.root.position.asArray(),
       })),
     /** Presses E for one frame, as the player would. */
     interact: () => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE' })),

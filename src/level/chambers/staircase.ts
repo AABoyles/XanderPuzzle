@@ -1,4 +1,5 @@
-import { Color3, Scene } from '@babylonjs/core';
+import { Color3 } from '@babylonjs/core/Maths/math.color';
+import { Scene } from '@babylonjs/core/scene';
 import { SkinRuntime } from '../../skins/Skin';
 import { Builder, BuiltLevel, V } from '../Builder';
 

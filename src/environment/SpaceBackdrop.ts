@@ -1,17 +1,15 @@
-import {
-  BoxParticleEmitter,
-  Color4,
-  Constants,
-  DynamicTexture,
-  Effect,
-  GlowLayer,
-  Mesh,
-  MeshBuilder,
-  ParticleSystem,
-  Scene,
-  ShaderMaterial,
-  Vector3,
-} from '@babylonjs/core';
+import { BoxParticleEmitter } from '@babylonjs/core/Particles/EmitterTypes/boxParticleEmitter';
+import { Color4 } from '@babylonjs/core/Maths/math.color';
+import { Constants } from '@babylonjs/core/Engines/constants';
+import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture';
+import { Effect } from '@babylonjs/core/Materials/effect';
+import { GlowLayer } from '@babylonjs/core/Layers/glowLayer';
+import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import { CreateSphere } from '@babylonjs/core/Meshes/Builders/sphereBuilder';
+import { ParticleSystem } from '@babylonjs/core/Particles/particleSystem';
+import { Scene } from '@babylonjs/core/scene';
+import { ShaderMaterial } from '@babylonjs/core/Materials/shaderMaterial';
+import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 
 /** Planet radius in world units. */
 export const PLANET_RADIUS = 150;
@@ -263,7 +261,7 @@ export class SpaceBackdrop {
   constructor(scene: Scene, glow: GlowLayer) {
     this.glow = glow;
 
-    this.stars = MeshBuilder.CreateSphere(
+    this.stars = CreateSphere(
       'spaceStars',
       { diameter: 860, segments: 16, sideOrientation: Mesh.BACKSIDE },
       scene,
@@ -286,7 +284,7 @@ export class SpaceBackdrop {
     this.stars.alwaysSelectAsActiveMesh = true;
     this.stars.alphaIndex = 0;
 
-    this.planet = MeshBuilder.CreateSphere('spacePlanet', { diameter: PLANET_RADIUS * 2, segments: 48 }, scene);
+    this.planet = CreateSphere('spacePlanet', { diameter: PLANET_RADIUS * 2, segments: 48 }, scene);
     this.planetMat = new ShaderMaterial(
       'spacePlanetMat',
       scene,
@@ -301,7 +299,7 @@ export class SpaceBackdrop {
     this.planet.material = this.planetMat;
     this.planet.alphaIndex = 1;
 
-    this.halo = MeshBuilder.CreateSphere(
+    this.halo = CreateSphere(
       'spaceHalo',
       { diameter: PLANET_RADIUS * 2 * HALO_SCALE, segments: 32 },
       scene,

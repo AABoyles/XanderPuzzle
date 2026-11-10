@@ -1,4 +1,9 @@
-import { Color3, Mesh, MeshBuilder, Scene, StandardMaterial, Vector3 } from '@babylonjs/core';
+import { Color3 } from '@babylonjs/core/Maths/math.color';
+import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder';
+import { Scene } from '@babylonjs/core/scene';
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
+import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { Aabb, Body, bodyAabb, overlaps, stepBody, Vec3 } from '../physics/boxPhysics';
 
 const PLAYER_HALF = 0.5;
@@ -13,7 +18,7 @@ export class Crate {
 
   constructor(scene: Scene, center: Vector3, size: number) {
     this.body = { center: arr(center), half: [size / 2, size / 2, size / 2], velocity: [0, 0, 0] };
-    this.mesh = MeshBuilder.CreateBox('crate', { size }, scene);
+    this.mesh = CreateBox('crate', { size }, scene);
     const mat = new StandardMaterial('crateMat', scene);
     mat.diffuseColor = new Color3(0.55, 0.42, 0.25);
     mat.emissiveColor = new Color3(0.12, 0.08, 0.03);
@@ -67,7 +72,7 @@ export class PressurePlate {
     }
     this.trigger = { min, max };
 
-    this.mesh = MeshBuilder.CreateBox('plate', { width: dims[0], height: dims[1], depth: dims[2] }, scene);
+    this.mesh = CreateBox('plate', { width: dims[0], height: dims[1], depth: dims[2] }, scene);
     this.mesh.position = center.add(normal.scale(0.06));
     this.mesh.isPickable = false;
     this.mat = new StandardMaterial('plateMat', scene);
@@ -97,7 +102,7 @@ export class Door {
   constructor(scene: Scene, min: Vector3, max: Vector3, public readonly plates: PressurePlate[]) {
     this.aabb = { min: arr(min), max: arr(max) };
     const size = max.subtract(min);
-    this.mesh = MeshBuilder.CreateBox('door', { width: size.x, height: size.y, depth: size.z }, scene);
+    this.mesh = CreateBox('door', { width: size.x, height: size.y, depth: size.z }, scene);
     this.mesh.position = min.add(max).scale(0.5);
     const mat = new StandardMaterial('doorMat', scene);
     mat.diffuseColor = new Color3(0.25, 0.08, 0.06);

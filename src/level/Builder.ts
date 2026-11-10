@@ -1,16 +1,14 @@
-import {
-  Color3,
-  Material,
-  Mesh,
-  MeshBuilder,
-  MultiMaterial,
-  Scene,
-  StandardMaterial,
-  SubMesh,
-  Vector3,
-  VertexBuffer,
-} from '@babylonjs/core';
-import { GridMaterial } from '@babylonjs/materials';
+import { Color3 } from '@babylonjs/core/Maths/math.color';
+import { Material } from '@babylonjs/core/Materials/material';
+import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder';
+import { MultiMaterial } from '@babylonjs/core/Materials/multiMaterial';
+import { Scene } from '@babylonjs/core/scene';
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
+import { SubMesh } from '@babylonjs/core/Meshes/subMesh';
+import { Vector3 } from '@babylonjs/core/Maths/math.vector';
+import { VertexBuffer } from '@babylonjs/core/Buffers/buffer';
+import { GridMaterial } from '@babylonjs/materials/grid/gridMaterial';
 import { GravitySequencer } from '../gravity/axes';
 import { GravityAxis } from '../gravity/GravitySystem';
 import { Door, DynamicsEvents, LevelDynamics, PressurePlate } from './Dynamics';
@@ -30,6 +28,8 @@ export interface BuiltLevel {
   exitCenter: Vector3;
   exitRadius: number;
   dynamics: LevelDynamics;
+  /** The static boxes crates collide with (shell, features, glass, barriers; not grates). Used by the headless tests. */
+  solids: Aabb[];
   /** The box enclosing all of the level's geometry; a player well outside it has fallen out. */
   bounds: Aabb;
   /** The timed gravity cycle started by this level's sequence lever, if it has one. */
@@ -81,7 +81,7 @@ export class Builder {
   public box(min: Vector3, max: Vector3, role: SurfaceRole = 'feature'): void {
     const size = max.subtract(min);
     if (size.x <= 1e-6 || size.y <= 1e-6 || size.z <= 1e-6) return;
-    const m = MeshBuilder.CreateBox(`lvl_${this.n++}`, { width: size.x, height: size.y, depth: size.z }, this.scene);
+    const m = CreateBox(`lvl_${this.n++}`, { width: size.x, height: size.y, depth: size.z }, this.scene);
     const center = min.add(max).scale(0.5);
     m.position = center;
 
@@ -192,7 +192,7 @@ export class Builder {
   private plainBox(name: string, min: Vector3, max: Vector3, material: Material): Mesh {
     const size = max.subtract(min);
     const dims = { width: size.x, height: size.y, depth: size.z };
-    const m = MeshBuilder.CreateBox(`${name}_${this.n++}`, dims, this.scene);
+    const m = CreateBox(`${name}_${this.n++}`, dims, this.scene);
     m.position = min.add(max).scale(0.5);
     m.material = material;
     m.isPickable = true;
@@ -273,11 +273,12 @@ export class Builder {
     return door;
   }
 
-  public finish(info: Omit<BuiltLevel, 'switches' | 'dispose' | 'dynamics' | 'bounds' | 'update' | 'sequencer'>): BuiltLevel {
+  public finish(info: Omit<BuiltLevel, 'switches' | 'dispose' | 'dynamics' | 'solids' | 'bounds' | 'update' | 'sequencer'>): BuiltLevel {
     return {
       ...info,
       switches: this.switches,
       dynamics: this.dynamics,
+      solids: this.solids,
       bounds: boundsOf(this.solids),
       sequencer: this.sequencer,
       update: (dt, gravity, playerPos) => this.dynamics.update(dt, gravity, playerPos),

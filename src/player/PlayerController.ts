@@ -1,14 +1,10 @@
-import {
-  Matrix,
-  Mesh,
-  MeshBuilder,
-  Quaternion,
-  Ray,
-  Scalar,
-  Scene,
-  UniversalCamera,
-  Vector3,
-} from '@babylonjs/core';
+import { Matrix, Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector';
+import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import { CreateSphere } from '@babylonjs/core/Meshes/Builders/sphereBuilder';
+import { Ray } from '@babylonjs/core/Culling/ray';
+import { Scalar } from '@babylonjs/core/Maths/math.scalar';
+import { Scene } from '@babylonjs/core/scene';
+import { UniversalCamera } from '@babylonjs/core/Cameras/universalCamera';
 import { GravitySystem } from '../gravity/GravitySystem';
 import type { InputManager } from '../input/InputManager';
 import type { InputFrame } from '../input/InputSource';
@@ -61,7 +57,7 @@ export class PlayerController {
     // Initialise the alignment so the player already faces the level's natural up.
     this.alignRot = PlayerController.quaternionFromTo(Vector3.Up(), gravity.up);
 
-    this.collider = MeshBuilder.CreateSphere('playerCollider', { diameter: RADIUS * 2, segments: 8 }, scene);
+    this.collider = CreateSphere('playerCollider', { diameter: RADIUS * 2, segments: 8 }, scene);
     this.collider.isVisible = false;
     this.collider.isPickable = false;
     this.collider.checkCollisions = true;

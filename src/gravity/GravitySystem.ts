@@ -1,4 +1,5 @@
-import { Observable, Vector3 } from '@babylonjs/core';
+import { Observable } from '@babylonjs/core/Misc/observable';
+import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { GravityAxis } from './axes';
 
 export type { GravityAxis } from './axes';
