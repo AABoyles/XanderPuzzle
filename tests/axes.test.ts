@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { MAX_SIM_DELTA } from '../src/time.ts';
 import { AXES, areAdjacent, GravitySequencer, opposite, rotateClockwise, type GravityAxis } from '../src/gravity/axes.ts';
 
 test('rotateClockwise leaves the axis of rotation alone', () => {
@@ -53,4 +54,17 @@ test('GravitySequencer cycles on its period, continuing from the current axis', 
 test('GravitySequencer rejects half turns', () => {
   assert.throws(() => new GravitySequencer(['-Y', '+Y'], 2));
   assert.throws(() => new GravitySequencer(['-Y', '+X', '+X'], 2));
+});
+
+test('GravitySequencer advances at most one axis per call and keeps its period under capped deltas', () => {
+  const seq = new GravitySequencer(['+Y', '+X', '-Y', '-X'], 4);
+  seq.start('+Y');
+  // Even an enormous delta moves only one step.
+  assert.equal(seq.update(100), '+X');
+  assert.ok(seq.remaining > 0 && seq.remaining <= 4);
+  seq.start('+Y');
+  let changes = 0;
+  const frames = Math.round(20 * 4 * 3); // three periods at the capped 1/20 s step
+  for (let i = 0; i < frames; i++) if (seq.update(MAX_SIM_DELTA)) changes++;
+  assert.ok(changes === 2 || changes === 3, `got ${changes}`);
 });

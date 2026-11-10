@@ -9,6 +9,7 @@ import {
   TextBlock,
 } from '@babylonjs/gui';
 import { GravityAxis } from '../gravity/GravitySystem';
+import type { InputDevice } from '../input/InputSource';
 
 const AXIS_LABEL: Record<GravityAxis, string> = {
   '+X': 'EAST WALL',
@@ -29,6 +30,27 @@ export interface ChamberEntry {
 }
 
 const ROW_HEIGHT = 52;
+const DESKTOP_SUBTITLE =
+  'Click to look around  \u2022  WASD to move  \u2022  Shift to run  \u2022  Space to jump\nWalk up to a lever and press E to rotate gravity 90\u00B0\nR restarts the chamber  \u2022  L opens chamber select\n\nClick anywhere to begin';
+const TOUCH_SUBTITLE =
+  'Left thumb: move  \u2022  Right side: drag to look\nJUMP to jump  \u2022  USE at a lever to rotate gravity 90\u00B0\n\nTap anywhere to begin';
+const GAMEPAD_SUBTITLE =
+  'Left stick move  \u2022  Right stick look  \u2022  LT run  \u2022  A jump\nWalk up to a lever and press X to rotate gravity 90\u00B0\nY restarts  \u2022  Back opens chamber select  \u2022  Start pauses\n\nPress A to begin';
+const KEYS_LABEL: Record<InputDevice, string> = {
+  keyboard: 'WASD move \u00B7 Shift run \u00B7 Space jump \u00B7 E use \u00B7 R restart \u00B7 L chambers \u00B7 K skin',
+  touch: '',
+  gamepad: 'L-stick move \u00B7 R-stick look \u00B7 LT run \u00B7 A jump \u00B7 X use \u00B7 Y restart \u00B7 Back chambers',
+};
+const SUBTITLES: Record<InputDevice, string> = {
+  keyboard: DESKTOP_SUBTITLE,
+  touch: TOUCH_SUBTITLE,
+  gamepad: GAMEPAD_SUBTITLE,
+};
+const USE_PROMPT: Record<InputDevice, string> = {
+  keyboard: 'Press [E] to shift gravity',
+  touch: 'Tap [USE] to shift gravity',
+  gamepad: 'Press [X] to shift gravity',
+};
 
 export class HUD {
   /** The start overlay's chamber select button was pressed. */
@@ -39,12 +61,18 @@ export class HUD {
   public onHoverLevel: (index: number) => void = () => {};
   /** The chamber select's back button was pressed. */
   public onCloseLevelSelect: () => void = () => {};
+  /** The start overlay's fullscreen button was pressed. */
+  public onToggleFullscreen: () => void = () => {};
 
   private readonly ui: AdvancedDynamicTexture;
   private readonly prompt: TextBlock;
   private readonly gravityLabel: TextBlock;
   private gravityColor = '#bfe3ff';
   private keysLabel!: TextBlock;
+  private subtitle!: TextBlock;
+  private gravityBox!: Rectangle;
+  private device: InputDevice = 'keyboard';
+  private skinLabel = '';
   private readonly startOverlay: Rectangle;
   private readonly winOverlay: Rectangle;
   private readonly sequenceLabel: TextBlock;
@@ -52,6 +80,11 @@ export class HUD {
   private readonly hintLabel: TextBlock;
   private winTitle!: TextBlock;
   private winSubtitle!: TextBlock;
+  private readonly updateNotice: TextBlock;
+  private selectButton!: Button;
+  private fullscreenButton!: Button;
+  private fullscreenHint!: TextBlock;
+  private fullscreenMode: 'toggle' | 'hint' | 'none' = 'none';
   private readonly selectOverlay: Rectangle;
   private readonly selectScroll: ScrollViewer;
   private readonly selectList: StackPanel;
@@ -90,7 +123,7 @@ export class HUD {
     this.ui.addControl(this.prompt);
 
     // Gravity indicator (top-left)
-    const gravityBox = new Rectangle('gravityBox');
+    const gravityBox = (this.gravityBox = new Rectangle('gravityBox'));
     gravityBox.width = '260px';
     gravityBox.height = '54px';
     gravityBox.cornerRadius = 6;
@@ -173,10 +206,7 @@ export class HUD {
     title.fontWeight = 'bold';
     this.startOverlay.addControl(title);
 
-    const subtitle = new TextBlock(
-      'subtitle',
-      'Click to look around  •  WASD to move  •  Shift to run  •  Space to jump\nWalk up to a lever and press E to rotate gravity 90°\nR restarts the chamber  •  L opens chamber select\n\nClick anywhere to begin',
-    );
+    const subtitle = (this.subtitle = new TextBlock('subtitle', DESKTOP_SUBTITLE));
     subtitle.color = '#d8e6ff';
     subtitle.fontSize = 20;
     subtitle.top = '10px';
@@ -184,7 +214,7 @@ export class HUD {
     subtitle.lineSpacing = '6px';
     this.startOverlay.addControl(subtitle);
 
-    const selectButton = Button.CreateSimpleButton('openLevelSelect', 'CHAMBER SELECT  [L]');
+    const selectButton = (this.selectButton = Button.CreateSimpleButton('openLevelSelect', 'CHAMBER SELECT  [L]'));
     selectButton.width = '260px';
     selectButton.height = '44px';
     selectButton.top = '190px';
@@ -199,6 +229,41 @@ export class HUD {
     selectButton.pointerOutAnimation = () => (selectButton.background = 'rgba(20,28,40,0.85)');
     selectButton.onPointerClickObservable.add(() => this.onOpenLevelSelect());
     this.startOverlay.addControl(selectButton);
+
+    // Fullscreen (touch only): a button where the browser allows it, otherwise an install hint.
+    const fsButton = (this.fullscreenButton = Button.CreateSimpleButton('toggleFullscreen', 'FULLSCREEN'));
+    fsButton.width = '260px';
+    fsButton.height = '44px';
+    fsButton.top = '244px';
+    fsButton.cornerRadius = 6;
+    fsButton.color = 'rgba(255,255,255,0.6)';
+    fsButton.thickness = 1;
+    fsButton.background = 'rgba(20,28,40,0.85)';
+    fsButton.fontSize = 18;
+    fsButton.fontFamily = 'Consolas, monospace';
+    if (fsButton.textBlock) fsButton.textBlock.color = 'white';
+    fsButton.isVisible = false;
+    fsButton.onPointerClickObservable.add(() => this.onToggleFullscreen());
+    this.startOverlay.addControl(fsButton);
+    this.fullscreenHint = new TextBlock('fullscreenHint', 'Add to Home Screen for fullscreen');
+    this.fullscreenHint.color = '#ffd36b';
+    this.fullscreenHint.fontSize = 15;
+    this.fullscreenHint.height = '24px';
+    this.fullscreenHint.top = '244px';
+    this.fullscreenHint.isVisible = false;
+    this.startOverlay.addControl(this.fullscreenHint);
+
+    // Small notice while a new version is waiting; it is applied from the pause menu or between chambers.
+    this.updateNotice = new TextBlock('updateNotice', 'Update available \u2014 reload from the pause menu');
+    this.updateNotice.color = '#ffd36b';
+    this.updateNotice.fontSize = 13;
+    this.updateNotice.outlineColor = 'black';
+    this.updateNotice.outlineWidth = 3;
+    this.updateNotice.height = '20px';
+    this.updateNotice.top = '-36px';
+    this.updateNotice.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    this.updateNotice.isVisible = false;
+    this.ui.addControl(this.updateNotice);
 
     // Win overlay
     this.winOverlay = new Rectangle('winOverlay');
@@ -273,6 +338,11 @@ export class HUD {
     this.selectFooter.top = '-12px';
     this.selectFooter.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
     this.selectOverlay.addControl(this.selectFooter);
+  }
+
+  /** The GUI layer, so other overlays (the pause menu) can add themselves on top. */
+  public get texture(): AdvancedDynamicTexture {
+    return this.ui;
   }
 
   public get isLevelSelectOpen(): boolean {
@@ -353,6 +423,67 @@ export class HUD {
     this.startOverlay.isVisible = true;
   }
 
+  public get isStartOverlayVisible(): boolean {
+    return this.startOverlay.isVisible;
+  }
+
+  /** Switches prompts and labels to the wording of the device in use; touch also frees the top-right corner. */
+  public setDevice(device: InputDevice): void {
+    this.device = device;
+    const touch = device === 'touch';
+    this.subtitle.text = SUBTITLES[device];
+    this.keysLabel.isVisible = !touch;
+    this.refreshKeys();
+    // Leave the top-right corner to the touch RESTART / CHAMBERS buttons.
+    this.gravityBox.width = touch ? '210px' : '260px';
+    this.levelLabel.width = touch ? '34%' : '100%';
+    this.hintLabel.width = touch ? '34%' : '100%';
+    this.hintLabel.textWrapping = touch;
+    this.layoutStartButtons();
+  }
+
+  /** What the start overlay offers for fullscreen; shown on touch devices only. */
+  public configureFullscreen(mode: 'toggle' | 'hint' | 'none'): void {
+    this.fullscreenMode = mode;
+    this.layoutStartButtons();
+  }
+
+  public setFullscreenState(on: boolean): void {
+    if (this.fullscreenButton.textBlock) this.fullscreenButton.textBlock.text = on ? 'EXIT FULLSCREEN' : 'FULLSCREEN';
+  }
+
+  /** Shows or hides the "update available" notice. */
+  public setUpdateNotice(visible: boolean): void {
+    this.updateNotice.isVisible = visible;
+  }
+
+  /** On touch the start overlay's buttons sit along the bottom edge, where landscape phones have room. */
+  private layoutStartButtons(): void {
+    const touch = this.device === 'touch';
+    const fs = touch ? this.fullscreenMode : 'none';
+    this.fullscreenButton.isVisible = fs === 'toggle';
+    this.fullscreenHint.isVisible = fs === 'hint';
+    const bottom = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    const center = Control.VERTICAL_ALIGNMENT_CENTER;
+    if (touch) {
+      const side = fs === 'toggle';
+      this.selectButton.verticalAlignment = bottom;
+      this.selectButton.top = fs === 'hint' ? '-44px' : '-16px';
+      this.selectButton.left = side ? '-140px' : '0px';
+      this.selectButton.width = side ? '260px' : '280px';
+      this.fullscreenButton.verticalAlignment = bottom;
+      this.fullscreenButton.top = '-16px';
+      this.fullscreenButton.left = '140px';
+      this.fullscreenHint.verticalAlignment = bottom;
+      this.fullscreenHint.top = '-14px';
+    } else {
+      this.selectButton.verticalAlignment = center;
+      this.selectButton.top = '190px';
+      this.selectButton.left = '0px';
+      this.selectButton.width = '260px';
+    }
+  }
+
   public showWin(title: string, subtitle: string): void {
     this.winTitle.text = title;
     this.winSubtitle.text = subtitle;
@@ -368,13 +499,20 @@ export class HUD {
     this.hintLabel.text = hint;
   }
 
-  public setPrompt(visible: boolean, text = 'Press [E] to shift gravity'): void {
+  public setPrompt(visible: boolean, text?: string): void {
     this.prompt.isVisible = visible;
-    this.prompt.text = text;
+    this.prompt.text = text ?? USE_PROMPT[this.device];
   }
 
   public setSkin(label: string): void {
-    this.keysLabel.text = `WASD move · Shift run · Space jump · E use · R restart · L chambers · K skin${label ? `: ${label}` : ''}`;
+    this.skinLabel = label;
+    this.refreshKeys();
+  }
+
+  private refreshKeys(): void {
+    // Skins are switched with K on a keyboard only.
+    const label = this.device === 'keyboard' && this.skinLabel ? `: ${this.skinLabel}` : '';
+    this.keysLabel.text = KEYS_LABEL[this.device] + label;
   }
 
   public setGravityAxis(axis: GravityAxis, color = '#bfe3ff'): void {

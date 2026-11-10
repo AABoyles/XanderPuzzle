@@ -24,7 +24,8 @@ There is no linter or formatter. Match the existing style: 2-space indent, singl
 
 - `src/main.ts`: scene bootstrap, level loading and progression, skin switching, render loop, win check, `localStorage` persistence (keys prefixed `shiftbound.`).
 - `src/gravity/GravitySystem.ts`: the single current gravity axis and its change listeners.
-- `src/player/PlayerController.ts`: pointer-lock FPS controls and a kinematic body oriented by a smoothly interpolated "up" vector.
+- `src/input/`: `InputSource.ts` is the Babylon-free input interface (`InputFrame`, `mergeFrames`, `stickVector`, deadzone/look-curve maths) and `InputManager.ts` reads and merges the sources once per frame and tracks the last-used device (`lastDevice`, which drives HUD wording); both are tested by Node like `boxPhysics.ts` (import with explicit `.ts` extensions and no constructor parameter properties). `KeyboardMouseInput.ts`, `TouchInput.ts` and `GamepadInput.ts` implement `InputSource`; `main.ts` reads the manager once per frame and passes the frame to `PlayerController.update`.
+- `src/player/PlayerController.ts`: merges the input sources' frames and drives a kinematic body oriented by a smoothly interpolated "up" vector.
 - `src/level/Builder.ts`: the API chambers are written against (`box`, `slab`, `tube`, `grate`, `glass`, `barrier`, `addSwitch` (with `{ once }`), `addRelativeSwitch`, `addSequenceSwitch`, `addCrate`, `addPlate`, `addDoor`, `finish`), plus `V()` and the wall thickness `T`.
 - `src/gravity/axes.ts`: Babylon-free axis maths and the `GravitySequencer`; tested directly by Node like `boxPhysics.ts`.
 - `src/level/chambers/`: one file per chamber. `index.ts` exports `CHAMBERS` (the play order, each with the name shown in the chamber select), `LEVELS` and `buildSandbox`.
@@ -34,6 +35,11 @@ There is no linter or formatter. Match the existing style: 2-space indent, singl
 - `src/environment/`: what lies outside a chamber. `fall.ts` is the Babylon-free escape/fall maths (level bounds, `FallTracker`, planet distance), tested by Node like `boxPhysics.ts`; `SpaceBackdrop.ts` draws the stars, planet and speed streaks, visible only after an escape.
 - `src/skins/Skin.ts`: the skins (`axis`, `monolith`, `draft`, `neon`): per-axis materials, lighting, sky, post-processing.
 - `src/ui/HUD.ts`: Babylon GUI overlay.
+- `src/ui/PauseMenu.ts`: the pause menu (resume, restart, chamber select, fullscreen, update, settings, controls reference); added on top of the HUD's GUI texture. Keep its controls reference in sync with the real bindings.
+- `src/time.ts`: Babylon-free `simDelta`, the one clamped frame delta (`MAX_SIM_DELTA` = 1/20 s) that `main.ts` feeds every system; tested by Node.
+- `src/gravity/shiftSound.ts`: Babylon-free axis -> shift-sound mapping (`shiftTone`); tested by Node.
+- `src/settings.ts`: Babylon-free settings model (`Settings`, defaults, limits, `parseSettings`/`loadSettings`/`saveSettings`, `stepSetting`), stored as JSON under `shiftbound.settings`; tested by Node.
+- `src/pwa/`: `cachePolicy.ts` Babylon-free cache naming/strategy tested by Node; `sw.template.js` service worker source that `build/pwaPlugin.ts` fills with the precache list to emit `dist/sw.js`; `register.ts` production-only registration and update flow; `fullscreen.ts` fullscreen/standalone/orientation helpers.
 - `tests/`: `node:test` unit tests. They import source with explicit `.ts` extensions (`../src/physics/boxPhysics.ts`).
 
 ## Adding or changing a chamber

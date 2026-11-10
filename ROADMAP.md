@@ -71,6 +71,7 @@ What exists today: static axis-aligned boxes, wall-mounted levers that set gravi
 3. **Collision filtering** (XII). Done: `grate` (blocks the player, not crates), `glass` (see-through, blocks both) and `barrier` (blocks crates, not the player).
 4. **Gravity sequencer** (XIII). Done: `addSequenceSwitch` and a HUD countdown. Throwing any other lever stops the cycle.
 5. **Checkpoints.** Not done. Chambers VII onward are long enough that restarting from the entrance will sting.
+6. **Platform.** Done: touch controls, gamepad support, a pause menu with persistent settings and a controls reference, fullscreen with landscape lock, and an installable offline-capable web app. These are outside the chamber designs above.
 
 ## Before any of this
 

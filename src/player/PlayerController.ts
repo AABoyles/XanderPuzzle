@@ -10,13 +10,14 @@ import {
   Vector3,
 } from '@babylonjs/core';
 import { GravitySystem } from '../gravity/GravitySystem';
+import type { InputManager } from '../input/InputManager';
+import type { InputFrame } from '../input/InputSource';
 
 const RADIUS = 0.5;
 const EYE_OFFSET = 0.35; // above the collider center
 const MOVE_SPEED = 6.5;
 const JUMP_SPEED = 8.5;
 const REORIENT_SPEED = 6; // higher = snappier catch-up to the new "up"
-const MOUSE_SENSITIVITY = 0.0022;
 const PITCH_LIMIT = (89 * Math.PI) / 180;
 
 const tmpMatrix = new Matrix();
@@ -37,8 +38,11 @@ export class PlayerController {
   public readonly camera: UniversalCamera;
 
   private readonly scene: Scene;
-  private readonly canvas: HTMLCanvasElement;
+  private readonly input: InputManager;
   private readonly gravity: GravitySystem;
+
+  /** Snap to the new orientation on a gravity change instead of rolling into it. */
+  public reducedMotion = false;
 
   private alignRot = Quaternion.Identity();
   private yaw = 0;
@@ -46,32 +50,12 @@ export class PlayerController {
   private verticalSpeed = 0;
   private grounded = false;
 
-  private readonly keys = new Set<string>();
   private jumpQueued = false;
   private interactQueued = false;
-  private mouseDX = 0;
-  private mouseDY = 0;
 
-  private readonly onKeyDown = (e: KeyboardEvent) => {
-    this.keys.add(e.code);
-    if (e.code === 'Space') this.jumpQueued = true;
-    if (e.code === 'KeyE') this.interactQueued = true;
-  };
-  private readonly onKeyUp = (e: KeyboardEvent) => this.keys.delete(e.code);
-  private readonly onMouseMove = (e: MouseEvent) => {
-    if (document.pointerLockElement !== this.canvas) return;
-    this.mouseDX += e.movementX;
-    this.mouseDY += e.movementY;
-  };
-  private readonly onCanvasClick = () => {
-    if (!this.pointerLockSuspended && document.pointerLockElement !== this.canvas) {
-      this.canvas.requestPointerLock();
-    }
-  };
-
-  constructor(scene: Scene, canvas: HTMLCanvasElement, gravity: GravitySystem, spawnPosition: Vector3) {
+  constructor(scene: Scene, gravity: GravitySystem, spawnPosition: Vector3, input: InputManager) {
     this.scene = scene;
-    this.canvas = canvas;
+    this.input = input;
     this.gravity = gravity;
 
     // Initialise the alignment so the player already faces the level's natural up.
@@ -90,18 +74,6 @@ export class PlayerController {
     this.camera.inputs.clear();
     this.camera.rotationQuaternion = this.alignRot.clone();
     scene.activeCamera = this.camera;
-
-    window.addEventListener('keydown', this.onKeyDown);
-    window.addEventListener('keyup', this.onKeyUp);
-    document.addEventListener('mousemove', this.onMouseMove);
-    canvas.addEventListener('click', this.onCanvasClick);
-  }
-
-  /** While true (e.g. a menu is open), clicking the canvas doesn't grab the pointer. */
-  public pointerLockSuspended = false;
-
-  public get isPointerLocked(): boolean {
-    return document.pointerLockElement === this.canvas;
   }
 
   public get position(): Vector3 {
@@ -124,6 +96,8 @@ export class PlayerController {
     this.verticalSpeed = 0;
     this.jumpQueued = false;
     this.interactQueued = false;
+    // Drain pending edges and look deltas so a queued press doesn't fire after the restart.
+    this.input.drain();
   }
 
   /** Sets the view direction relative to the current up (radians; positive pitch looks down). */
@@ -136,7 +110,8 @@ export class PlayerController {
     return this.grounded;
   }
 
-  public update(dt: number): void {
+  /** Advances one frame. `input` is this frame's merged input, read once by the caller. */
+  public update(dt: number, input: InputFrame): void {
     dt = Math.min(dt, 1 / 20);
 
     // --- Smoothly chase the level's true "up" -------------------------------------------------
@@ -156,20 +131,19 @@ export class PlayerController {
         const angle = Math.acos(dot);
         const delta = Quaternion.RotationAxis(axis, angle);
         const fullTarget = delta.multiply(this.alignRot);
-        const t = 1 - Math.exp(-REORIENT_SPEED * dt);
+        // Reduced motion snaps straight to the target (same shortest rotation, so the look direction carries over).
+        const t = this.reducedMotion ? 1 : 1 - Math.exp(-REORIENT_SPEED * dt);
         Quaternion.SlerpToRef(this.alignRot, fullTarget, t, this.alignRot);
         this.alignRot.normalize();
       }
     }
     const up = rotate(Vector3.Up(), this.alignRot);
 
-    // --- Mouse look ----------------------------------------------------------------------------
-    if (this.isPointerLocked) {
-      this.yaw += this.mouseDX * MOUSE_SENSITIVITY;
-      this.pitch = Scalar.Clamp(this.pitch + this.mouseDY * MOUSE_SENSITIVITY, -PITCH_LIMIT, PITCH_LIMIT);
-    }
-    this.mouseDX = 0;
-    this.mouseDY = 0;
+    // --- Look ------------------------------------------------------------------------------------
+    if (input.jump) this.jumpQueued = true;
+    if (input.interact) this.interactQueued = true;
+    this.yaw += input.lookX;
+    this.pitch = Scalar.Clamp(this.pitch + input.lookY, -PITCH_LIMIT, PITCH_LIMIT);
 
     const yawQuat = Quaternion.RotationAxis(Vector3.Up(), this.yaw);
     const pitchQuat = Quaternion.RotationAxis(Vector3.Right(), this.pitch);
@@ -186,18 +160,11 @@ export class PlayerController {
     this.grounded = !!hit && !!hit.hit;
 
     // --- Horizontal input --------------------------------------------------------------------------
-    let moveX = 0;
-    let moveZ = 0;
-    if (this.keys.has('KeyW')) moveZ += 1;
-    if (this.keys.has('KeyS')) moveZ -= 1;
-    if (this.keys.has('KeyD')) moveX += 1;
-    if (this.keys.has('KeyA')) moveX -= 1;
-
     const horizontal = new Vector3(0, 0, 0);
-    if (moveX !== 0 || moveZ !== 0) {
-      horizontal.addInPlace(forward.scale(moveZ));
-      horizontal.addInPlace(right.scale(moveX));
-      horizontal.normalize().scaleInPlace(this.keys.has('ShiftLeft') ? MOVE_SPEED * 1.6 : MOVE_SPEED);
+    if (input.moveX !== 0 || input.moveZ !== 0) {
+      horizontal.addInPlace(forward.scale(input.moveZ));
+      horizontal.addInPlace(right.scale(input.moveX));
+      horizontal.scaleInPlace(input.sprint ? MOVE_SPEED * 1.6 : MOVE_SPEED);
     }
 
     // --- Vertical (gravity + jump) -------------------------------------------------------------
@@ -220,10 +187,6 @@ export class PlayerController {
   }
 
   public dispose(): void {
-    window.removeEventListener('keydown', this.onKeyDown);
-    window.removeEventListener('keyup', this.onKeyUp);
-    document.removeEventListener('mousemove', this.onMouseMove);
-    this.canvas.removeEventListener('click', this.onCanvasClick);
     this.collider.dispose();
     this.camera.dispose();
   }
