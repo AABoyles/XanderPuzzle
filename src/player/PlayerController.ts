@@ -41,6 +41,9 @@ export class PlayerController {
   private readonly input: InputManager;
   private readonly gravity: GravitySystem;
 
+  /** Snap to the new orientation on a gravity change instead of rolling into it. */
+  public reducedMotion = false;
+
   private alignRot = Quaternion.Identity();
   private yaw = 0;
   private pitch = 0;
@@ -128,7 +131,8 @@ export class PlayerController {
         const angle = Math.acos(dot);
         const delta = Quaternion.RotationAxis(axis, angle);
         const fullTarget = delta.multiply(this.alignRot);
-        const t = 1 - Math.exp(-REORIENT_SPEED * dt);
+        // Reduced motion snaps straight to the target (same shortest rotation, so the look direction carries over).
+        const t = this.reducedMotion ? 1 : 1 - Math.exp(-REORIENT_SPEED * dt);
         Quaternion.SlerpToRef(this.alignRot, fullTarget, t, this.alignRot);
         this.alignRot.normalize();
       }

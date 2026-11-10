@@ -16,7 +16,7 @@ export interface Settings {
   /** Master volume, 0-100. */
   volume: number;
   muted: boolean;
-  /** Stored for the reorientation and flash effects to honour; nothing reads it yet. */
+  /** Snaps the camera to a new gravity instead of rolling into it (the OS preference also forces this). */
   reducedMotion: boolean;
   /** Vertical field of view in degrees. */
   fov: number;

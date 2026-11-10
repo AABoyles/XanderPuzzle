@@ -30,7 +30,7 @@ Any standard-mapping controller works; no pointer lock is needed. Press **A** or
 
 **Esc** pauses (the browser releases the mouse, and the pause menu opens); everything freezes until you resume. On a gamepad press **Start**, on a touch device tap **⏸**. The menu has Resume, Restart chamber, Chamber select, Fullscreen (where the browser allows it), Settings and a Controls reference, which opens on the device you used last. Use the mouse, arrows/WASD with Enter, the gamepad, or touch. Resume and Enter capture the mouse again; if the browser refuses just after Esc, the menu stays open so you can try again.
 
-Settings apply immediately and are remembered in `localStorage` (`shiftbound.settings`; defaults are used if storage is unavailable): mouse sensitivity, touch look sensitivity and gamepad look speed (25%-300%), invert Y (all devices), master volume and mute, reduced motion (saved for the upcoming motion effects), and field of view (50-100 degrees; the default is the original view).
+Settings apply immediately and are remembered in `localStorage` (`shiftbound.settings`; defaults are used if storage is unavailable): mouse sensitivity, touch look sensitivity and gamepad look speed (25%-300%), invert Y (all devices), master volume and mute, reduced motion (snaps the camera on a gravity shift instead of rolling; also on if the OS asks for reduced motion), and field of view (50-100 degrees; the default is the original view).
 
 ### Install and play offline
 

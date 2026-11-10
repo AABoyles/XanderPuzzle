@@ -11,6 +11,8 @@ import { TouchInput } from './input/TouchInput';
 import { PlayerController } from './player/PlayerController';
 import { canFullscreen, isFullscreen, isIOS, isStandalone, onFullscreenChange, toggleFullscreen } from './pwa/fullscreen';
 import { registerServiceWorker } from './pwa/register';
+import { shiftTone } from './gravity/shiftSound';
+import { simDelta } from './time';
 import { fovToRadians, loadSettings, masterGain, saveSettings } from './settings';
 import type { Settings, SettingsStorage } from './settings';
 import { createSkin, SKIN_IDS, SKIN_LABELS, SkinId } from './skins/Skin';
@@ -87,6 +89,12 @@ const settingsStorage = (): SettingsStorage | null => {
   }
 };
 let settings: Settings = loadSettings(settingsStorage());
+const motionQuery = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+/** The OS preference. */
+const systemReducedMotion = (): boolean => motionQuery?.matches ?? false;
+/** Reduced motion applies if either the setting or the OS asks for it. */
+const reducedMotionActive = (): boolean => settings.reducedMotion || systemReducedMotion();
+motionQuery?.addEventListener?.('change', () => applySettings());
 /** Pushes the current settings into the input sources and the camera. Volume and mute are read by `beep`. */
 function applySettings(): void {
   keyboardMouse.lookScale = settings.mouseSensitivity;
@@ -94,6 +102,7 @@ function applySettings(): void {
   gamepad.lookScale = settings.gamepadLookSpeed;
   input.invertY = settings.invertY; // for every device; GamepadInput.invertY stays off so it isn't applied twice
   player.camera.fov = fovToRadians(settings.fov);
+  player.reducedMotion = reducedMotionActive();
 }
 applySettings();
 
@@ -112,6 +121,7 @@ hud.setFullscreenState(isFullscreen());
 const pauseMenu = new PauseMenu({
   texture: hud.texture,
   getSettings: () => settings,
+  systemReducedMotion,
   onSettingsChange: (next, changed) => {
     settings = next;
     saveSettings(settingsStorage(), settings);
@@ -159,6 +169,7 @@ let planetDir = gravity.direction.asArray() as Vec3;
 const lastPosition = player.position.clone();
 
 let hasWon = false;
+/** Simulated seconds in this chamber: accumulates the clamped `dt`, so a hitch or hidden tab can't change a best time. */
 let levelTime = 0;
 let shifts = 0;
 const finishedAll = () => levelIndex >= LEVELS.length - 1;
@@ -451,8 +462,14 @@ function beep(from: number, to: number, duration: number, type: OscillatorType =
   }
 }
 
+function shiftSound(axis: GravityAxis): void {
+  const t = shiftTone(axis);
+  beep(t.from, t.to, t.duration, t.type, 0.08);
+}
+
 engine.runRenderLoop(() => {
-  const dt = engine.getDeltaTime() / 1000;
+  // The one frame delta every system uses: clamped so a hitch or hidden tab advances them all by the same bounded step.
+  const dt = simDelta(engine.getDeltaTime() / 1000);
   const frame = input.read(dt);
   const pad = gamepad.menu;
   // Actions below use up this frame's presses, so the player doesn't also act on them.
@@ -519,7 +536,7 @@ engine.runRenderLoop(() => {
         // Taking gravity back by hand stops a running sequence.
         if (sw.spec.kind !== 'sequence') level.sequencer?.stop();
         shifts++;
-        beep(660, 110, 0.5, 'sawtooth', 0.08);
+        shiftSound(gravity.axis);
       }
     }
     const anyInRange = target !== undefined;
@@ -535,7 +552,7 @@ engine.runRenderLoop(() => {
       if (next) {
         gravity.setAxis(next);
         shifts++;
-        beep(660, 110, 0.5, 'sawtooth', 0.08);
+        shiftSound(next);
       } else if (seq.remaining < 3 && Math.ceil(seq.remaining) !== Math.ceil(seq.remaining + dt)) {
         // Tick on each of the last three seconds.
         beep(880, 880, 0.05, 'square', 0.05);

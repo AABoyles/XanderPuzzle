@@ -80,6 +80,8 @@ const FOOTER: Record<InputDevice, string> = {
 export interface PauseMenuOptions {
   texture: AdvancedDynamicTexture;
   getSettings: () => Settings;
+  /** True if the OS asks for reduced motion, which applies whatever the setting says. */
+  systemReducedMotion?: () => boolean;
   /** Called with the new settings, and which numeric/boolean field changed (undefined for a full reset). */
   onSettingsChange: (next: Settings, changed?: keyof Settings) => void;
   fullscreen: () => FullscreenState;
@@ -286,6 +288,16 @@ export class PauseMenu {
     };
   }
 
+  private reducedMotionRow(): Row {
+    const on = () => this.opts.getSettings().reducedMotion;
+    return {
+      kind: 'toggle',
+      label: 'Reduced motion',
+      value: () => (on() ? 'ON' : this.opts.systemReducedMotion?.() ? 'ON (system)' : 'OFF'),
+      adjust: () => this.opts.onSettingsChange({ ...this.opts.getSettings(), reducedMotion: !on() }, 'reducedMotion'),
+    };
+  }
+
   private settingsRows(): Row[] {
     return [
       this.slider('Mouse sensitivity', 'mouseSensitivity'),
@@ -294,7 +306,7 @@ export class PauseMenu {
       this.toggle('Invert Y', 'invertY'),
       this.slider('Master volume', 'volume'),
       this.toggle('Mute', 'muted'),
-      this.toggle('Reduced motion', 'reducedMotion'),
+      this.reducedMotionRow(),
       this.slider('Field of view', 'fov'),
       {
         kind: 'button',
