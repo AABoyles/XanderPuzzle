@@ -1,21 +1,18 @@
-import {
-  Color3,
-  Color4,
-  DirectionalLight,
-  DynamicTexture,
-  GlowLayer,
-  HemisphericLight,
-  ImageProcessingConfiguration,
-  Material,
-  Mesh,
-  MeshBuilder,
-  Scene,
-  ShadowGenerator,
-  StandardMaterial,
-  Texture,
-  Vector3,
-} from '@babylonjs/core';
-import { GridMaterial } from '@babylonjs/materials';
+import { Color3, Color4 } from '@babylonjs/core/Maths/math.color';
+import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight';
+import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture';
+import { GlowLayer } from '@babylonjs/core/Layers/glowLayer';
+import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight';
+import { ImageProcessingConfiguration } from '@babylonjs/core/Materials/imageProcessingConfiguration';
+import { Material } from '@babylonjs/core/Materials/material';
+import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import { CreateSphere } from '@babylonjs/core/Meshes/Builders/sphereBuilder';
+import { Scene } from '@babylonjs/core/scene';
+import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator';
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
+import { Texture } from '@babylonjs/core/Materials/Textures/texture';
+import { Vector3 } from '@babylonjs/core/Maths/math.vector';
+import { GridMaterial } from '@babylonjs/materials/grid/gridMaterial';
 import { GravityAxis } from '../gravity/GravitySystem';
 
 /**
@@ -98,7 +95,7 @@ interface Environment {
 
 /** Lights, sky, fog and post-processing for a skin. Returns what it made, for disposal. */
 function applyEnvironment(scene: Scene, glow: GlowLayer, env: Environment) {
-  const sky = MeshBuilder.CreateSphere('sky', { diameter: 900, sideOrientation: Mesh.BACKSIDE }, scene);
+  const sky = CreateSphere('sky', { diameter: 900, sideOrientation: Mesh.BACKSIDE }, scene);
   const skyTex = new DynamicTexture('skyGradient', { width: 4, height: 256 }, scene, false);
   const ctx = skyTex.getContext();
   const grad = ctx.createLinearGradient(0, 0, 0, 256);

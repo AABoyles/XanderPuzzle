@@ -1,13 +1,12 @@
-import {
-  Color3,
-  Mesh,
-  MeshBuilder,
-  Quaternion,
-  Scene,
-  StandardMaterial,
-  TransformNode,
-  Vector3,
-} from '@babylonjs/core';
+import { Color3 } from '@babylonjs/core/Maths/math.color';
+import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder';
+import { CreateCylinder } from '@babylonjs/core/Meshes/Builders/cylinderBuilder';
+import { CreateTorus } from '@babylonjs/core/Meshes/Builders/torusBuilder';
+import { Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector';
+import { Scene } from '@babylonjs/core/scene';
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
+import { TransformNode } from '@babylonjs/core/Meshes/transformNode';
 import { axisOf, GravitySequencer, rotateClockwise } from '../gravity/axes';
 import { GravityAxis, GravitySystem } from '../gravity/GravitySystem';
 
@@ -62,7 +61,7 @@ export class GravitySwitch {
     this.root = new TransformNode(`switchRoot_${spec.kind}_${position.toString()}`, scene);
     this.root.position = this.position;
 
-    const base = MeshBuilder.CreateCylinder('switchBase', { diameter: 1.1, height: 0.25, tessellation: 12 }, scene);
+    const base = CreateCylinder('switchBase', { diameter: 1.1, height: 0.25, tessellation: 12 }, scene);
     const baseMat = new StandardMaterial('switchBaseMat', scene);
     baseMat.diffuseColor = new Color3(0.15, 0.15, 0.18);
     baseMat.specularColor = new Color3(0.2, 0.2, 0.2);
@@ -72,7 +71,7 @@ export class GravitySwitch {
     base.rotationQuaternion = GravitySwitch.rotationFromUp(wallNormal);
     base.position = wallNormal.scale(0.13);
 
-    this.lever = MeshBuilder.CreateBox('switchLever', { width: 0.32, height: 0.32, depth: 0.75 }, scene);
+    this.lever = CreateBox('switchLever', { width: 0.32, height: 0.32, depth: 0.75 }, scene);
     this.glowMat = new StandardMaterial('switchLeverMat', scene);
     this.lever.material = this.glowMat;
     this.lever.parent = this.root;
@@ -82,7 +81,7 @@ export class GravitySwitch {
 
     // Relative levers wear a ring flush with the wall; sequence levers a ring of four studs.
     if (spec.kind === 'relative') {
-      const ring = MeshBuilder.CreateTorus('switchRing', { diameter: 1.7, thickness: 0.12, tessellation: 24 }, scene);
+      const ring = CreateTorus('switchRing', { diameter: 1.7, thickness: 0.12, tessellation: 24 }, scene);
       ring.material = this.glowMat;
       ring.parent = this.root;
       ring.position = wallNormal.scale(0.12);
@@ -91,7 +90,7 @@ export class GravitySwitch {
     } else if (spec.kind === 'sequence') {
       const q = GravitySwitch.rotationFromUp(wallNormal);
       for (let i = 0; i < 4; i++) {
-        const stud = MeshBuilder.CreateBox('switchStud', { size: 0.22 }, scene);
+        const stud = CreateBox('switchStud', { size: 0.22 }, scene);
         stud.material = this.glowMat;
         stud.parent = this.root;
         const a = (i * Math.PI) / 2;
@@ -103,7 +102,7 @@ export class GravitySwitch {
 
     // Arrow showing which way "down" will be once the lever is thrown.
     const arrowShape = { diameterTop: 0, diameterBottom: 0.45, height: 0.7 };
-    this.arrow = MeshBuilder.CreateCylinder('switchArrow', arrowShape, scene);
+    this.arrow = CreateCylinder('switchArrow', arrowShape, scene);
     this.arrow.material = this.glowMat;
     this.arrow.parent = this.root;
     parts.push(this.arrow);

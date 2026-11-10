@@ -14,6 +14,7 @@ npm run dev       # Vite dev server on :5173 (host: true)
 npm run build     # tsc -b && vite build -> dist/
 npm test          # node --experimental-strip-types --test tests/*.test.ts (Node 22.6+)
 npx tsc -b        # typecheck only
+npm run test:e2e  # Playwright chamber smoke tests (needs `npx playwright install chromium` once)
 ```
 
 Before you call a change done, run `npx tsc -b` and `npm test`. CI (`.github/workflows/test.yml`) runs exactly these on every PR and push to `main`, and the job name `Unit tests` is a required status check, so don't rename it. `build.yml` deploys `dist/` to Pages on push to `main`.
@@ -22,6 +23,7 @@ There is no linter or formatter. Match the existing style: 2-space indent, singl
 
 ## Layout
 
+- `src/babylonSideEffects.ts`: side-effect imports (collisions, picking, edges, glow, shadows, particles, engine extensions) that deep Babylon imports no longer pull in. `main.ts` imports it first.
 - `src/main.ts`: scene bootstrap, level loading and progression, skin switching, render loop, win check, `localStorage` persistence (keys prefixed `shiftbound.`). Progress lives in `src/progress.ts` (`shiftbound.progress`, keyed by each chamber's stable `id` in `CHAMBERS`; never change or reuse an id). `?unlockall` must never write progress. It holds no game-flow flags: it sends events to `GameState` and reacts in its `game.onChange` handler.
 - `src/game/GameState.ts`: the game-flow state machine (`title`, `playing`, `falling`, `paused`, `chamberSelect`, `won`): a pure `transition(state, event)` table, derived queries (`simulates`, `isFrozen`, `viewOf`, ...) and the `GameState` holder. Babylon-free and tested by Node (`tests/gameState.test.ts`). To add a state, add its kind and transition rows and its answers to the queries there, extend the tests, and add an `onChange` branch in `main.ts` only if it has a visible effect.
 - `src/gravity/GravitySystem.ts`: the single current gravity axis and its change listeners.
@@ -41,6 +43,7 @@ There is no linter or formatter. Match the existing style: 2-space indent, singl
 - `src/gravity/shiftSound.ts`: Babylon-free axis -> shift-sound mapping (`shiftTone`); tested by Node.
 - `src/settings.ts`: Babylon-free settings model (`Settings`, defaults, limits, `parseSettings`/`loadSettings`/`saveSettings`, `stepSetting`), stored as JSON under `shiftbound.settings`; tested by Node.
 - `src/pwa/`: `cachePolicy.ts` Babylon-free cache naming/strategy tested by Node; `sw.template.js` service worker source that `build/pwaPlugin.ts` fills with the precache list to emit `dist/sw.js`; `register.ts` production-only registration and update flow; `fullscreen.ts` fullscreen/standalone/orientation helpers.
+- `e2e/`: Playwright chamber smoke tests (`chambers.spec.ts`), run against the Vite dev server by `playwright.config.ts`.
 - `tests/`: `node:test` unit tests. They import source with explicit `.ts` extensions (`../src/physics/boxPhysics.ts`).
 
 ## Adding or changing a chamber
@@ -51,6 +54,7 @@ There is no linter or formatter. Match the existing style: 2-space indent, singl
 
 Conventions and pitfalls:
 
+- Import Babylon from deep module paths (`@babylonjs/core/Maths/math.vector`, `@babylonjs/core/Meshes/Builders/boxBuilder` for `CreateBox`, `@babylonjs/gui/2D/controls/button`), never from a package root; the roots pull in most of the engine. A feature that fails at runtime with "needs to be imported" (or silently does nothing, like collisions) needs a side-effect import in `src/babylonSideEffects.ts`, with a comment saying why.
 - Everything is axis-aligned boxes. Every box face is the floor under exactly one gravity axis (the one pointing into it), and skins colour faces by that axis. Don't add rotated geometry.
 - Use surface roles deliberately: `b.wall`/`b.floor` (shell), `b.alcove` for corridors, `b.exit` for the exit path and anything the player must find, and the default `feature` for interior obstacles.
 - Holes cut with `slab(..., hole)` run to the slab's edge, which can leave a floor gap under a doorway. Fill it with a sill `box` (see the existing chambers).
@@ -59,6 +63,8 @@ Conventions and pitfalls:
 - Every mesh, material and listener a level creates must be released in `dispose()`. Go through `Builder` so `finish()` handles this; skin sub-materials outlive levels and must not be disposed with them.
 
 ## Verifying gameplay
+
+`npm run test:e2e` (CI job `Chamber smoke tests`, `.github/workflows/e2e.yml`) loads every chamber and replays its gravity route by teleporting to each lever via `window.__debug`. When you add a chamber, add a row to `ROWS` in `e2e/chambers.spec.ts` (same order as `CHAMBERS`): the lever indexes (order of the `addSwitch` calls, see `__debug.switches()`) and the gravity expected after each throw. When you reorder or add levers or change a chamber's route, update its row; keep the suite passing. It does not walk the player, so it still does not replace a manual playtest.
 
 Typecheck and unit tests do not tell you whether a chamber can be completed. When you change geometry, lever placement, or player movement constants (jump height, air control, lever reach), say plainly that the change still needs a manual playtest, and say what to check: can each lever be reached from the surface the previous shift leaves you on, and can the exit be reached. Don't claim a chamber works because it builds.
 

@@ -89,6 +89,8 @@ Then open the printed local URL, click into the canvas to lock the pointer, and 
 
 Gravity-driven crates, pressure plates and plate-controlled doors (`Builder.addCrate` / `addPlate` / `addDoor`) appear from chamber VIII on. `Builder.grate` (blocks you, not crates), `glass` (see-through, blocks both) and `barrier` (blocks crates, not you) filter who collides with what. Open the dev server with `?sandbox` in the URL for a test room. `npm test` runs the unit tests for the box physics and the gravity-axis maths.
 
+`npm run test:e2e` runs the chamber smoke tests (Playwright, headless Chromium with software WebGL) against the Vite dev server, which it starts itself on port 5174; `__debug` exists only in dev builds, so it never uses the production bundle. Run `npx playwright install chromium` once first (add `--with-deps` on a bare Linux box). Each chamber is loaded, checked for browser errors and a grounded spawn, then "solved" by teleporting to each lever in its route and throwing it, and finally to the exit. Walking between levers and to the exit is not tested. On failure, screenshots land in `test-results/` and an HTML report in `playwright-report/` (`npx playwright show-report`); CI uploads both.
+
 ## Project layout
 
 - `src/gravity/GravitySystem.ts` — owns the single "which way is down" axis and notifies listeners when it changes.
