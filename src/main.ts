@@ -1,5 +1,5 @@
 import { Color4, Engine, GlowLayer, Scene, Vector3 } from '@babylonjs/core';
-import { GravitySystem } from './gravity/GravitySystem';
+import { GravityAxis, GravitySystem } from './gravity/GravitySystem';
 import { buildSandbox, LEVELS as CHAMBERS } from './level/chambers';
 import { PlayerController } from './player/PlayerController';
 import { createSkin, SKIN_IDS, SKIN_LABELS, SkinId } from './skins/Skin';
@@ -134,17 +134,35 @@ engine.runRenderLoop(() => {
     // Only the nearest usable lever responds, so two levers within reach never both fire.
     let target: (typeof level.switches)[number] | undefined;
     for (const sw of level.switches) {
-      if (!sw.isInRange(player.position) || !gravity.isAdjacentTo(sw.targetAxis)) continue;
+      if (!sw.isInRange(player.position) || !sw.canUse(gravity.axis)) continue;
       if (!target || sw.distanceTo(player.position) < target.distanceTo(player.position)) target = sw;
     }
     for (const sw of level.switches) {
       if (sw.update(dt, gravity, player.position, interactPressed && sw === target)) {
+        // Taking gravity back by hand stops a running sequence.
+        if (sw.spec.kind !== 'sequence') level.sequencer?.stop();
         shifts++;
         beep(660, 110, 0.5, 'sawtooth', 0.08);
       }
     }
     const anyInRange = target !== undefined;
-    hud.setPrompt(anyInRange);
+    hud.setPrompt(anyInRange, target?.spec.kind === 'sequence' ? 'Press [E] to start the cycle' : undefined);
+
+    const seq = level.sequencer;
+    if (seq?.active) {
+      const next = seq.update(dt);
+      if (next) {
+        gravity.setAxis(next);
+        shifts++;
+        beep(660, 110, 0.5, 'sawtooth', 0.08);
+      } else if (seq.remaining < 3 && Math.ceil(seq.remaining) !== Math.ceil(seq.remaining + dt)) {
+        // Tick on each of the last three seconds.
+        beep(880, 880, 0.05, 'square', 0.05);
+      }
+      hud.setSequence(seq.next, seq.remaining, skin.hudColor(seq.next));
+    } else {
+      hud.setSequence(null);
+    }
 
     const dyn = level.update(dt, gravity.vector, player.position);
     if (dyn.impact > 4) beep(90, 45, 0.18, 'square', Math.min(0.2, dyn.impact / 150));
@@ -187,5 +205,18 @@ if (import.meta.env.DEV) {
     crates: () => level.dynamics.crates.map((c) => [...c.body.center]),
     plates: () => level.dynamics.plates.map((pl) => pl.pressed),
     doors: () => level.dynamics.doors.map((d) => d.isOpen),
+    switches: () =>
+      level.switches.map((sw) => ({
+        kind: sw.spec.kind,
+        target: sw.targetFor(gravity.axis),
+        spent: sw.spent,
+        inRange: sw.isInRange(player.position),
+      })),
+    /** Presses E for one frame, as the player would. */
+    interact: () => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE' })),
+    setGravity: (axis: GravityAxis) => gravity.setAxis(axis),
+    grounded: () => player.isGrounded,
+    levelCount: () => LEVELS.length,
+    exit: () => ({ center: level.exitCenter.asArray(), radius: level.exitRadius }),
   };
 }

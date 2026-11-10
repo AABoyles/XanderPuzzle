@@ -1,7 +1,7 @@
 import { Observable, Vector3 } from '@babylonjs/core';
+import { GravityAxis } from './axes';
 
-/** The six axis-aligned directions gravity can point in. */
-export type GravityAxis = '+X' | '-X' | '+Y' | '-Y' | '+Z' | '-Z';
+export type { GravityAxis } from './axes';
 
 const AXIS_VECTORS: Record<GravityAxis, Vector3> = {
   '+X': new Vector3(1, 0, 0),

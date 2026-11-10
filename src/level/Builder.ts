@@ -1,8 +1,21 @@
-import { Color3, Mesh, MeshBuilder, MultiMaterial, Scene, SubMesh, Vector3, VertexBuffer } from '@babylonjs/core';
+import {
+  Color3,
+  Material,
+  Mesh,
+  MeshBuilder,
+  MultiMaterial,
+  Scene,
+  StandardMaterial,
+  SubMesh,
+  Vector3,
+  VertexBuffer,
+} from '@babylonjs/core';
+import { GridMaterial } from '@babylonjs/materials';
+import { GravitySequencer } from '../gravity/axes';
 import { GravityAxis } from '../gravity/GravitySystem';
 import { Door, DynamicsEvents, LevelDynamics, PressurePlate } from './Dynamics';
 import { Crate } from './Dynamics';
-import { GravitySwitch } from './GravitySwitch';
+import { GravitySwitch, LeverSpec } from './GravitySwitch';
 import { Aabb } from '../physics/boxPhysics';
 import { AXIS_ORDER, SkinRuntime, SurfaceRole } from '../skins/Skin';
 
@@ -16,6 +29,8 @@ export interface BuiltLevel {
   exitCenter: Vector3;
   exitRadius: number;
   dynamics: LevelDynamics;
+  /** The timed gravity cycle started by this level's sequence lever, if it has one. */
+  sequencer?: GravitySequencer;
   /** Advances crates, plates and doors. */
   update(dt: number, gravity: Vector3, playerPos: Vector3): DynamicsEvents;
   dispose(): void;
@@ -32,12 +47,14 @@ export class Builder {
   public readonly switches: GravitySwitch[] = [];
   public readonly solids: Aabb[] = [];
   public readonly dynamics = new LevelDynamics(this.solids);
+  public sequencer?: GravitySequencer;
   /** Surface roles, named for how level code uses them. */
   public readonly wall: SurfaceRole = 'shell';
   public readonly floor: SurfaceRole = 'shell';
   public readonly alcove: SurfaceRole = 'alcove';
   public readonly exit: SurfaceRole = 'exit';
   private readonly multiMaterials = new Map<SurfaceRole, MultiMaterial>();
+  private readonly ownMaterials: Material[] = [];
   private n = 0;
 
   constructor(
@@ -137,10 +154,96 @@ export class Builder {
     if (has('+z')) this.slab('z', max.z, max.z + T, [min.x, max.x], [min.y, max.y], material);
   }
 
-  public addSwitch(position: Vector3, wallNormal: Vector3, target: GravityAxis): void {
-    const sw = new GravitySwitch(this.scene, position, wallNormal, target, this.skin.leverColor(target));
+  /** A lever that sets gravity to `target`. With `once`, it can only be thrown once. */
+  public addSwitch(
+    position: Vector3,
+    wallNormal: Vector3,
+    target: GravityAxis,
+    opts: { once?: boolean } = {},
+  ): GravitySwitch {
+    return this.lever(position, wallNormal, { kind: 'fixed', target }, opts.once);
+  }
+
+  /** A lever that turns gravity a quarter turn clockwise around the wall it is mounted on. */
+  public addRelativeSwitch(position: Vector3, wallNormal: Vector3, opts: { once?: boolean } = {}): GravitySwitch {
+    return this.lever(position, wallNormal, { kind: 'relative' }, opts.once);
+  }
+
+  /**
+   * A lever that starts gravity cycling through `axes`, one step every `period` seconds, until
+   * any other lever is thrown. A level has at most one sequence.
+   */
+  public addSequenceSwitch(position: Vector3, wallNormal: Vector3, axes: GravityAxis[], period: number): GravitySwitch {
+    if (this.sequencer) throw new Error('A level has at most one gravity sequence');
+    this.sequencer = new GravitySequencer(axes, period);
+    return this.lever(position, wallNormal, { kind: 'sequence', sequencer: this.sequencer });
+  }
+
+  private lever(position: Vector3, wallNormal: Vector3, spec: LeverSpec, once = false): GravitySwitch {
+    const sw = new GravitySwitch(this.scene, position, wallNormal, spec, (a) => this.skin.leverColor(a), once);
     sw.root.getChildMeshes().forEach((m) => this.skin.decorateProp(m as Mesh));
     this.switches.push(sw);
+    return sw;
+  }
+
+  private plainBox(name: string, min: Vector3, max: Vector3, material: Material): Mesh {
+    const size = max.subtract(min);
+    const dims = { width: size.x, height: size.y, depth: size.z };
+    const m = MeshBuilder.CreateBox(`${name}_${this.n++}`, dims, this.scene);
+    m.position = min.add(max).scale(0.5);
+    m.material = material;
+    m.isPickable = true;
+    m.freezeWorldMatrix();
+    this.meshes.push(m);
+    return m;
+  }
+
+  private ownMaterial<M extends Material>(m: M): M {
+    this.ownMaterials.push(m);
+    return m;
+  }
+
+  /** A grate: the player stands on it and cannot pass, but crates fall straight through. */
+  public grate(min: Vector3, max: Vector3): void {
+    const mat = this.ownMaterial(new GridMaterial(`grateMat_${this.n}`, this.scene));
+    mat.mainColor = new Color3(0.05, 0.05, 0.06);
+    mat.lineColor = new Color3(0.85, 0.85, 0.9);
+    mat.gridRatio = 0.35;
+    mat.majorUnitFrequency = 1;
+    mat.opacity = 0.75;
+    mat.backFaceCulling = false;
+    const m = this.plainBox('grate', min, max, mat);
+    m.checkCollisions = true;
+    // Deliberately not in `solids`: crate physics never sees it.
+  }
+
+  /** Glass: you can see through it, but neither the player nor crates can pass. */
+  public glass(min: Vector3, max: Vector3): void {
+    const mat = this.ownMaterial(new StandardMaterial(`glassMat_${this.n}`, this.scene));
+    mat.diffuseColor = new Color3(0.6, 0.85, 1);
+    mat.emissiveColor = new Color3(0.08, 0.14, 0.2);
+    mat.specularColor = new Color3(0.9, 0.9, 0.9);
+    mat.alpha = 0.18;
+    mat.backFaceCulling = false;
+    const m = this.plainBox('glass', min, max, mat);
+    m.checkCollisions = true;
+    m.enableEdgesRendering();
+    m.edgesWidth = 2;
+    m.edgesColor.set(0.6, 0.85, 1, 0.8);
+    this.solids.push({ min: [min.x, min.y, min.z], max: [max.x, max.y, max.z] });
+  }
+
+  /** A crate barrier: a faint field that stops crates but the player walks straight through. */
+  public barrier(min: Vector3, max: Vector3): void {
+    const mat = this.ownMaterial(new StandardMaterial(`barrierMat_${this.n}`, this.scene));
+    mat.diffuseColor = new Color3(1, 0.6, 0.2);
+    mat.emissiveColor = new Color3(0.5, 0.25, 0.05);
+    mat.alpha = 0.12;
+    mat.backFaceCulling = false;
+    const m = this.plainBox('barrier', min, max, mat);
+    m.checkCollisions = false;
+    m.isPickable = false;
+    this.solids.push({ min: [min.x, min.y, min.z], max: [max.x, max.y, max.z] });
   }
 
   /** A gravity-driven cube. `center` is where it starts; it will fall from there. */
@@ -167,16 +270,18 @@ export class Builder {
     return door;
   }
 
-  public finish(info: Omit<BuiltLevel, 'switches' | 'dispose' | 'dynamics' | 'update'>): BuiltLevel {
+  public finish(info: Omit<BuiltLevel, 'switches' | 'dispose' | 'dynamics' | 'update' | 'sequencer'>): BuiltLevel {
     return {
       ...info,
       switches: this.switches,
       dynamics: this.dynamics,
+      sequencer: this.sequencer,
       update: (dt, gravity, playerPos) => this.dynamics.update(dt, gravity, playerPos),
       dispose: () => {
         this.meshes.forEach((m) => m.dispose());
         this.switches.forEach((s) => s.dispose());
         this.dynamics.dispose();
+        this.ownMaterials.forEach((m) => m.dispose(true, true));
         // Sub-materials belong to the skin and outlive the level.
         this.multiMaterials.forEach((mm) => mm.dispose(false, false, false));
       },
