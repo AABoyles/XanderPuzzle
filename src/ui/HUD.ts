@@ -47,6 +47,7 @@ export class HUD {
   private keysLabel!: TextBlock;
   private readonly startOverlay: Rectangle;
   private readonly winOverlay: Rectangle;
+  private readonly sequenceLabel: TextBlock;
   private readonly levelLabel: TextBlock;
   private readonly hintLabel: TextBlock;
   private winTitle!: TextBlock;
@@ -107,6 +108,22 @@ export class HUD {
     this.gravityLabel.fontSize = 16;
     this.gravityLabel.fontFamily = 'Consolas, monospace';
     gravityBox.addControl(this.gravityLabel);
+
+    // Countdown to the next timed gravity change, under the gravity indicator.
+    this.sequenceLabel = new TextBlock('sequenceLabel', '');
+    this.sequenceLabel.fontSize = 16;
+    this.sequenceLabel.fontFamily = 'Consolas, monospace';
+    this.sequenceLabel.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    this.sequenceLabel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    this.sequenceLabel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    this.sequenceLabel.left = '24px';
+    this.sequenceLabel.top = '78px';
+    this.sequenceLabel.width = '360px';
+    this.sequenceLabel.height = '24px';
+    this.sequenceLabel.outlineColor = 'black';
+    this.sequenceLabel.outlineWidth = 3;
+    this.sequenceLabel.isVisible = false;
+    this.ui.addControl(this.sequenceLabel);
 
     this.levelLabel = new TextBlock('levelLabel', '');
     this.levelLabel.color = 'white';
@@ -364,6 +381,14 @@ export class HUD {
     this.gravityColor = color;
     this.gravityLabel.color = color;
     this.gravityLabel.text = `GRAVITY: ${AXIS_LABEL[axis]}`;
+  }
+
+  /** Shows the next timed gravity change and how long until it, or hides it with `null`. */
+  public setSequence(next: GravityAxis | null, seconds = 0, color = '#ffd36b'): void {
+    this.sequenceLabel.isVisible = next !== null;
+    if (!next) return;
+    this.sequenceLabel.color = seconds < 1 ? '#ffffff' : color;
+    this.sequenceLabel.text = `NEXT: ${AXIS_LABEL[next]} IN ${Math.max(0, seconds).toFixed(1)}s`;
   }
 
   public flashGravityChange(): void {
