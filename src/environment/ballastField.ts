@@ -1,4 +1,5 @@
 import type { Vec3 } from './fall';
+import { random } from '../random.ts';
 
 /**
  * Babylon-free layout and motion for the ballast field: the other cubes the player falls past after an escape (see
@@ -38,18 +39,6 @@ export const CUBE_MIN = 18;
 export const CUBE_MAX = 44;
 /** Seconds a lit cube takes over its quarter turn. */
 export const TURN_TIME = 1.4;
-
-/** A small deterministic generator (mulberry32), so a seed always lays out the same field. */
-export function random(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 /** Lays out `count` cubes, about `darkFraction` of them dark, with no two overlapping. */
 export function layoutField(seed: number, darkFraction: number, count = FIELD_COUNT): FieldCube[] {

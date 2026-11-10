@@ -29,7 +29,8 @@ There is no linter or formatter. Match the existing style: 2-space indent, singl
 - `src/gravity/GravitySystem.ts`: the single current gravity axis and its change listeners.
 - `src/input/`: `InputSource.ts` is the Babylon-free input interface (`InputFrame`, `mergeFrames`, `stickVector`, deadzone/look-curve maths) and `InputManager.ts` reads and merges the sources once per frame and tracks the last-used device (`lastDevice`, which drives HUD wording); both are tested by Node like `boxPhysics.ts` (import with explicit `.ts` extensions and no constructor parameter properties). `KeyboardMouseInput.ts`, `TouchInput.ts` and `GamepadInput.ts` implement `InputSource`; `main.ts` reads the manager once per frame and passes the frame to `PlayerController.update`.
 - `src/player/PlayerController.ts`: merges the input sources' frames and drives a kinematic body oriented by a smoothly interpolated "up" vector.
-- `src/level/Builder.ts`: the API chambers are written against (`box`, `slab`, `tube`, `grate`, `glass`, `barrier`, `addSwitch` (with `{ once }`), `addRelativeSwitch`, `addSequenceSwitch`, `addCrate`, `addPlate`, `addDoor`, `finish`), plus `V()` and the wall thickness `T`.
+- `src/level/Builder.ts`: the API chambers are written against (`box`, `slab`, `tube`, `grate`, `glass`, `barrier`, `addSwitch` (with `{ once }`), `addRelativeSwitch`, `addSequenceSwitch`, `addCrate` (with `{ stamp }`), `addPlate`, `addDoor`, `placard`, `note`, `finish`), plus `V()` and the wall thickness `T`.
+- `src/level/Placard.ts`, `placardText.ts`, `fonts.ts`: text painted on chamber faces and crates (see NARRATIVE.md). `placardText.ts` is the Babylon-free size, orientation and handwriting maths, tested by Node; `Placard.ts` draws it on a canvas texture on a thin plane; `fonts.ts` loads the two bundled fonts in `public/fonts/` (SIL Open Font License, licences alongside). Each skin's `placardInk` sets how stencils are painted; the Margin's notes look the same in every skin.
 - `src/gravity/axes.ts`: Babylon-free axis maths and the `GravitySequencer`; tested directly by Node like `boxPhysics.ts`.
 - `src/level/chambers/`: one file per chamber. `index.ts` exports `CHAMBERS` (the play order, each with the name shown in the chamber select), `LEVELS` and `buildSandbox`.
 - `src/level/Dynamics.ts`: crates, pressure plates, doors and their per-frame update.
@@ -40,6 +41,7 @@ There is no linter or formatter. Match the existing style: 2-space indent, singl
 - `src/ui/HUD.ts`: Babylon GUI overlay.
 - `src/ui/PauseMenu.ts`: the pause menu (resume, restart, chamber select, fullscreen, update, settings, controls reference); added on top of the HUD's GUI texture. Keep its controls reference in sync with the real bindings.
 - `src/narrative.ts`: Babylon-free story text in the facility's voice (the attendant serial, cube labels, duty, recovery and win log lines); tested by Node. Each chamber's cube serial is the `cube` field in `CHAMBERS`. The design, voices and writing rules are in `NARRATIVE.md`.
+- `src/random.ts`: Babylon-free seeded random (`random`) and string hash (`hashString`), so layouts and handwriting repeat exactly.
 - `src/time.ts`: Babylon-free `simDelta`, the one clamped frame delta (`MAX_SIM_DELTA` = 1/20 s) that `main.ts` feeds every system; tested by Node.
 - `src/gravity/shiftSound.ts`: Babylon-free axis -> shift-sound mapping (`shiftTone`); tested by Node.
 - `src/settings.ts`: Babylon-free settings model (`Settings`, defaults, limits, `parseSettings`/`loadSettings`/`saveSettings`, `stepSetting`), stored as JSON under `shiftbound.settings`; tested by Node.
@@ -62,6 +64,7 @@ Conventions and pitfalls:
 - Holes cut with `slab(..., hole)` run to the slab's edge, which can leave a floor gap under a doorway. Fill it with a sill `box` (see the existing chambers).
 - Describe the gravity route in the file's doc comment (e.g. `-Y -> +Z`) and keep it in sync with `entranceAxis`/`exitAxis`.
 - Use `?sandbox` in the dev URL for the crate/plate/door test room, and `?skin=<id>` to force a skin.
+- Placards and notes: `b.placard(at, normal, readAs, text)` puts text on the face with outward `normal` at point `at`, upright under gravity `readAs`; on a face that is the floor or ceiling under `readAs`, pass `{ top }`. Lines break only at `\n`. `npm test` checks every placard sits on a real, uncovered face. Keep the text in the voices and rules of NARRATIVE.md.
 - Every mesh, material and listener a level creates must be released in `dispose()`. Go through `Builder` so `finish()` handles this; skin sub-materials outlive levels and must not be disposed with them.
 
 ## Verifying gameplay

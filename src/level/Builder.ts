@@ -17,6 +17,10 @@ import { GravitySwitch, LeverSpec } from './GravitySwitch';
 import { Aabb } from '../physics/boxPhysics';
 import { boundsOf } from '../environment/fall';
 import { AXIS_ORDER, SkinRuntime, SurfaceRole } from '../skins/Skin';
+import { createPlacard } from './Placard';
+import { placardFrame, SURFACE_OFFSET } from './placardText';
+import type { PlacardFrame, Voice } from './placardText';
+import type { Vec3 } from '../gravity/axes';
 
 export interface BuiltLevel {
   name: string;
@@ -32,12 +36,40 @@ export interface BuiltLevel {
   solids: Aabb[];
   /** The box enclosing all of the level's geometry; a player well outside it has fallen out. */
   bounds: Aabb;
+  /** Text painted on the chamber's faces (not crate stamps). Used by the headless tests. */
+  placards: PlacardInfo[];
   /** The timed gravity cycle started by this level's sequence lever, if it has one. */
   sequencer?: GravitySequencer;
   /** Advances crates, plates and doors. */
   update(dt: number, gravity: Vector3, playerPos: Vector3): DynamicsEvents;
   dispose(): void;
 }
+
+export interface PlacardInfo {
+  text: string;
+  voice: Voice;
+  /** The point on the face the placard is centred on. */
+  at: Vec3;
+  /** The face's outward normal. */
+  normal: Vec3;
+  /** The gravity it reads upright under. */
+  readAs: GravityAxis;
+  frame: PlacardFrame;
+  width: number;
+  height: number;
+}
+
+export interface PlacardOptions {
+  voice?: Voice;
+  /** World units; the default suits a few short lines. Lines too long for it are squeezed to fit. */
+  width?: number;
+  lineHeight?: number;
+  /** Which way the top of the text points, for a face that is the floor or ceiling under `readAs`. */
+  top?: Vector3;
+}
+
+const arr = (v: Vector3): Vec3 => [v.x, v.y, v.z];
+const DEFAULT_WIDTH: Record<Voice, number> = { stencil: 6, margin: 4 };
 
 type Axis = 'x' | 'y' | 'z';
 type Face = '+x' | '-x' | '+y' | '-y' | '+z' | '-z';
@@ -48,6 +80,7 @@ export const T = 1;
 export class Builder {
   public readonly meshes: Mesh[] = [];
   public readonly switches: GravitySwitch[] = [];
+  public readonly placards: PlacardInfo[] = [];
   public readonly solids: Aabb[] = [];
   public readonly dynamics = new LevelDynamics(this.solids);
   public sequencer?: GravitySequencer;
@@ -250,8 +283,43 @@ export class Builder {
   }
 
   /** A gravity-driven cube. `center` is where it starts; it will fall from there. */
-  public addCrate(center: Vector3, size = 1.5): Crate {
+  /**
+   * Text on the face whose outward normal is `normal`, centred on `at` (a point on that face), reading upright under
+   * gravity `readAs`. Stencil by default, the facility's voice; `note` is the Margin's. Lines break only at `\n`.
+   */
+  public placard(at: Vector3, normal: Vector3, readAs: GravityAxis, text: string, opts: PlacardOptions = {}): void {
+    const voice = opts.voice ?? 'stencil';
+    const frame = placardFrame(arr(normal), readAs, opts.top && arr(opts.top));
+    const width = opts.width ?? DEFAULT_WIDTH[voice];
+    const { mesh, height } = createPlacard(this.scene, `placard_${this.n++}`, {
+      text, voice, width, lineHeight: opts.lineHeight, frame, ink: this.skin.placardInk,
+    });
+    mesh.position = at.add(normal.scale(SURFACE_OFFSET));
+    mesh.freezeWorldMatrix();
+    this.meshes.push(mesh);
+    this.ownMaterials.push(mesh.material!);
+    this.placards.push({ text, voice, at: arr(at), normal: arr(normal), readAs, frame, width, height });
+  }
+
+  /** A handwritten note from the Margin (see NARRATIVE.md); otherwise as `placard`. */
+  public note(at: Vector3, normal: Vector3, readAs: GravityAxis, text: string, opts: Omit<PlacardOptions, 'voice'> = {}): void {
+    this.placard(at, normal, readAs, text, { ...opts, voice: 'margin' });
+  }
+
+  /** A crate. `stamp` is stencilled on every face; it slides but never turns, so the stamps stay square. */
+  public addCrate(center: Vector3, size = 1.5, opts: { stamp?: string } = {}): Crate {
     const crate = new Crate(this.scene, center, size);
+    if (opts.stamp) {
+      for (const n of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]] as Vec3[]) {
+        const frame = placardFrame(n, '-Y', n[1] === 0 ? undefined : [0, 0, 1]);
+        const { mesh } = createPlacard(this.scene, `crateStamp_${this.n++}`, {
+          text: opts.stamp, voice: 'stencil', width: size * 0.85, lineHeight: size * 0.17, frame, ink: this.skin.placardInk,
+        });
+        // Parented to the crate, whose disposal (with materials and textures) releases the stamps too.
+        mesh.parent = crate.mesh;
+        mesh.position = Vector3.FromArray(n).scale(size / 2 + SURFACE_OFFSET);
+      }
+    }
     this.skin.decorateProp(crate.mesh);
     this.dynamics.crates.push(crate);
     return crate;
@@ -273,10 +341,13 @@ export class Builder {
     return door;
   }
 
-  public finish(info: Omit<BuiltLevel, 'switches' | 'dispose' | 'dynamics' | 'solids' | 'bounds' | 'update' | 'sequencer'>): BuiltLevel {
+  public finish(
+    info: Omit<BuiltLevel, 'switches' | 'dispose' | 'dynamics' | 'solids' | 'bounds' | 'update' | 'sequencer' | 'placards'>,
+  ): BuiltLevel {
     return {
       ...info,
       switches: this.switches,
+      placards: this.placards,
       dynamics: this.dynamics,
       solids: this.solids,
       bounds: boundsOf(this.solids),

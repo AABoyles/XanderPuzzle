@@ -39,8 +39,8 @@ export function buildCounterweight(scene: Scene, skin: SkinRuntime): BuiltLevel 
   b.box(V(R, doorY[0], R), V(R + T, doorY[1], R + T), b.exit);
 
   // Pit crate and wall crate; the pit sits under the -X end of the pit crate's row (z = 0).
-  b.addCrate(V(-3, -R + 0.75, 0));
-  b.addCrate(V(3, -R + 0.75, -3));
+  b.addCrate(V(-3, -R + 0.75, 0), 1.5, { stamp: 'BALLAST MASS\nBM-2232' });
+  b.addCrate(V(3, -R + 0.75, -3), 1.5, { stamp: 'BALLAST MASS\nBM-2240' });
   const pitPlate = b.addPlate(V(-7, -R - 1, 0), V(0, 1, 0), 1.8, true);
   const wallPlate = b.addPlate(V(R, -R + 0.75, -3), V(-1, 0, 0), 2, true);
   b.addDoor(V(5, doorY[0], R), V(R, doorY[1], R + T), [pitPlate, wallPlate]);
