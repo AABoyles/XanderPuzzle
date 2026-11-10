@@ -17,6 +17,7 @@ import { Door, DynamicsEvents, LevelDynamics, PressurePlate } from './Dynamics';
 import { Crate } from './Dynamics';
 import { GravitySwitch, LeverSpec } from './GravitySwitch';
 import { Aabb } from '../physics/boxPhysics';
+import { boundsOf } from '../environment/fall';
 import { AXIS_ORDER, SkinRuntime, SurfaceRole } from '../skins/Skin';
 
 export interface BuiltLevel {
@@ -29,6 +30,8 @@ export interface BuiltLevel {
   exitCenter: Vector3;
   exitRadius: number;
   dynamics: LevelDynamics;
+  /** The box enclosing all of the level's geometry; a player well outside it has fallen out. */
+  bounds: Aabb;
   /** The timed gravity cycle started by this level's sequence lever, if it has one. */
   sequencer?: GravitySequencer;
   /** Advances crates, plates and doors. */
@@ -270,11 +273,12 @@ export class Builder {
     return door;
   }
 
-  public finish(info: Omit<BuiltLevel, 'switches' | 'dispose' | 'dynamics' | 'update' | 'sequencer'>): BuiltLevel {
+  public finish(info: Omit<BuiltLevel, 'switches' | 'dispose' | 'dynamics' | 'bounds' | 'update' | 'sequencer'>): BuiltLevel {
     return {
       ...info,
       switches: this.switches,
       dynamics: this.dynamics,
+      bounds: boundsOf(this.solids),
       sequencer: this.sequencer,
       update: (dt, gravity, playerPos) => this.dynamics.update(dt, gravity, playerPos),
       dispose: () => {

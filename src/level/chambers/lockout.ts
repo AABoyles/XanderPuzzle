@@ -8,6 +8,9 @@ import { Builder, BuiltLevel, T, V } from '../Builder';
  * with nothing else in reach, so restart with R. The real route first uses the hidden fixed lever in a
  * pocket behind a screen (-Y -> -X), walks along the -X wall to the same relative lever, and throws it
  * from there (-X -> +Y) to fall up through a hole in the middle of the ceiling.
+ *
+ * Trap hole: a 4x4 opening in the -X wall (the floor under -X), above the walk between the two levers. It
+ * opens onto space; wander into it while stranded on -X and you fall out of the chamber.
  */
 export function buildLockout(scene: Scene, skin: SkinRuntime): BuiltLevel {
   const b = new Builder(scene, skin, new Color3(0.9, 0.25, 0.55));
@@ -19,7 +22,8 @@ export function buildLockout(scene: Scene, skin: SkinRuntime): BuiltLevel {
 
   b.slab('y', -R - T, -R, w, w, b.floor);
   b.slab('y', R, R + T, w, w, b.wall, hole);
-  b.slab('x', -R - T, -R, full, full, b.wall);
+  // Trap hole open to space: -X wall at y [-3, 1], z [-1, 3]; nothing lies beyond it.
+  b.slab('x', -R - T, -R, full, full, b.wall, { u: [-3, 1], v: [-1, 3] });
   b.slab('x', R, R + T, full, full, b.wall);
   b.slab('z', -R - T, -R, w, full, b.wall, { u: [-2, 2], v: [-R, -R + 3] });
   b.slab('z', R, R + T, w, full, b.wall);

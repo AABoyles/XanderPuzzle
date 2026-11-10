@@ -9,6 +9,9 @@ import { Builder, BuiltLevel, T, V } from '../Builder';
  * from +X it gives +Y. Cross the ceiling to the lever on the far wall (V), which turns +Y into +Z and
  * drops you 30 units down the tunnel and through a hole in the end partition. The floor lever W is the
  * wrong turn from +X (-Z); fixed levers (F, F2) put gravity back to -Y.
+ *
+ * Trap hole: a 4x4 opening in the ceiling (the floor under +Y), well down the tunnel from where you cross it.
+ * It opens onto space; walk the ceiling toward the far end and you fall out of the chamber.
  */
 export function buildTurnstile(scene: Scene, skin: SkinRuntime): BuiltLevel {
   const b = new Builder(scene, skin, new Color3(0.2, 0.85, 0.75));
@@ -18,7 +21,8 @@ export function buildTurnstile(scene: Scene, skin: SkinRuntime): BuiltLevel {
   const len: [number, number] = [0, L + T];
 
   b.slab('y', -W - T, -W, w, len, b.floor);
-  b.slab('y', W, W + T, w, len, b.wall);
+  // Trap hole open to space: ceiling at x [-2, 2], z [10, 14]; nothing lies above it.
+  b.slab('y', W, W + T, w, len, b.wall, { u: [-2, 2], v: [10, 14] });
   b.slab('x', -W - T, -W, w, len, b.wall);
   b.slab('x', W, W + T, w, len, b.wall);
   // Start wall, with a doorway to the entrance alcove.

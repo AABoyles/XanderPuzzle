@@ -5,6 +5,9 @@ import { Builder, BuiltLevel, T, V } from '../Builder';
 /**
  * Level 4 - three shifts around the room: -Y -> -X -> +Y -> +X, each lever only reachable
  * from the surface the previous one puts you on.
+ *
+ * Trap hole: a 4x4 opening in the -X wall (the floor under -X), off to the +Z side of the walk between the
+ * first and second levers. It opens onto space; wander into it and you fall out of the chamber.
  */
 export function buildSpiral(scene: Scene, skin: SkinRuntime): BuiltLevel {
   const b = new Builder(scene, skin, new Color3(0.95, 0.8, 0.3));
@@ -13,7 +16,8 @@ export function buildSpiral(scene: Scene, skin: SkinRuntime): BuiltLevel {
 
   b.slab('y', -R - T, -R, full, full, b.floor);
   b.slab('y', R, R + T, full, full, b.wall);
-  b.slab('x', -R - T, -R, full, full, b.wall);
+  // Trap hole open to space: -X wall at y [-3, 1], z [3, 7]; nothing lies beyond it.
+  b.slab('x', -R - T, -R, full, full, b.wall, { u: [-3, 1], v: [3, 7] });
   b.slab('z', R, R + T, full, full, b.wall);
   b.slab('z', -R - T, -R, full, full, b.wall, { u: [-2, 2], v: [-R, -R + 3] });
   b.slab('x', R, R + T, full, full, b.wall, { u: [-6, -2], v: [-6, -2] });

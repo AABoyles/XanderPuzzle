@@ -1,4 +1,6 @@
 import { Color4, Engine, GlowLayer, Scene, Vector3 } from '@babylonjs/core';
+import { chaseDirection, distanceOutside, FallTracker, planetDistance, Vec3 } from './environment/fall';
+import { SpaceBackdrop } from './environment/SpaceBackdrop';
 import { GravityAxis, GravitySystem } from './gravity/GravitySystem';
 import { buildSandbox, LEVELS as CHAMBERS } from './level/chambers';
 import { PlayerController } from './player/PlayerController';
@@ -55,6 +57,13 @@ gravity.onChangeObservable.add(({ axis }) => {
   hud.flashGravityChange();
 });
 
+// Open space, shown only once the player has fallen out of the chamber.
+const backdrop = new SpaceBackdrop(scene, glow);
+const fall = new FallTracker();
+/** Where the planet is: it chases the gravity direction, so "down" always leads to it. */
+let planetDir = gravity.direction.asArray() as Vec3;
+const lastPosition = player.position.clone();
+
 let hasWon = false;
 let levelTime = 0;
 let shifts = 0;
@@ -67,6 +76,8 @@ function startLevel(index: number): void {
   level = LEVELS[levelIndex](scene, skin);
   gravity.setAxis(level.entranceAxis);
   player.reset(level.spawnPosition);
+  lastPosition.copyFrom(player.position);
+  fall.reset();
   hud.setLevel(level.name, level.hint);
   hud.hideWin();
   hasWon = false;
@@ -146,7 +157,8 @@ engine.runRenderLoop(() => {
       }
     }
     const anyInRange = target !== undefined;
-    hud.setPrompt(anyInRange, target?.spec.kind === 'sequence' ? 'Press [E] to start the cycle' : undefined);
+    if (fall.falling) hud.setPrompt(true, 'Lost to the void · press [R] to return');
+    else hud.setPrompt(anyInRange, target?.spec.kind === 'sequence' ? 'Press [E] to start the cycle' : undefined);
 
     const seq = level.sequencer;
     if (seq?.active) {
@@ -169,8 +181,9 @@ engine.runRenderLoop(() => {
     if (dyn.plateChanged) beep(520, 520, 0.08, 'square', 0.06);
     if (dyn.doorChanged) beep(180, 360, 0.3, 'triangle', 0.12);
 
-    // Safety net: anyone who escapes the geometry gets put back at the entrance.
-    if (player.position.length() > 90) startLevel(levelIndex);
+    // Anyone who escapes the geometry falls through space for a while, then is put back at the entrance.
+    fall.update(dt, distanceOutside(level.bounds, player.position.asArray() as Vec3));
+    if (fall.finished) startLevel(levelIndex);
 
     if (Vector3.Distance(player.position, level.exitCenter) <= level.exitRadius) {
       hasWon = true;
@@ -185,6 +198,19 @@ engine.runRenderLoop(() => {
       else hud.showWin('CHAMBER CLEARED', `${stats}\n\nClick or press Enter for the next chamber`);
     }
   }
+
+  // The backdrop keeps animating on the win screen, but only ever shows after an escape.
+  const down = gravity.direction.asArray() as Vec3;
+  planetDir = fall.visibility > 0 ? chaseDirection(planetDir, down, dt, 3) : down;
+  backdrop.update({
+    cameraPosition: player.camera.position,
+    visibility: fall.visibility,
+    planetDirection: Vector3.FromArray(planetDir),
+    planetDistance: planetDistance(fall.time),
+    speed: dt > 0 ? Vector3.Distance(player.position, lastPosition) / dt : 0,
+    dt,
+  });
+  lastPosition.copyFrom(player.position);
 
   scene.render();
 });

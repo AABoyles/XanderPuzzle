@@ -5,6 +5,9 @@ import { Builder, BuiltLevel, T, V } from '../Builder';
 /**
  * Level 3 - a room split by a partition that stops short of the ceiling.
  * -Y -> +X (walk up and over the partition) -> +Z (the far wall, with the exit pit).
+ *
+ * Trap hole: a 4x4 opening in the +X wall behind the partition (the floor under +X). It opens onto space;
+ * walk down the far side of the partition and you fall out of the chamber.
  */
 export function buildDivide(scene: Scene, skin: SkinRuntime): BuiltLevel {
   const b = new Builder(scene, skin, new Color3(0.3, 0.85, 0.75));
@@ -14,7 +17,8 @@ export function buildDivide(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.slab('y', -R - T, -R, full, full, b.floor);
   b.slab('y', R, R + T, full, full, b.wall);
   b.slab('x', -R - T, -R, full, full, b.wall);
-  b.slab('x', R, R + T, full, full, b.wall);
+  // Trap hole open to space: +X wall at y [-6, -2], z [2.5, 6.5]; nothing lies beyond it.
+  b.slab('x', R, R + T, full, full, b.wall, { u: [-6, -2], v: [2.5, 6.5] });
   b.slab('z', -R - T, -R, full, full, b.wall, { u: [-2, 2], v: [-R, -R + 3] });
   b.slab('z', R, R + T, full, full, b.wall, { u: [-6, -2], v: [-6, -2] });
 
