@@ -81,6 +81,8 @@ export class Builder {
   public readonly meshes: Mesh[] = [];
   public readonly switches: GravitySwitch[] = [];
   public readonly placards: PlacardInfo[] = [];
+  /** Fixed crates own their material and stamps, so they are disposed with them. */
+  private readonly fixedCrates: Mesh[] = [];
   public readonly solids: Aabb[] = [];
   public readonly dynamics = new LevelDynamics(this.solids);
   public sequencer?: GravitySequencer;
@@ -302,24 +304,46 @@ export class Builder {
   }
 
   /** A handwritten note from the Margin (see NARRATIVE.md); otherwise as `placard`. */
-  public note(at: Vector3, normal: Vector3, readAs: GravityAxis, text: string, opts: Omit<PlacardOptions, 'voice'> = {}): void {
+  public note(
+    at: Vector3,
+    normal: Vector3,
+    readAs: GravityAxis,
+    text: string,
+    opts: Omit<PlacardOptions, 'voice'> = {},
+  ): void {
     this.placard(at, normal, readAs, text, { ...opts, voice: 'margin' });
+  }
+
+  /** Stencils `stamp` on every face of a crate mesh; disposing the crate (with materials) releases the stamps. */
+  private stampCrate(crate: Crate, size: number, stamp: string): void {
+    for (const n of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]] as Vec3[]) {
+      const frame = placardFrame(n, '-Y', n[1] === 0 ? undefined : [0, 0, 1]);
+      const { mesh } = createPlacard(this.scene, `crateStamp_${this.n++}`, {
+        text: stamp, voice: 'stencil', width: size * 0.85, lineHeight: size * 0.17, frame, ink: this.skin.placardInk,
+      });
+      mesh.parent = crate.mesh;
+      mesh.position = Vector3.FromArray(n).scale(size / 2 + SURFACE_OFFSET);
+    }
+  }
+
+  /**
+   * A crate that never moves: it looks like any other crate but is plain solid geometry, outside the crate physics,
+   * so it can sit anywhere without disturbing a puzzle. For set dressing (see NARRATIVE.md's reveal).
+   */
+  public addFixedCrate(center: Vector3, size = 1.5, opts: { stamp?: string } = {}): void {
+    const crate = new Crate(this.scene, center, size);
+    if (opts.stamp) this.stampCrate(crate, size, opts.stamp);
+    this.skin.decorateProp(crate.mesh);
+    crate.mesh.freezeWorldMatrix();
+    this.fixedCrates.push(crate.mesh);
+    const h = size / 2;
+    this.solids.push({ min: [center.x - h, center.y - h, center.z - h], max: [center.x + h, center.y + h, center.z + h] });
   }
 
   /** A crate. `stamp` is stencilled on every face; it slides but never turns, so the stamps stay square. */
   public addCrate(center: Vector3, size = 1.5, opts: { stamp?: string } = {}): Crate {
     const crate = new Crate(this.scene, center, size);
-    if (opts.stamp) {
-      for (const n of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]] as Vec3[]) {
-        const frame = placardFrame(n, '-Y', n[1] === 0 ? undefined : [0, 0, 1]);
-        const { mesh } = createPlacard(this.scene, `crateStamp_${this.n++}`, {
-          text: opts.stamp, voice: 'stencil', width: size * 0.85, lineHeight: size * 0.17, frame, ink: this.skin.placardInk,
-        });
-        // Parented to the crate, whose disposal (with materials and textures) releases the stamps too.
-        mesh.parent = crate.mesh;
-        mesh.position = Vector3.FromArray(n).scale(size / 2 + SURFACE_OFFSET);
-      }
-    }
+    if (opts.stamp) this.stampCrate(crate, size, opts.stamp);
     this.skin.decorateProp(crate.mesh);
     this.dynamics.crates.push(crate);
     return crate;
@@ -357,6 +381,7 @@ export class Builder {
         this.meshes.forEach((m) => m.dispose());
         this.switches.forEach((s) => s.dispose());
         this.dynamics.dispose();
+        this.fixedCrates.forEach((m) => m.dispose(false, true));
         this.ownMaterials.forEach((m) => m.dispose(true, true));
         // Sub-materials belong to the skin and outlive the level.
         this.multiMaterials.forEach((mm) => mm.dispose(false, false, false));

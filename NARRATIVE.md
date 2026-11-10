@@ -167,13 +167,86 @@ Hints still have to teach the chamber, and they're limited to one or two short s
 
 The proposals above are in the game. Dropping "R restarts" is safe: the HUD's control strip shows the restart binding on every device.
 
+## Chamber script
+
+Everything placed in the chambers, in the order of the arc. All of it is in the game. To change a line, edit it here and in the chamber file together. Lines break where the table shows ` / `.
+
+How to read the table:
+
+- **Voice:** **S** is the Stencil (the facility; placards on or beside the route). **M** is the Margin (the earlier attendant; notes mostly off the route).
+- **Where:** the face the text is painted on, and the gravity it reads upright under. "On route" means you pass it anyway. "Off route" means you have to go looking, usually by throwing a lever you don't need or by looking up.
+- Every chamber also has its cube serial stencilled near the entrance (`CUBE 0113`, and so on), reading under -Y. That row isn't repeated below. `npm test` checks that it matches the `cube` field in `CHAMBERS`.
+
+### Act I · Orientation
+
+The Stencil welcomes you. The Margin is a helpful tutor.
+
+| Chamber | Voice | Text | Where | Why |
+| --- | --- | --- | --- | --- |
+| I · Vault | S | `CUBE 0112 · ATTENDANT INDUCTION` / `LEVERS TURN THE CUBE.` / `THE ARROW'S WALL WILL FACE THE PLANET.` | +Z wall above the first lever, under -Y. On route. | Establishes the premise in the first room. |
+| I · Vault | M | *You'll get used to it. / The turning, I mean.* | +X wall (the exit wall), low, under +Z: readable only while standing on the +Z wall. On route but easy to miss. | The first sign that someone was here before you. |
+| II · Shaft | S | `OPEN APERTURE` / `ATTENDANT RECOVERY` / `IS AUTOMATIC` | Floor beside the trap hole, under -Y, top of the text towards the hole. On route. | The first trap hole, and the first sign that you are replaceable. |
+| II · Shaft | M | *It is a long way up. / It is a longer way down. / I checked.* | -X wall overhead during the climb under +X, top towards +Y. Off route: you have to look up. | The Margin has fallen too. |
+| III · Divide | S | `PARTITION · DO NOT CLIMB` | Near face of the partition, under -Y. On route. | Deadpan: the solution is to walk up the wall, not to climb. |
+| III · Divide | M | *It says don't climb. / It doesn't say anything about walking.* | Far face of the partition, under +X. On route, just after the shift. | A tutor's wink that confirms what you just did. |
+| IV · Spiral | S | `TRIM SEQUENCE: -Y · -X · +Y · +X` | Ceiling (+Y face), under +Y. On route, read once you are standing there. | The facility shows you the whole route, readable only from partway through it. |
+| IV · Spiral | M | *Not every lever leads somewhere. / This one led me here.* | Beside the trap hole in the -X wall, under -X. Off route. | It echoes the hint. The Margin took the wrong turn and fell. |
+| V · Chimney | S | `DESCENT CORRIDOR · KEEP TO THE LEDGE` | Tunnel wall near the lever, under -Y. After the shift it reads sideways as you fall past. | Instruction you can only read before you need it. |
+| V · Chimney | M | *Missed it too. / Steer earlier.* | Top face of the decoy ledge, under +Z. Only seen if you land there. | Consolation, and the first "steer". The ending calls back to it. |
+
+### Act II · Maintenance
+
+Placards turn into rosters and schedules. The Margin starts noticing things.
+
+| Chamber | Voice | Text | Where | Why |
+| --- | --- | --- | --- | --- |
+| VI · Staircase | S | `RISER MAINTENANCE` / `4 CLIMBS SCHEDULED` / `SCHEDULE UNCHANGED` / `SINCE CYCLE 1` | First riser face, under -Y. On route. | The schedule never changes. |
+| VI · Staircase | M | *Same stairs every time. / I counted.* | West face of the next cell's sealed block, under +X, above the gap you step off. Off route: you have to look up during the first climb. | The Margin notices repetition. |
+| VII · Atrium | S | `ROOM A`, `ROOM B`, `ROOM C`, `EXIT` | Above each doorway, each reading under the gravity that makes its wall the floor. On route. | Wayfinding that only reads right under the correct gravity, which helps you plan the route. |
+| VII · Atrium | M | *I have been here before. / This cube was the same / last time.* | Side wall of room B, under -X. (Its back wall is the floor under -X.) On route, beside the lever. | From the NARRATIVE arc: the cubes repeat. |
+| VIII · Ballast | S | `BALLAST MASS SEATS HERE` / `DO NOT OBSTRUCT` | East wall beside the plate, under +X. On route. | Names the crate's job. (The crate's own stamp `BM-2231` is already in game.) |
+| VIII · Ballast | M | *The crates don't need us. / They just need someone to throw the lever.* | Bottom of the trough under the crate, under -Y. Visible only after the crate slides out. | Unease about what the attendants are for. |
+| IX · Counterweight | S | `TRIM REQUIRES 2 MASSES` / `ATTENDANTS ON THIS CYCLE: 1` | +Z wall beside the door, under -Y. On route. | "1" is the first hint that you are alone. |
+| IX · Counterweight | M | *I have never met another attendant. / The roster has room for hundreds.* | -X wall above the pit, under -X. Off route: away from the lever on that wall. | Picks up the Stencil's "1". |
+
+### Act III · Wear
+
+The cubes show their age. The Margin turns personal and frightened.
+
+| Chamber | Voice | Text | Where | Why |
+| --- | --- | --- | --- | --- |
+| X · Turnstile | S | `ROTATIONAL LEVER` / `TURNS CLOCKWISE AS FACED` | Start-corner wall beside lever S, under -Y. On route. | Teaches the relative lever in the facility's words. |
+| X · Turnstile | M | *More of them are dark every time I fall.* | Ceiling beside the trap hole, under +Y. Off route: you have to walk past where the route turns. | Ties the note to the dark cubes you see during a fall. |
+| XI · Lockout | S | `SINGLE-USE LEVER` / `ONE THROW PER ATTENDANT` | +Z wall above the relative lever, under -Y. On route. | "Per attendant" reads two ways. |
+| XI · Lockout | M | *I found them.* | Beside the trap hole in the -X wall, under -X. Only seen by someone stranded there after throwing the one-shot lever first. | Completes the hint "Someone threw this one first." Only the players who made that mistake see it. |
+| XII · Grate | S | `LOWER DECK · BALLAST ONLY` | Glass floor, under -Y, read looking down. On route. | Sets up the crate's route. |
+| XII · Grate | M | *Everything ends up below. / The crates just get there first.* | East wall, under +X, where the shift east puts you. On route. | Foreshadows both the reveal and the Descent. |
+| XIII · Tide | S | `AUTOMATIC TRIM ENGAGED` / `ATTENDANT PRESENCE OPTIONAL` | Wall beside the sequence lever, under -Y. On route. | The machine no longer needs you, and it tells you so politely. |
+| XIII · Tide | M | *It doesn't need us any more. / I don't think it ever did.* | The high ledge, under -Y, top towards the tall wall. On route, read while waiting for the last shift. | The Margin's fear peaks. |
+
+### Act IV · The Orrery
+
+| Chamber | Voice | Text | Where | Why |
+| --- | --- | --- | --- | --- |
+| XIV · Orrery | S | `FIELD ALIGNMENT: 35% OF CUBES RESPONDING` / `ATTENDANT SUPPLY INCREASED TO COMPENSATE` | North wall, under +Z. On route. | The machine compensates for the dark cubes by printing more of you. The 35% matches the dark share of the field at this chamber. |
+| XIV · Orrery | — | A fixed crate stamped `BALLAST MASS` / `AT-0416` | On the ceiling beside the walk to the relative lever, under +Y. On route. | **The reveal.** It's one number below your serial. |
+| XIV · Orrery | S | `THANK YOU FOR YOUR` / `CONTINUED ALIGNMENT.` | Beside the AT-0416 crate, under +Y. | Leave it at that. |
+| XIV · Orrery | M | *If you're reading this, I didn't* | West wall, far from the lever there, under -X. Off route. | The Margin's last note, cut off mid-line. Its final word, "Steer.", waits in the Descent. |
+
+### For playtesting
+
+- **The Atrium labels may be too helpful.** Labels that read right only under the correct gravity do give the route away. If that makes the puzzle too easy, cut them to the `EXIT` label alone.
+- **Two notes depend on mistakes:** the Chimney's decoy ledge and the Lockout's trap hole. Only players who make that mistake will see them. That's deliberate, but it means most players will miss them.
+- **Off-route notes should be findable:** the Shaft, Spiral, Staircase, Counterweight, Turnstile and Orrery notes ask you to look up or wander. Check that they can be found, and read from where you would stand.
+- **Line length:** long lines are squeezed to fit their placard. Every line is at least 85% of its natural width; keep new lines inside that, or break them.
+
 ## Building it
 
 In rough order of cost:
 
 1. **Text only.** *Status: built.* The Stencil's strings live in `src/narrative.ts`; each chamber's cube serial is the `cube` field in `CHAMBERS` (gaps in the numbering are cubes that went dark, widening each act). The HUD shows a log line under the hint: the duty line when a chamber starts, the recovery line after a fall. Rewrite the hints and the win and fall messages. Add the Stencil's log lines to the HUD for the `falling` → reset transition (keep a recovery count per run in `main.ts`, not in saved progress). Give each chamber a cube serial number for the chamber select. Keep the strings in a Babylon-free module so Node can test them.
 2. **Fall vista.** *Status: built, except the cube with your hole.* `src/environment/ballastField.ts` lays out 48 cubes around the fall line for each fall (Babylon-free, tested by Node), and `SpaceBackdrop` draws them: lit cubes glow at their seams and turn a quarter turn every few seconds; dark ones tumble. The dark share grows from 15% at the first chamber to 65% at the last (`darkFraction` in `src/narrative.ts`). Add drifting and tumbling cubes to `SpaceBackdrop`. It only shows after an escape, so this costs nothing in normal play.
-3. **Facing text.** *Status: built; the writing pass is next.* `b.placard(at, normal, readAs, text)` and `b.note(...)` paint text on a face as a canvas texture on a thin plane, upright under `readAs` (floor and ceiling text takes a `top`). Stencils use the bundled Allerta Stencil, painted per skin (`placardInk`: grey paint in Axis, flaking white in Monolith, ink outline in Draft, glowing in Neon). Notes use the bundled Caveat in red grease pencil with a per-letter wobble, the same in every skin. `npm test` checks that each one sits on a real, uncovered face. So far there are two: the induction placard in the Vault, and a note in the Shaft on the face overhead during the climb. **Next:** a writing pass that places Stencil placards and Margin notes through all fourteen chambers, following the arc above.
+3. **Facing text.** *Status: built; the writing pass is next.* `b.placard(at, normal, readAs, text)` and `b.note(...)` paint text on a face as a canvas texture on a thin plane, upright under `readAs` (floor and ceiling text takes a `top`). Stencils use the bundled Allerta Stencil, painted per skin (`placardInk`: grey paint in Axis, flaking white in Monolith, ink outline in Draft, glowing in Neon). Notes use the bundled Caveat in red grease pencil with a per-letter wobble, the same in every skin. `npm test` checks that each one sits on a real, uncovered face. So far there are two: the induction placard in the Vault, and a note in the Shaft on the face overhead during the climb. The writing pass is done: see "Chamber script" above.
 4. **Crate serials.** *Status: built.* `addCrate(center, size, { stamp })` stencils every face. Every crate is stamped `BALLAST MASS` with a `BM-` serial; the `AT-0416` crate waits for the reveal.
 5. **Planet lights.** *Status: not started.* Make the planet's night-side lights a function of chamber index.
 6. **The Descent.** *Status: not started; needs its own plan.* Build a new chamber with a new permanent `id`, an exit that is a hole into space, a fall long enough to read, and an ending screen. This needs a `GameState` path where a fall ends the game instead of resetting it. Add a state or event there and test it in `tests/gameState.test.ts`.

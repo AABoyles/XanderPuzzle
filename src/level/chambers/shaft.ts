@@ -42,6 +42,13 @@ export function buildShaft(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.addSwitch(V(W - 0.3, y0 + 1.5, 0), V(-1, 0, 0), '+X');
   b.addSwitch(V(W - 1.5, y1 - 0.3, 0), V(0, -1, 0), '+Y');
 
+  b.placard(V(-2, y0 + 1.6, -W - 3), V(1, 0, 0), '-Y', 'CUBE 0113', { width: 2.6 });
+  // Beside the trap hole, its top towards the hole.
+  b.placard(V(-2.4, y0, 0), V(0, 1, 0), '-Y', 'OPEN APERTURE\nATTENDANT RECOVERY\nIS AUTOMATIC', {
+    width: 5,
+    top: V(0, 0, 1),
+  });
+
   return b.finish({
     name: 'II · THE SHAFT',
     hint: 'The way out is a long way up. Walls are just floors you have not met yet.',

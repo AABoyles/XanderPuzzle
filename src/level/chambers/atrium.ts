@@ -63,6 +63,17 @@ export function buildAtrium(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.addSwitch(V(0, rw, rd), V(0, -1, 0), '+Y'); // C
   b.addSwitch(V(rw, 0, rd), V(-1, 0, 0), '+X');
 
+  b.placard(V(0, -R + 2.5, R), V(0, 0, -1), '-Y', 'CUBE 0119', { width: 2.6 });
+  // Each doorway's label is on the face it is cut in, upright only under the gravity that makes it the floor.
+  b.placard(V(R, 0, -3.2), V(-1, 0, 0), '+X', 'ROOM A', { width: 2.4, top: V(0, 0, 1) });
+  b.placard(V(-R, 0, 3.2), V(1, 0, 0), '-X', 'ROOM B', { width: 2.4, top: V(0, 0, -1) });
+  b.placard(V(-3.2, 0, R), V(0, 0, -1), '+Z', 'ROOM C', { width: 2.4, top: V(1, 0, 0) });
+  b.placard(V(0, R, -3.2), V(0, -1, 0), '+Y', 'EXIT', { width: 2.4, top: V(0, 0, 1) });
+  // Room B's side wall, upright under -X.
+  b.note(V(-12, 0, -H), V(0, 0, 1), '-X', 'I have been here before.\nThis cube was the same\nlast time.', {
+    width: 3.8,
+  });
+
   return b.finish({
     name: 'VII · THE ATRIUM',
     hint: 'A doorway is only a door when its wall is the floor. Work backwards from the exit.',

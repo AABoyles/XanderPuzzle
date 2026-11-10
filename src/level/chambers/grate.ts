@@ -45,6 +45,15 @@ export function buildGrate(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.addSwitch(V(R - 0.3, F + 1.5, -4), V(-1, 0, 0), '+X');
   b.addSwitch(V(R - 1.5, F + 0.5, -R + 0.3), V(0, 0, 1), '-Y');
 
+  b.placard(V(-2, F + 1.6, -R - 3), V(1, 0, 0), '-Y', 'CUBE 0130', { width: 2.6 });
+  // On the glass, read looking down at the lower deck.
+  b.placard(V(-5, F, -4), V(0, 1, 0), '-Y', 'LOWER DECK · BALLAST ONLY', { width: 5.9, top: V(0, 0, 1) });
+  // On the east wall, where the shift east puts you.
+  b.note(V(R, -1, -1), V(-1, 0, 0), '+X', 'Everything ends up below.\nThe crates just get there first.', {
+    width: 5,
+    top: V(0, 0, 1),
+  });
+
   return b.finish({
     name: 'XII · THE GRATE',
     hint: 'You cannot go down there. The crate can.',

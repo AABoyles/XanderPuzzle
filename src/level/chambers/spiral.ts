@@ -35,6 +35,15 @@ export function buildSpiral(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.addSwitch(V(0, -R + 1.5, R - 0.3), V(0, 0, -1), '+Z');
   b.addSwitch(V(0, -R + 0.3, R - 1.5), V(0, 1, 0), '-Y');
 
+  b.placard(V(-2, -R + 1.6, -R - 3), V(1, 0, 0), '-Y', 'CUBE 0115', { width: 2.6 });
+  // On the ceiling, read while crossing it under +Y towards the +X lever.
+  b.placard(V(0, R, -3), V(0, -1, 0), '+Y', 'TRIM SEQUENCE: -Y · -X · +Y · +X', { width: 7, top: V(1, 0, 0) });
+  // Beside the trap hole in the -X wall, its top towards the hole.
+  b.note(V(-R, -5, 5), V(1, 0, 0), '-X', 'Not every lever leads somewhere.\nThis one led me here.', {
+    width: 5,
+    top: V(0, 1, 0),
+  });
+
   return b.finish({
     name: 'IV · THE SPIRAL',
     hint: 'One lever leads to the next. Not every lever leads somewhere.',

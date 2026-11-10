@@ -39,6 +39,16 @@ export function buildBallast(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.addSwitch(V(R - 0.3, -R + 1.5, -4), V(-1, 0, 0), '+X');
   b.addSwitch(V(R - 1.5, -R + 0.3, -4), V(0, 1, 0), '-Y');
 
+  b.placard(V(-2, -R + 1.6, -R - 3), V(1, 0, 0), '-Y', 'CUBE 0121', { width: 2.6 });
+  // On the east wall above the plate, upright once it is the floor.
+  b.placard(V(R, -4, 4), V(-1, 0, 0), '+X', 'BALLAST MASS SEATS HERE\nDO NOT OBSTRUCT', { width: 6, top: V(0, 1, 0) });
+  // In the trough, under the crate until it slides out.
+  b.note(V(-4.6, -R, 4), V(0, 1, 0), '-Y', 'The crates don\'t need us.\nThey just need someone to throw the lever.', {
+    width: 6.4,
+    lineHeight: 0.45,
+    top: V(0, 0, 1),
+  });
+
   return b.finish({
     name: 'VIII · THE BALLAST',
     hint: 'Gravity moves more than you do.',

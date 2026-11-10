@@ -59,6 +59,20 @@ export function buildStaircase(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.box(V(XE, fTop - 1, 1), V(XE + 1, fTop, 5), b.exit);
   b.tube(V(XE + 1, fTop, 1), V(XE + 10, fTop + 3, 5), ['-x'], b.exit);
 
+  b.placard(V(1.5, 2, -0.5), V(0, 0, -1), '-Y', 'CUBE 0118', { width: 2.6 });
+  // The first riser, in the open lane.
+  b.placard(V(L, 1.6, 3.2), V(-1, 0, 0), '-Y', [
+    'RISER MAINTENANCE',
+    '4 CLIMBS SCHEDULED',
+    'SCHEDULE UNCHANGED',
+    'SINCE CYCLE 1',
+  ].join('\n'), {
+    width: 5,
+    lineHeight: 0.5,
+  });
+  // High on the next cell's sealed block, upright under +X: seen by looking up from the first climb.
+  b.note(V(L, 10, 3.25), V(-1, 0, 0), '+X', 'Same stairs every time.\nI counted.', { top: V(0, 1, 0) });
+
   return b.finish({
     name: 'VI · THE STAIRCASE',
     hint: 'Climb, step off, turn the cube back, walk round. Repeat until it\'s done.',

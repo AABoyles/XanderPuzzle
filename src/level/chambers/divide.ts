@@ -34,6 +34,11 @@ export function buildDivide(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.addSwitch(V(R - 0.3, -R + 1.5, -4), V(-1, 0, 0), '+X');
   b.addSwitch(V(R - 1.5, 6, R - 0.3), V(0, 0, -1), '+Z');
 
+  b.placard(V(-2, -R + 1.6, -R - 3), V(1, 0, 0), '-Y', 'CUBE 0114', { width: 2.6 });
+  b.placard(V(0, -5, 0), V(0, 0, -1), '-Y', 'PARTITION · DO NOT CLIMB', { width: 6 });
+  // On the partition's far face, upright once you are walking the +X wall.
+  b.note(V(6, 0, 1), V(0, 0, 1), '+X', 'It says don\'t climb.\nIt doesn\'t say anything about walking.', { width: 6 });
+
   return b.finish({
     name: 'III · THE DIVIDE',
     hint: 'Too tall to jump. But is it too tall to walk around?',
