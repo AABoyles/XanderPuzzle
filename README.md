@@ -18,6 +18,8 @@ Five chambers ship with the game, each ending in a different orientation than it
 
 Each lever carries an arrow pointing the way "down" will be once it is thrown. **Shift** runs, **R** restarts the chamber, and clearing one shows your time and number of gravity shifts before moving on.
 
+Press **L** (or the button on the start screen, or Back/Select on a gamepad) for the chamber select, which lists every chamber with your best time. You can replay any chamber you've cleared and try the next one; the rest stay locked. Progress and best times are kept in `localStorage`. Add `?unlockall` to the URL to open every chamber for playtesting; if storage is unavailable, everything is unlocked.
+
 ## Skins
 
 Press **K** in game to cycle skins (Shift+K goes back), or load with `?skin=axis|monolith|draft|neon`. The choice is remembered.
@@ -47,10 +49,11 @@ The engine supports gravity-driven crates, pressure plates and plate-controlled 
 - `src/gravity/GravitySystem.ts` — owns the single "which way is down" axis and notifies listeners when it changes.
 - `src/player/PlayerController.ts` — pointer-lock mouse look, WASD/jump input, and a kinematic body whose movement basis, ground checks, and camera orientation all derive from a smoothly-interpolated "up" vector, so a gravity flip reads as a coherent tumble into the new orientation rather than a snap.
 - `src/level/Builder.ts` — the `Builder` that chambers are written against: `slab` (wall with optional hole), `tube` (corridor/chamber), `box`, `addSwitch`, `addCrate`/`addPlate`/`addDoor`.
-- `src/level/chambers/` — one file per chamber; `index.ts` holds `LEVELS`, the play order. To add a chamber, add a file and list it there.
+- `src/level/chambers/` — one file per chamber; `index.ts` holds `CHAMBERS`, the play order with each chamber's name (shown in the chamber select). To add a chamber, add a file and list it there.
 - `src/physics/boxPhysics.ts` — dependency-free swept axis-aligned box physics used by crates.
 - `src/level/Dynamics.ts` — crates, pressure plates, doors, and the per-frame update that ties them together.
 - `src/level/GravitySwitch.ts` — the wall-mounted lever interactable.
 - `src/skins/Skin.ts` — the skins: per-axis surface materials, procedural textures, lighting, sky and post-processing.
 - `src/ui/HUD.ts` — Babylon GUI overlay: crosshair, interaction prompt, current-gravity indicator, start/win screens.
 - `src/main.ts` — scene bootstrap, skin switching, render loop, win-condition check.
+- `src/progress.ts` — Babylon-free unlock rule and best-time formatting for the chamber select, tested by Node.

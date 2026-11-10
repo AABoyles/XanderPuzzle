@@ -64,7 +64,7 @@ export class PlayerController {
     this.mouseDY += e.movementY;
   };
   private readonly onCanvasClick = () => {
-    if (document.pointerLockElement !== this.canvas) {
+    if (!this.pointerLockSuspended && document.pointerLockElement !== this.canvas) {
       this.canvas.requestPointerLock();
     }
   };
@@ -96,6 +96,9 @@ export class PlayerController {
     document.addEventListener('mousemove', this.onMouseMove);
     canvas.addEventListener('click', this.onCanvasClick);
   }
+
+  /** While true (e.g. a menu is open), clicking the canvas doesn't grab the pointer. */
+  public pointerLockSuspended = false;
 
   public get isPointerLocked(): boolean {
     return document.pointerLockElement === this.canvas;
