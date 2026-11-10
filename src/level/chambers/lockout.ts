@@ -44,7 +44,7 @@ export function buildLockout(scene: Scene, skin: SkinRuntime): BuiltLevel {
 
   return b.finish({
     name: 'XI · THE LOCKOUT',
-    hint: 'Levers burn out after one use. Think before you throw one. R restarts.',
+    hint: 'Levers burn out after one use. Someone threw this one first.',
     spawnPosition: V(0, -R + 0.5, -R - 6),
     entranceAxis: '-Y',
     exitAxis: '+Y',

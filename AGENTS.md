@@ -35,10 +35,11 @@ There is no linter or formatter. Match the existing style: 2-space indent, singl
 - `src/level/Dynamics.ts`: crates, pressure plates, doors and their per-frame update.
 - `src/level/GravitySwitch.ts`: the lever interactable.
 - `src/physics/boxPhysics.ts`: swept AABB physics for crates. It must stay free of Babylon imports so Node can test it directly.
-- `src/environment/`: what lies outside a chamber. `fall.ts` is the Babylon-free escape/fall maths (level bounds, `FallTracker`, planet distance), tested by Node like `boxPhysics.ts`; `SpaceBackdrop.ts` draws the stars, planet and speed streaks, visible only after an escape.
+- `src/environment/`: what lies outside a chamber. `fall.ts` is the Babylon-free escape/fall maths (level bounds, `FallTracker`, planet distance), tested by Node like `boxPhysics.ts`; `ballastField.ts` is the Babylon-free layout and motion of the other cubes you fall past, tested by Node; `SpaceBackdrop.ts` draws the stars, planet, field cubes and speed streaks, visible only after an escape.
 - `src/skins/Skin.ts`: the skins (`axis`, `monolith`, `draft`, `neon`): per-axis materials, lighting, sky, post-processing.
 - `src/ui/HUD.ts`: Babylon GUI overlay.
 - `src/ui/PauseMenu.ts`: the pause menu (resume, restart, chamber select, fullscreen, update, settings, controls reference); added on top of the HUD's GUI texture. Keep its controls reference in sync with the real bindings.
+- `src/narrative.ts`: Babylon-free story text in the facility's voice (the attendant serial, cube labels, duty, recovery and win log lines); tested by Node. Each chamber's cube serial is the `cube` field in `CHAMBERS`. The design, voices and writing rules are in `NARRATIVE.md`.
 - `src/time.ts`: Babylon-free `simDelta`, the one clamped frame delta (`MAX_SIM_DELTA` = 1/20 s) that `main.ts` feeds every system; tested by Node.
 - `src/gravity/shiftSound.ts`: Babylon-free axis -> shift-sound mapping (`shiftTone`); tested by Node.
 - `src/settings.ts`: Babylon-free settings model (`Settings`, defaults, limits, `parseSettings`/`loadSettings`/`saveSettings`, `stepSetting`), stored as JSON under `shiftbound.settings`; tested by Node.

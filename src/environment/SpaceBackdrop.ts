@@ -5,11 +5,15 @@ import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTextur
 import { Effect } from '@babylonjs/core/Materials/effect';
 import { GlowLayer } from '@babylonjs/core/Layers/glowLayer';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
+import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder';
 import { CreateSphere } from '@babylonjs/core/Meshes/Builders/sphereBuilder';
 import { ParticleSystem } from '@babylonjs/core/Particles/particleSystem';
 import { Scene } from '@babylonjs/core/scene';
 import { ShaderMaterial } from '@babylonjs/core/Materials/shaderMaterial';
-import { Vector3 } from '@babylonjs/core/Maths/math.vector';
+import { Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector';
+import { cubeAngle, FIELD_COUNT, fieldBasis, layoutField, toWorld } from './ballastField';
+import type { FieldCube } from './ballastField';
+import type { Vec3 } from './fall';
 
 /** Planet radius in world units. */
 export const PLANET_RADIUS = 150;
@@ -27,6 +31,8 @@ export interface BackdropFrame {
   speed: number;
   /** Frame time in seconds. */
   dt: number;
+  /** Share of the ballast field that has gone dark (0-1), read when a fall begins. */
+  darkFraction?: number;
 }
 
 const HALO_SCALE = 1.12;
@@ -227,19 +233,67 @@ function registerShader(name: string, vertex: string, fragment: string): void {
   Effect.ShadersStore[`${name}FragmentShader`] = fragment;
 }
 
+const CUBE_VERTEX = `
+  precision highp float;
+  attribute vec3 position;
+  attribute vec3 normal;
+  uniform mat4 worldViewProjection;
+  uniform mat4 world;
+  varying vec3 vN;
+  varying vec3 vW;
+  varying vec3 vP;
+  void main() {
+    vN = mat3(world) * normal;
+    vW = (world * vec4(position, 1.0)).xyz;
+    vP = position;
+    gl_Position = worldViewProjection * vec4(position, 1.0);
+  }
+`;
+
+// A field cube: sunlit concrete; a lit cube also glows along its seams and at a window in each face. It fades out
+// with distance before the sky sphere, and discards what it fades out so it never writes depth there.
+const CUBE_FRAGMENT = `
+  precision highp float;
+  varying vec3 vN;
+  varying vec3 vW;
+  varying vec3 vP;
+  uniform float fade;
+  uniform float lit;
+  uniform vec3 camPos;
+  ${COMMON}
+
+  void main() {
+    vec3 n = normalize(vN);
+    float shade = 0.22 + 0.78 * max(dot(n, SUN), 0.0);
+    vec3 a = abs(vP);
+    float m = max(a.x, max(a.y, a.z));
+    vec2 f = m == a.x ? a.yz : (m == a.y ? a.xz : a.xy);
+    float e = max(f.x, f.y);
+    float seam = smoothstep(0.44, 0.48, e);
+    float window = 1.0 - smoothstep(0.06, 0.08, e);
+    vec3 col = mix(vec3(0.16, 0.16, 0.18), vec3(0.30, 0.31, 0.34), lit) * shade;
+    col += vec3(1.0, 0.78, 0.5) * (seam * 0.9 + window * 0.7) * lit;
+    float alpha = fade * (1.0 - smoothstep(360.0, 420.0, length(vW - camPos)));
+    if (alpha < 0.01) discard;
+    gl_FragColor = vec4(col, alpha);
+  }
+`;
+
 registerShader('spaceStars', STARS_VERTEX, STARS_FRAGMENT);
 registerShader('spacePlanet', PLANET_VERTEX, PLANET_FRAGMENT);
 registerShader('spaceHalo', HALO_VERTEX, HALO_FRAGMENT);
+registerShader('spaceCube', CUBE_VERTEX, CUBE_FRAGMENT);
 
 /**
  * The outer-space scene seen after falling out of a chamber: stars and a sun, a procedural planet with an
- * atmosphere, and speed streaks.
+ * atmosphere, the ballast field's other cubes (see `ballastField.ts`), and speed streaks.
  *
  * Layering: every skin draws an opaque, depth-writing, `infiniteDistance` sky sphere of diameter 900 (radius 450)
  * around the camera. Everything here lives inside that radius (stars at 430, the planet's visible surface at most
  * ~370 away), so it passes the depth test against the sky, and being in rendering group 0 it is still depth-tested
  * against level geometry. All of it is transparent, so it draws after the opaque sky; `alphaIndex` orders it:
- * stars (0), planet (1), atmosphere halo (2), then the particle streaks. Nothing writes depth except the planet, and
+ * stars (0), planet (1), atmosphere halo (2), field cubes (3, depth-tested against the planet and each other), then
+ * the particle streaks. Nothing writes depth except the planet, and
  * nothing is affected by fog or the glow layer. At visibility 0 the meshes are disabled and the particles stopped.
  */
 export class SpaceBackdrop {
@@ -249,6 +303,16 @@ export class SpaceBackdrop {
   private readonly starsMat: ShaderMaterial;
   private readonly planetMat: ShaderMaterial;
   private readonly haloMat: ShaderMaterial;
+  /** One box per field cube, laid out afresh at each escape; `cubeMats` are [lit, dark]. */
+  private readonly cubeMeshes: Mesh[] = [];
+  private readonly cubeMats: [ShaderMaterial, ShaderMaterial];
+  private field: FieldCube[] = [];
+  /** Where the fall began and the field's axes, fixed for the whole fall so the player falls past the field. */
+  private fieldOrigin: Vec3 = [0, 0, 0];
+  private fieldAxes = fieldBasis([0, -1, 0]);
+  private falls = 0;
+  private readonly spin = new Quaternion();
+  private readonly spinAxis = new Vector3();
   private readonly streakTex: DynamicTexture;
   private readonly streaks: ParticleSystem;
   private readonly streakEmitter = new Vector3();
@@ -320,7 +384,31 @@ export class SpaceBackdrop {
     this.halo.material = this.haloMat;
     this.halo.alphaIndex = 2;
 
-    for (const mesh of [this.stars, this.planet, this.halo]) {
+    const cubeMat = (lit: number): ShaderMaterial => {
+      const mat = new ShaderMaterial(
+        lit ? 'spaceCubeLitMat' : 'spaceCubeDarkMat',
+        scene,
+        { vertex: 'spaceCube', fragment: 'spaceCube' },
+        {
+          attributes: ['position', 'normal'],
+          uniforms: ['worldViewProjection', 'world', 'fade', 'lit', 'camPos'],
+          needAlphaBlending: true,
+        },
+      );
+      mat.setFloat('lit', lit);
+      mat.fogEnabled = false;
+      return mat;
+    };
+    this.cubeMats = [cubeMat(1), cubeMat(0)];
+    const cubeSource = CreateBox('spaceCube0', { size: 1 }, scene);
+    this.cubeMeshes.push(cubeSource);
+    for (let i = 1; i < FIELD_COUNT; i++) this.cubeMeshes.push(cubeSource.clone(`spaceCube${i}`));
+    for (const cube of this.cubeMeshes) {
+      cube.rotationQuaternion = new Quaternion();
+      cube.alphaIndex = 3;
+    }
+
+    for (const mesh of [this.stars, this.planet, this.halo, ...this.cubeMeshes]) {
       mesh.isPickable = false;
       mesh.checkCollisions = false;
       mesh.receiveShadows = false;
@@ -376,8 +464,10 @@ export class SpaceBackdrop {
       this.setActive(false);
       return;
     }
+    if (!this.enabled) this.layOutField(frame);
     this.setActive(true);
     this.time += frame.dt;
+    this.updateField(frame.cameraPosition, vis);
 
     const { cameraPosition: cam, planetDirection: dir } = frame;
     const px = cam.x + dir.x * frame.planetDistance;
@@ -419,10 +509,11 @@ export class SpaceBackdrop {
     this.stopStreaks();
     this.streaks.dispose();
     this.streakTex.dispose();
-    for (const mesh of [this.stars, this.planet, this.halo]) {
+    for (const mesh of [this.stars, this.planet, this.halo, ...this.cubeMeshes]) {
       this.glow.removeExcludedMesh(mesh);
       mesh.dispose();
     }
+    for (const mat of this.cubeMats) mat.dispose();
     this.starsMat.dispose();
     this.planetMat.dispose();
     this.haloMat.dispose();
@@ -434,7 +525,39 @@ export class SpaceBackdrop {
     this.stars.setEnabled(on);
     this.planet.setEnabled(on);
     this.halo.setEnabled(on);
+    this.cubeMeshes.forEach((mesh, i) => mesh.setEnabled(on && i < this.field.length));
     if (!on) this.stopStreaks();
+  }
+
+  /** A new field for each fall, anchored where it starts and turned so its "up" points away from the planet. */
+  private layOutField(frame: BackdropFrame): void {
+    this.falls++;
+    this.field = layoutField(this.falls * 7919 + 1, frame.darkFraction ?? 0.3);
+    const cam = frame.cameraPosition;
+    this.fieldOrigin = [cam.x, cam.y, cam.z];
+    const dir = frame.planetDirection;
+    this.fieldAxes = fieldBasis([dir.x, dir.y, dir.z]);
+    this.field.forEach((cube, i) => {
+      const mesh = this.cubeMeshes[i];
+      mesh.material = this.cubeMats[cube.dark ? 1 : 0];
+      mesh.scaling.setAll(cube.size);
+    });
+  }
+
+  private updateField(cam: Vector3, vis: number): void {
+    for (const mat of this.cubeMats) {
+      mat.setFloat('fade', vis);
+      mat.setVector3('camPos', cam);
+    }
+    this.field.forEach((cube, i) => {
+      const mesh = this.cubeMeshes[i];
+      mesh.position.fromArray(toWorld(this.fieldOrigin, this.fieldAxes, cube.position));
+      // The field's axes are world axes up to sign and order (gravity is axis-aligned), so a lit cube turning about
+      // one of them stays square to the world between turns.
+      this.spinAxis.fromArray(toWorld([0, 0, 0], this.fieldAxes, cube.axis));
+      Quaternion.RotationAxisToRef(this.spinAxis, cubeAngle(cube, this.time), this.spin);
+      mesh.rotationQuaternion!.copyFrom(this.spin);
+    });
   }
 
   private stopStreaks(): void {

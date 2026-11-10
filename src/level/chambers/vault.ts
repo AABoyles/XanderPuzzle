@@ -28,7 +28,7 @@ export function buildVault(scene: Scene, skin: SkinRuntime): BuiltLevel {
 
   return b.finish({
     name: 'I · THE VAULT',
-    hint: 'Levers pull gravity toward the wall their arrow points at.',
+    hint: 'Levers turn the cube until the arrow\'s wall faces the planet. That wall is your floor now.',
     spawnPosition: V(0, -R + 0.5, -R - 5),
     entranceAxis: '-Y',
     exitAxis: '+X',
