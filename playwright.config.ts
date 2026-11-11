@@ -4,7 +4,7 @@ const PORT = 5174;
 
 export default defineConfig({
   testDir: 'e2e',
-  timeout: 90_000,
+  timeout: 180_000, // the tests wait in game time, which a slow renderer stretches; this is only the backstop
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
