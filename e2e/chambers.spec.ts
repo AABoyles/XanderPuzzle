@@ -72,7 +72,9 @@ async function boot(page: Page, errors: string[]) {
   page.on('console', (m) => {
     if (m.type() === 'error') errors.push(`console.error: ${m.text()}`);
   });
-  await page.goto('/');
+  // Axis is the lightest skin to draw. Under software WebGL the default (Station, with its shadow and normal maps)
+  // slows the frame rate enough to starve the game clock, and the routes are the same in every skin.
+  await page.goto('/?skin=axis');
   await page.waitForFunction(() => '__debug' in window);
 }
 
