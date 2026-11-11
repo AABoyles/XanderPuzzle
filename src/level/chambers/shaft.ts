@@ -7,8 +7,10 @@ import { Builder, BuiltLevel, T, V } from '../Builder';
  * Level 2 - a 40-unit vertical shaft. The exit door is at the very top, upside down.
  * -Y -> +X (walk up the wall) -> +Y (stand on the ceiling).
  *
- * Trap hole: a 3x3 opening in the floor, off to the -X side away from the walk to the first lever. It opens
- * onto space; step into it and you fall out of the chamber.
+ * Trap hole: a 4 x 4.5 opening in the +X wall at height 12..16, straight ahead of where the first lever
+ * lands you. Under +X it is a hole in the floor (the planet shows through it): walk straight up and you
+ * walk into it and fall out of the chamber. A 4-wide strip on the +Z side passes it. A placard just
+ * before it says what recovery is.
  */
 export function buildShaft(scene: Scene, skin: SkinRuntime): BuiltLevel {
   const b = new Builder(scene, skin, new Color3(0.9, 0.35, 0.55));
@@ -18,10 +20,10 @@ export function buildShaft(scene: Scene, skin: SkinRuntime): BuiltLevel {
   const w: [number, number] = [-W, W];
   const h: [number, number] = [y0, y1];
 
-  // Trap hole open to space: floor (-Y) at x [-4.5, -1.5], z [1.5, 4.5]; nothing lies beneath it.
-  b.slab('y', y0 - T, y0, w, w, b.floor, { u: [-4.5, -1.5], v: [1.5, 4.5] });
+  b.slab('y', y0 - T, y0, w, w, b.floor);
   b.slab('y', y1, y1 + T, w, w, b.wall);
-  b.slab('x', W, W + T, h, w, b.wall);
+  // Trap hole open to space, in the climb: +X wall at y [12, 16], z [-3.5, 1]; strip z [1, 5] stays walkable.
+  b.slab('x', W, W + T, h, w, b.wall, { u: [12, 16], v: [-3.5, 1] });
   b.slab('z', W, W + T, w, h, b.wall);
   b.slab('z', -W - T, -W, w, h, b.wall, { u: [-2, 2], v: [y0, y0 + 3] });
   b.slab('x', -W - T, -W, h, w, b.wall, { u: [y1 - 3, y1], v: [-2, 2] });
@@ -43,10 +45,10 @@ export function buildShaft(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.addSwitch(V(W - 1.5, y1 - 0.3, 0), V(0, -1, 0), '+Y');
 
   b.placard(V(-2, y0 + 1.6, -W - 3), V(1, 0, 0), '-Y', 'CUBE 0113', { width: 2.6 });
-  // Beside the trap hole, its top towards the hole.
-  b.placard(V(-2.4, y0, 0), V(0, 1, 0), '-Y', 'OPEN APERTURE\nATTENDANT RECOVERY\nIS AUTOMATIC', {
-    width: 5,
-    top: V(0, 0, 1),
+  // On the +X wall just before the hole, read while walking up under +X (text top towards +Y).
+  b.placard(V(W, 8.5, 2.6), V(-1, 0, 0), '+X', 'OPEN APERTURE\nATTENDANT RECOVERY\nIS AUTOMATIC', {
+    width: 4,
+    top: V(0, 1, 0),
   });
 
   return b.finish({

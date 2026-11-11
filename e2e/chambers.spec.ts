@@ -14,7 +14,10 @@ interface Row {
   axes: string[];
   /** Crate chambers: after the route, every pressure plate must be pressed and every door open. */
   plates?: boolean;
-  /** Timed chamber: gravity changes on its own, so the route is replaced by waiting for the cycle. */
+  /**
+   * Timed chamber: lever 0 starts gravity cycling on its own, so the route is replaced by waiting for the cycle.
+   * `axes` is then the gravity expected after each of the first few automatic shifts.
+   */
   timed?: boolean;
   /** Ending chamber (the Descent): its exit is a hole into space, and leaving ends the game on the end card. */
   ending?: boolean;
@@ -26,14 +29,20 @@ const ROWS: Row[] = [
   { id: 'divide', route: [0, 1], axes: ['+X', '+Z'] },
   { id: 'spiral', route: [0, 1, 2], axes: ['-X', '+Y', '+X'] },
   { id: 'chimney', route: [0], axes: ['+Z'] },
-  { id: 'staircase', route: [0, 2, 1, 4, 3, 6, 5, 7], axes: ['+X', '-Y', '+X', '-Y', '+X', '-Y', '+X', '-Y'] },
-  { id: 'atrium', route: [0, 4, 1, 6, 8], axes: ['+X', '-Z', '-X', '+Z', '+Y'] },
+  { id: 'staircase', route: [0, 2, 1, 4, 3], axes: ['+X', '-Y', '+X', '-Y', '+X'] },
+  { id: 'atrium', route: [0, 3, 1, 5, 7], axes: ['+X', '-Z', '-X', '+Z', '+Y'] },
   { id: 'ballast', route: [0, 1], axes: ['+X', '-Y'], plates: true },
+  { id: 'footing', route: [0, 2, 1, 3], axes: ['-X', '-Y', '+X', '-Y'] },
+  { id: 'stopper', route: [0, 2, 3], axes: ['-Z', '+X', '+Z'] },
   { id: 'counterweight', route: [0, 1, 2], axes: ['-X', '-Y', '+X'], plates: true },
+  { id: 'deadman', route: [0, 1], axes: ['+X', '-Y'] },
   { id: 'turnstile', route: [0, 0, 2], axes: ['+X', '+Y', '+Z'] },
   { id: 'lockout', route: [1, 0], axes: ['-X', '+Y'] },
   { id: 'grate', route: [0, 1], axes: ['+X', '-Y'], plates: true },
-  { id: 'tide', route: [], axes: [], timed: true },
+  { id: 'sieve', route: [0, 1, 2, 3], axes: ['+X', '+Y', '+X', '-Y'], plates: true },
+  { id: 'surplus', route: [0, 2, 4, 5], axes: ['-X', '-Y', '+X', '-Y'], plates: true },
+  { id: 'tide', route: [], axes: ['+X', '+Z'], timed: true },
+  { id: 'pendulum', route: [], axes: ['+X', '-Y', '-X'], timed: true },
   { id: 'orrery', route: [0, 1, 2, 3, 4, 5], axes: ['+X', '+Z', '+Y', '-X', '-Z', '+Y'], plates: true },
   { id: 'descent', route: [0, 1], axes: ['+X', '+Y'], ending: true },
 ];
@@ -101,7 +110,7 @@ test.describe('chambers', () => {
       expect(await dbg(page, (d) => d.gravityAxis())).toBe('-Y');
 
       if (row.timed) {
-        // Throw the one lever; the sequencer must then carry gravity -Y -> +X -> +Z on its own.
+        // Throw the sequence lever; the sequencer must then carry gravity through `axes` on its own.
         const lever = (await dbg(page, (d) => d.switches()))[0];
         await page.evaluate(
           ([x, y, z]) => {
@@ -111,11 +120,12 @@ test.describe('chambers', () => {
           },
           lever.position,
         );
-        await expect.poll(() => dbg(page, (d) => d.gravityAxis()), { timeout: 30_000 }).toBe('+X');
-        await expect.poll(() => dbg(page, (d) => d.gravityAxis()), { timeout: 30_000 }).toBe('+Z');
+        for (const axis of row.axes) {
+          await expect.poll(() => dbg(page, (d) => d.gravityAxis()), { timeout: 30_000 }).toBe(axis);
+        }
       }
 
-      for (let step = 0; step < row.route.length; step++) {
+      for (let step = 0; !row.timed && step < row.route.length; step++) {
         await throwLever(page, row.route[step], row.axes[step]);
         await settleCrates(page);
       }

@@ -101,32 +101,38 @@ Skins can stay freely switchable. If they ever unlock instead, Monolith should c
 
 ## The arc
 
-The fourteen existing chambers fall into four acts, followed by one new chamber.
+The twenty chambers before the last fall into four acts, followed by the epilogue.
 
 ### Act I · Orientation (I–V: Vault, Shaft, Divide, Spiral, Chimney)
 
 Everything is new and clean. The Stencil is welcoming: induction placards, `WELCOME, ATTENDANT`. The Margin is a helpful tutor, and every hint is useful. The planet is dark.
 
 - **The Vault:** the first placard explains that levers turn the cube, establishing the premise in one line.
-- **The Shaft:** the first trap hole, and the first recovery log. The count starts at 1.
+- **The Shaft:** the first trap hole, and the first recovery log. The count starts at 1. From here on a trap hole is where a wrong move puts you, never scenery: the lever that leads nowhere (Spiral), the pit you failed to steer out of (Chimney).
 - **The Chimney:** the Margin's thesis line, "Falling is just walking, faster. Steer." It reads as a tip about the chamber. It is also the ending.
 
-### Act II · Maintenance (VI–IX: Staircase, Atrium, Ballast, Counterweight)
+### Act II · Maintenance (VI–XII: Staircase, Atrium, Ballast, Footing, Stopper, Counterweight, Deadman)
 
 The attendant is now doing a job. Placards turn into duty rosters and schedules. Ballast mass appears. The Margin starts noticing things: the schedule never changes; no other attendant is ever seen in a cube; the field seems to have more dark cubes than it should.
 
 - **The Atrium:** a Margin note on the back of one room says it has been here before, and that this cube was the same last time.
-- **The Ballast:** the first crate, stencilled `BALLAST MASS · BM-2231`.
+- **The Atrium** also holds the first ballast mass the attendant sees: a crate in a glass cage, sliding with every shift, with no job. The facility is watching it.
+- **The Ballast:** the first crate the attendant moves, stencilled `BALLAST MASS · BM-2231`.
+- **The Footing** and **The Stopper:** the mass as a tool (a step) and as an obstacle (a plug the facility thinks is correctly seated).
+- **The Deadman:** the act's last beat. A plate that takes the attendant's weight, for a crate that needs a gate held. The facility cannot tell an attendant from a crate, and says so without knowing what it has said.
 
-### Act III · Wear (X–XIII: Turnstile, Lockout, Grate, Tide)
+### Act III · Wear (XIII–XIX: Turnstile, Lockout, Grate, Sieve, Surplus, Tide, Pendulum)
 
 Cubes in this act show their age: Monolith-style wear can bleed into the other skins' textures here. There are scuffs on ceilings, and a crate left on a plate in a room that doesn't need it. The Margin becomes personal and frightened. A few lights appear on the planet.
 
 - **The Lockout:** the one-shot lever. A Margin note near it: "Someone threw this one first. I found them." It points nowhere, because they fell.
 - **The Grate:** "You cannot go down there. The crate can." The hint already works as both an instruction and a threat.
+- **The Sieve:** the Grate's mirror. A field that stops the mass and lets the attendant through.
+- **The Surplus:** the attendant throws ballast out of a trap hole on purpose. The log line, `BALLAST MASS RELEASED. REPLACEMENT NOT SCHEDULED.`, is the recovery line's opposite: attendants are replaced, masses are not.
 - **The Tide:** the lever starts the cube turning on its own. It's the first time the machine moves without you. The Stencil calls it `AUTOMATIC TRIM`.
+- **The Pendulum:** the cycle now swings a crate, and the door answers to the crate, not to you.
 
-### Act IV · The Orrery (XIV)
+### Act IV · The Orrery (XX)
 
 The finale chamber holds a model of the whole field: the cubes and the Crown above them. Here the attendant can see that the field is out of balance in exactly the way that a missing set of attendants would cause. The machine has been compensating by printing more.
 
@@ -134,7 +140,7 @@ The finale chamber holds a model of the whole field: the cubes and the Crown abo
 
 The Margin's notes stop in the Orrery, one short of the end.
 
-### Epilogue · XV · The Descent
+### Epilogue · XXI · The Descent
 
 The game has taught that falling is failure. It has also taught you to steer while falling (the Chimney). The last chamber turns the second lesson against the first.
 
@@ -155,15 +161,21 @@ Hints still have to teach the chamber, and they're limited to one or two short s
 | III · The Divide | Too tall to jump. But is it too tall to walk around? | Keep. |
 | IV · The Spiral | One lever leads to the next. Not every lever leads somewhere. | Keep. |
 | V · The Chimney | Falling is just walking, faster. Steer. | Keep. This is the thesis. Never change it. |
-| VI · The Staircase | Climb the wall, step off the top, then walk round the divider. | Climb, step off, turn the cube back, walk round. Repeat until it's done. |
+| VI · The Staircase | Climb the wall, step off the top, then walk round the divider. | Climb, step off, turn the cube back, walk round. Look where you land. |
 | VII · The Atrium | A doorway is only a door when its wall is the floor. Work backwards from the exit. | Keep. |
 | VIII · The Ballast | Gravity moves more than you do. | Keep. |
-| IX · The Counterweight | Pin one crate where gravity cannot move it, then seat the other. | Keep. |
-| X · The Turnstile | A white lever turns gravity clockwise, as you face it. Same lever, different floor, different turn. | Keep. |
-| XI · The Lockout | Levers burn out after one use. Think before you throw one. R restarts. | Levers burn out after one use. Someone threw this one first. |
-| XII · The Grate | You cannot go down there. The crate can. | Keep. |
-| XIII · The Tide | The cycle will not wait. Be where the next shift needs you. | The cube turns itself now. Be where the next shift needs you. |
-| XIV · The Orrery | Everything you have learned, in one room. The way out is the way you came in. R restarts. | Everything you have learned, in one room. The way out is the way you came in. |
+| IX · The Footing | (new) | A mass is a floor you can move. Mind where it stops. |
+| X · The Stopper | (new) | Out is easy. Mind the way back. |
+| XI · The Counterweight | Pin one crate where gravity cannot move it, then seat the other. | Keep. |
+| XII · The Deadman | (new) | Something has to hold the gate for it. The crate can't be the one. |
+| XIII · The Turnstile | A white lever turns gravity clockwise, as you face it. Same lever, different floor, different turn. | Keep. |
+| XIV · The Lockout | Levers burn out after one use. Think before you throw one. R restarts. | Levers burn out after one use. Someone threw this one first. |
+| XV · The Grate | You cannot go down there. The crate can. | Keep. |
+| XVI · The Sieve | (new) | You can go through there. The crate cannot. It can go over. |
+| XVII · The Surplus | (new) | One mass too many. There is a way to be rid of it. Choose with care. |
+| XVIII · The Tide | The cycle will not wait. Be where the next shift needs you. | The cube turns itself now. Be where the next shift needs you. |
+| XIX · The Pendulum | (new) | Watch the crate. The door keeps its time, not yours. |
+| XX · The Orrery | Everything you have learned, in one room. The way out is the way you came in. R restarts. | Everything you have learned, in one room. The way out is the way you came in. |
 
 The proposals above are in the game. Dropping "R restarts" is safe: the HUD's control strip shows the restart binding on every device.
 
@@ -185,12 +197,12 @@ The Stencil welcomes you. The Margin is a helpful tutor.
 | --- | --- | --- | --- | --- |
 | I · Vault | S | `CUBE 0112 · ATTENDANT INDUCTION` / `LEVERS TURN THE CUBE.` / `THE ARROW'S WALL WILL FACE THE PLANET.` | +Z wall above the first lever, under -Y. On route. | Establishes the premise in the first room. |
 | I · Vault | M | *You'll get used to it. / The turning, I mean.* | +X wall (the exit wall), low, under +Z: readable only while standing on the +Z wall. On route but easy to miss. | The first sign that someone was here before you. |
-| II · Shaft | S | `OPEN APERTURE` / `ATTENDANT RECOVERY` / `IS AUTOMATIC` | Floor beside the trap hole, under -Y, top of the text towards the hole. On route. | The first trap hole, and the first sign that you are replaceable. |
+| II · Shaft | S | `OPEN APERTURE` / `ATTENDANT RECOVERY` / `IS AUTOMATIC` | +X wall on the climb, just short of the trap hole, under +X. On route: you read it walking towards the hole. | The first trap hole, and the first sign that you are replaceable. |
 | II · Shaft | M | *It is a long way up. / It is a longer way down. / I checked.* | -X wall overhead during the climb under +X, top towards +Y. Off route: you have to look up. | The Margin has fallen too. |
 | III · Divide | S | `PARTITION · DO NOT CLIMB` | Near face of the partition, under -Y. On route. | Deadpan: the solution is to walk up the wall, not to climb. |
 | III · Divide | M | *It says don't climb. / It doesn't say anything about walking.* | Far face of the partition, under +X. On route, just after the shift. | A tutor's wink that confirms what you just did. |
 | IV · Spiral | S | `TRIM SEQUENCE: -Y · -X · +Y · +X` | Ceiling (+Y face), under +Y. On route, read once you are standing there. | The facility shows you the whole route, readable only from partway through it. |
-| IV · Spiral | M | *Not every lever leads somewhere. / This one led me here.* | Beside the trap hole in the -X wall, under -X. Off route. | It echoes the hint. The Margin took the wrong turn and fell. |
+| IV · Spiral | M | *Not every lever leads somewhere. / This one led me here.* | -X wall beside the decoy lever, under -X. Beside the route, read before the throw. | It echoes the hint, and it is a true warning: that lever turns a wall with a hole in it into the floor under you. |
 | V · Chimney | S | `DESCENT CORRIDOR · KEEP TO THE LEDGE` | Tunnel wall near the lever, under -Y. After the shift it reads sideways as you fall past. | Instruction you can only read before you need it. |
 | V · Chimney | M | *Missed it too. / Steer earlier.* | Top face of the decoy ledge, under +Z. Only seen if you land there. | Consolation, and the first "steer". The ending calls back to it. |
 
@@ -200,14 +212,21 @@ Placards turn into rosters and schedules. The Margin starts noticing things.
 
 | Chamber | Voice | Text | Where | Why |
 | --- | --- | --- | --- | --- |
-| VI · Staircase | S | `RISER MAINTENANCE` / `4 CLIMBS SCHEDULED` / `SCHEDULE UNCHANGED` / `SINCE CYCLE 1` | First riser face, under -Y. On route. | The schedule never changes. |
+| VI · Staircase | S | `RISER MAINTENANCE` / `3 CLIMBS SCHEDULED` / `SCHEDULE UNCHANGED` / `SINCE CYCLE 1` | First riser face, under -Y. On route. | The schedule never changes. |
 | VI · Staircase | M | *Same stairs every time. / I counted.* | West face of the next cell's sealed block, under +X, above the gap you step off. Off route: you have to look up during the first climb. | The Margin notices repetition. |
 | VII · Atrium | S | `ROOM A`, `ROOM B`, `ROOM C`, `EXIT` | Above each doorway, each reading under the gravity that makes its wall the floor. On route. | Wayfinding that only reads right under the correct gravity, which helps you plan the route. |
 | VII · Atrium | M | *I have been here before. / This cube was the same / last time.* | Side wall of room B, under -X. (Its back wall is the floor under -X.) On route, beside the lever. | From the NARRATIVE arc: the cubes repeat. |
+| VII · Atrium | S | `MASS UNDER OBSERVATION` / `NO ACTION REQUIRED` | +Z wall under the glass cage, under -Y. In view from the start. | The first ballast mass, a chamber before it matters. The facility watches it and does nothing. |
 | VIII · Ballast | S | `BALLAST MASS SEATS HERE` / `DO NOT OBSTRUCT` | East wall beside the plate, under +X. On route. | Names the crate's job. (The crate's own stamp `BM-2231` is already in game.) |
 | VIII · Ballast | M | *The crates don't need us. / They just need someone to throw the lever.* | Bottom of the trough under the crate, under -Y. Visible only after the crate slides out. | Unease about what the attendants are for. |
-| IX · Counterweight | S | `TRIM REQUIRES 2 MASSES` / `ATTENDANTS ON THIS CYCLE: 1` | +Z wall beside the door, under -Y. On route. | "1" is the first hint that you are alone. |
-| IX · Counterweight | M | *I have never met another attendant. / The roster has room for hundreds.* | -X wall above the pit, under -X. Off route: away from the lever on that wall. | Picks up the Stencil's "1". |
+| IX · Footing | S | `NORTH BAY: CLEANING 0700` / `SILL HEIGHT: 2.6` / `STEP ISSUED: 1` | Partition's south face, west of the window, under -Y. On route. | A roster that issues the mass as a step. |
+| IX · Footing | M | *Scuffs on the top of the mass. / Boots. Not mine.* | Partition's south face above the crate's ledge, under -Y. In the first view. | Someone has stood on it before. |
+| X · Stopper | S | `AUXILIARY EXIT` / `BALLAST MASS SEATED` / `DO NOT UNSEAT` | North wall above the plugged mouth, under -Y. On route. | The facility thinks the plug is where it belongs. |
+| X · Stopper | M | *It comes out easily. / I put it back where I found it. / Twice.* | South wall beside the two levers, under -Z. On route, read on landing there. | The Margin made the mistake the chamber is built around, and says so without giving the order. |
+| XI · Counterweight | S | `TRIM REQUIRES 2 MASSES` / `ATTENDANTS ON THIS CYCLE: 1` | +Z wall beside the door, under -Y. On route. | "1" is the first hint that you are alone. |
+| XI · Counterweight | M | *I have never met another attendant. / The roster has room for hundreds.* | -X wall above the pit, under -X. Off route: away from the lever on that wall. | Picks up the Stencil's "1". |
+| XII · Deadman | S | `PLATE ACCEPTS ANY MASS` / `ATTENDANT MASS: ACCEPTED` | East wall beside the player's plate, under +X. On route. | The facility cannot tell an attendant from a crate. |
+| XII · Deadman | M | *It can't tell us / from the crates.* | East wall above the plate, under +X. On route. | One dry line, no explanation. It sets up the reveal. |
 
 ### Act III · Wear
 
@@ -215,38 +234,48 @@ The cubes show their age. The Margin turns personal and frightened.
 
 | Chamber | Voice | Text | Where | Why |
 | --- | --- | --- | --- | --- |
-| X · Turnstile | S | `ROTATIONAL LEVER` / `TURNS CLOCKWISE AS FACED` | Start-corner wall beside lever S, under -Y. On route. | Teaches the relative lever in the facility's words. |
-| X · Turnstile | M | *More of them are dark every time I fall.* | Ceiling beside the trap hole, under +Y. Off route: you have to walk past where the route turns. | Ties the note to the dark cubes you see during a fall. |
-| XI · Lockout | S | `SINGLE-USE LEVER` / `ONE THROW PER ATTENDANT` | +Z wall above the relative lever, under -Y. On route. | "Per attendant" reads two ways. |
-| XI · Lockout | M | *I found them.* | Beside the trap hole in the -X wall, under -X. Only seen by someone stranded there after throwing the one-shot lever first. | Completes the hint "Someone threw this one first." Only the players who made that mistake see it. |
-| XII · Grate | S | `LOWER DECK · BALLAST ONLY` | Glass floor, under -Y, read looking down. On route. | Sets up the crate's route. |
-| XII · Grate | M | *Everything ends up below. / The crates just get there first.* | East wall, under +X, where the shift east puts you. On route. | Foreshadows both the reveal and the Descent. |
-| XIII · Tide | S | `AUTOMATIC TRIM ENGAGED` / `ATTENDANT PRESENCE OPTIONAL` | Wall beside the sequence lever, under -Y. On route. | The machine no longer needs you, and it tells you so politely. |
-| XIII · Tide | M | *It doesn't need us any more. / I don't think it ever did.* | The high ledge, under -Y, top towards the tall wall. On route, read while waiting for the last shift. | The Margin's fear peaks. |
+| XIII · Turnstile | S | `ROTATIONAL LEVER` / `TURNS CLOCKWISE AS FACED` | Start-corner wall beside lever S, under -Y. On route. | Teaches the relative lever in the facility's words. |
+| XIII · Turnstile | M | *More of them are dark every time I fall.* | +X wall beside the wrong-turn lever, under +X. Beside the route, read before the throw. | Ties the note to the dark cubes you see during a fall, at the lever that causes one. |
+| XIV · Lockout | S | `SINGLE-USE LEVER` / `ONE THROW PER ATTENDANT` | +Z wall above the relative lever, under -Y. On route. | "Per attendant" reads two ways. |
+| XIV · Lockout | M | *I found them.* | Beside the trap hole in the -X wall, under -X. Only seen by someone stranded there after throwing the one-shot lever first. | Completes the hint "Someone threw this one first." Only the players who made that mistake see it. |
+| XV · Grate | S | `LOWER DECK · BALLAST ONLY` | Glass floor, under -Y, read looking down. On route. | Sets up the crate's route. |
+| XV · Grate | M | *Everything ends up below. / The crates just get there first.* | East wall, under +X, where the shift east puts you. On route. | Foreshadows both the reveal and the Descent. |
+| XVI · Sieve | S | `MASS FIELD` / `ATTENDANTS MAY PASS` | North wall near the crate, under -Y. On route. | Names the field as the facility would. |
+| XVI · Sieve | M | *It let me through. / I keep wondering why.* | East wall, under +X, where the first shift puts you. On route. | Being let through is not reassuring. |
+| XVII · Surplus | S | `TRIM REQUIRES 1 MASS` / `MASSES PRESENT: 2` | +X wall above the plates, under -Y. On route. | One too many, in the facility's words. |
+| XVII · Surplus | S | `RELEASE APERTURE` | -X wall above the hole, under -Y. On route. | A bland name for a trap hole used on purpose. |
+| XVII · Surplus | S (log) | `BALLAST MASS RELEASED. REPLACEMENT NOT SCHEDULED.` | HUD log line whenever a crate falls out of a cube (`MASS_RELEASED`). | Attendants are replaced. Masses are not. |
+| XVII · Surplus | M | *It lets go of whatever / it has no use for.* | -X wall above the Stencil by the hole, under -Y. On route. | The Margin stops short of asking which it is. |
+| XVIII · Tide | S | `AUTOMATIC TRIM ENGAGED` / `ATTENDANT PRESENCE OPTIONAL` | Wall beside the sequence lever, under -Y. On route. | The machine no longer needs you, and it tells you so politely. |
+| XVIII · Tide | M | *It doesn't need us any more. / I don't think it ever did.* | The high ledge, under -Y, top towards the tall wall. On route, read while waiting for the last shift. | The Margin's fear peaks. |
+| XIX · Pendulum | S | `DOOR HOLDS BALLAST POSITION` / `NOT OPERATOR POSITION` | North wall above the exit door, under -Y. On route. | The door follows the crate, not you. |
+| XIX · Pendulum | M | *I stood where it said. / It still came round.* | Partition's west face, under -Y; you stand on that face through the +X phase. On route. | One step on from the Tide's note. |
 
 ### Act IV · The Orrery
 
 | Chamber | Voice | Text | Where | Why |
 | --- | --- | --- | --- | --- |
-| XIV · Orrery | S | `FIELD ALIGNMENT: 39% OF CUBES RESPONDING` / `ATTENDANT SUPPLY INCREASED TO COMPENSATE` | North wall, under +Z. On route. | The machine compensates for the dark cubes by printing more of you. The 39% matches the dark share of the field at this chamber; `npm test` keeps them in step. |
-| XIV · Orrery | — | A fixed crate stamped `BALLAST MASS` / `AT-0416` | On the ceiling beside the walk to the relative lever, under +Y. On route. | **The reveal.** It's one number below your serial. |
-| XIV · Orrery | S | `THANK YOU FOR YOUR` / `CONTINUED ALIGNMENT.` | Beside the AT-0416 crate, under +Y. | Leave it at that. |
-| XIV · Orrery | M | *If you're reading this, I didn't* | West wall, far from the lever there, under -X. Off route. | The Margin's last note, cut off mid-line. Its final word, "Steer.", waits in the Descent. |
+| XX · Orrery | S | `FIELD ALIGNMENT: 38% OF CUBES RESPONDING` / `ATTENDANT SUPPLY INCREASED TO COMPENSATE` | North wall, under +Z. On route. | The machine compensates for the dark cubes by printing more of you. The 38% matches the dark share of the field at this chamber; `npm test` keeps them in step. |
+| XX · Orrery | — | A fixed crate stamped `BALLAST MASS` / `AT-0416` | On the ceiling beside the walk to the relative lever, under +Y. On route. | **The reveal.** It's one number below your serial. |
+| XX · Orrery | S | `THANK YOU FOR YOUR` / `CONTINUED ALIGNMENT.` | Beside the AT-0416 crate, under +Y. | Leave it at that. |
+| XX · Orrery | M | *If you're reading this, I didn't* | West wall, far from the lever there, under -X. Off route. | The Margin's last note, cut off mid-line. Its final word, "Steer.", waits in the Descent. |
 
 ### Epilogue · The Descent
 
 | Chamber | Voice | Text | Where | Why |
 | --- | --- | --- | --- | --- |
-| XV · Descent | S | `CUBE 0147 · BALANCE ACCESS` / `AUTHORISED SHIFTS ONLY` | +Z wall facing the entrance, under -Y. On route. | The facility's last welcome. |
-| XV · Descent | S (log) | `ATTENDANT, THIS SHIFT IS NOT ON SCHEDULE.`, then `CUBE 0147 OUT OF TRIM. PLEASE RETURN TO YOUR STATION.` | HUD log line on each lever throw (`descentAlarm`). | It objects, politely and with growing alarm. |
-| XV · Descent | M | *Steer.* | The lip of the ceiling hole, under +Y. On route, the last thing you read. | The Margin's last word. |
-| XV · Descent | S (log) | `ATTENDANT NOT RECOVERED.` | The end card, as the fall ends. | The recovery log, one last time. |
+| XXI · Descent | S | `CUBE 0147 · BALANCE ACCESS` / `AUTHORISED SHIFTS ONLY` | +Z wall facing the entrance, under -Y. On route. | The facility's last welcome. |
+| XXI · Descent | S (log) | `ATTENDANT, THIS SHIFT IS NOT ON SCHEDULE.`, then `CUBE 0147 OUT OF TRIM. PLEASE RETURN TO YOUR STATION.` | HUD log line on each lever throw (`descentAlarm`). | It objects, politely and with growing alarm. |
+| XXI · Descent | M | *Steer.* | The lip of the ceiling hole, under +Y. On route, the last thing you read. | The Margin's last word. |
+| XXI · Descent | S (log) | `ATTENDANT NOT RECOVERED.` | The end card, as the fall ends. | The recovery log, one last time. |
 
 ### For playtesting
 
 - **The Atrium labels may be too helpful.** Labels that read right only under the correct gravity do give the route away. If that makes the puzzle too easy, cut them to the `EXIT` label alone.
 - **Two notes depend on mistakes:** the Chimney's decoy ledge and the Lockout's trap hole. Only players who make that mistake will see them. That's deliberate, but it means most players will miss them.
-- **Off-route notes should be findable:** the Shaft, Spiral, Staircase, Counterweight, Turnstile and Orrery notes ask you to look up or wander. Check that they can be found, and read from where you would stand.
+- **Two notes are warnings:** the Spiral's and the Turnstile's sit beside the lever that drops you out of the cube. Check that they are read before the throw, not after the recovery.
+- **The Deadman's note** carries the most weight of any line before the reveal. Check that it is read (it is above the plate you stand on) and that it does not give the reveal away.
+- **Off-route notes should be findable:** the Shaft, Staircase, Counterweight and Orrery notes ask you to look up or wander. Check that they can be found, and read from where you would stand.
 - **Line length:** long lines are squeezed to fit their placard. Every line is at least 85% of its natural width; keep new lines inside that, or break them.
 
 ## Building it

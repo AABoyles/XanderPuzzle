@@ -6,8 +6,12 @@ import { Builder, BuiltLevel, T, V } from '../Builder';
 /**
  * Level 5 - a long horizontal tunnel that one lever turns into a 60-unit pit (-Y -> +Z). The exit
  * is a doorway in the side wall partway down, above a narrow ledge you must steer onto mid-fall.
- * A wide decoy ledge catches anyone who drops straight down from the lever; miss the real one and
- * a lever at the bottom puts gravity back so you can walk up and try again.
+ * A wide decoy ledge catches anyone who drops straight down from the lever (and from it the real ledge
+ * is still reachable: 19 units of fall is 1.3 s, 8 units of steering). The far end of the tunnel has no
+ * wall: miss both ledges and you fall out of the cube towards the planet, which shows through the open
+ * end once +Z is down. Before the lever the open end is a black square at the end of the tunnel.
+ * Route -Y -> +Z. Fair numbers: from the lever (x -4.7, z 4) to the real ledge (x >= 1.5, z 40) is
+ * 6.2 units across in a 1.8 s fall.
  */
 export function buildChimney(scene: Scene, skin: SkinRuntime): BuiltLevel {
   const b = new Builder(scene, skin, new Color3(0.95, 0.5, 0.2));
@@ -23,7 +27,7 @@ export function buildChimney(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.slab('x', -W - T, -W, w, len, b.wall);
   b.slab('x', W, W + T, w, len, b.wall, { u: door.y, v: door.z });
   b.slab('z', -T, 0, w, w, b.wall, { u: [-2, 2], v: [-W, -W + 3] });
-  b.slab('z', L, L + T, w, w, b.wall);
+  // No end wall at z = L: the pit is open to space. Bounds still end at L (the side slabs).
 
   // Decoy ledge under the lever: drop straight down and you land here, 16 units short.
   b.box(V(-W, -W, 20), V(-1.5, W, 21));
@@ -36,8 +40,6 @@ export function buildChimney(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.tube(V(W + T, door.y[0], door.z[0]), V(W + 9, door.y[1], door.z[1]), ['-x'], b.exit);
 
   b.addSwitch(V(-W + 0.3, -W + 1.5, 4), V(1, 0, 0), '+Z');
-  // At the bottom: back to the tunnel floor for the long walk up.
-  b.addSwitch(V(-W + 0.3, 0, L - 1.5), V(1, 0, 0), '-Y');
 
   b.placard(V(-2, -W + 1.6, -3), V(1, 0, 0), '-Y', 'CUBE 0116', { width: 2.6 });
   b.placard(V(-W, -1.5, 7), V(1, 0, 0), '-Y', 'DESCENT CORRIDOR · KEEP TO THE LEDGE', { width: 8.5 });

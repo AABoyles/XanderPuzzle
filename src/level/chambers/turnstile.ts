@@ -9,10 +9,11 @@ import { Builder, BuiltLevel, T, V } from '../Builder';
  * Route: -Y -> +X -> +Y -> +Z. The lever in the start corner (S) is thrown twice: from -Y it gives +X,
  * from +X it gives +Y. Cross the ceiling to the lever on the far wall (V), which turns +Y into +Z and
  * drops you 30 units down the tunnel and through a hole in the end partition. The floor lever W is the
- * wrong turn from +X (-Z); fixed levers (F, F2) put gravity back to -Y.
+ * wrong turn from +X (-Z) and there is no way back from it.
  *
- * Trap hole: a 4x4 opening in the ceiling (the floor under +Y), well down the tunnel from where you cross it.
- * It opens onto space; walk the ceiling toward the far end and you fall out of the chamber.
+ * Trap hole: a 1.2 x 4 opening in the start wall, in the corner of the +X wall (x 2.8-4). Throw W while standing
+ * on +X and gravity becomes -Z: you fall straight down the +X wall into that opening and out of the chamber. It is
+ * a black gap in the wall W's arrow points at, in view from W.
  */
 export function buildTurnstile(scene: Scene, skin: SkinRuntime): BuiltLevel {
   const b = new Builder(scene, skin, new Color3(0.2, 0.85, 0.75));
@@ -22,12 +23,14 @@ export function buildTurnstile(scene: Scene, skin: SkinRuntime): BuiltLevel {
   const len: [number, number] = [0, L + T];
 
   b.slab('y', -W - T, -W, w, len, b.floor);
-  // Trap hole open to space: ceiling at x [-2, 2], z [10, 14]; nothing lies above it.
-  b.slab('y', W, W + T, w, len, b.wall, { u: [-2, 2], v: [10, 14] });
+  b.slab('y', W, W + T, w, len, b.wall);
   b.slab('x', -W - T, -W, w, len, b.wall);
   b.slab('x', W, W + T, w, len, b.wall);
-  // Start wall, with a doorway to the entrance alcove.
-  b.slab('z', -T, 0, w, w, b.wall, { u: [-2, 2], v: [-W, -1] });
+  // Start wall, with a doorway to the entrance alcove. Beside it, a trap hole in the +X corner where a -Z fall
+  // from the +X wall lands (x 2.8-4, y -4..0: the fall line is x 3.5, y -3.5..-1.5). A 0.8 web of wall separates
+  // it from the doorway. Nothing lies beyond it.
+  b.slab('z', -T, 0, [-W, 2.8], w, b.wall, { u: [-2, 2], v: [-W, -1] });
+  b.box(V(2.8, 0, -T), V(W, W, 0), b.wall);
   // End partition: the only way through is a hole you can reach by falling +Z, not by walking. Its
   // edges are at least 2 from every tunnel wall, so it is too high to jump into from any floor.
   const hole = { u: [-2, 1] as [number, number], v: [-1, 2] as [number, number] };
@@ -44,18 +47,15 @@ export function buildTurnstile(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.addRelativeSwitch(V(2.5, -W + 0.3, 6), V(0, 1, 0));
   // V: high on the west wall. From +Y (the ceiling) it turns gravity to +Z.
   b.addRelativeSwitch(V(-W + 0.3, 2.5, 2), V(1, 0, 0));
-  // Ways back from a wrong turn.
-  b.addSwitch(V(W - 0.3, 0, 1.5), V(-1, 0, 0), '-Y');
-  b.addSwitch(V(W - 0.3, 0, L - 1.5), V(-1, 0, 0), '-Y');
 
-  b.placard(V(-2, -W + 1.6, -3), V(1, 0, 0), '-Y', 'CUBE 0125', { width: 2.6 });
+  b.placard(V(-2, -W + 1.6, -3), V(1, 0, 0), '-Y', 'CUBE 0127', { width: 2.6 });
   // Above the doorway on the start wall, beside lever S.
   b.placard(V(0, 1, 0), V(0, 0, 1), '-Y', 'ROTATIONAL LEVER\nTURNS CLOCKWISE AS FACED', { width: 6 });
-  // On the ceiling just short of the trap hole, read walking towards it under +Y.
-  b.note(V(0, W, 8.5), V(0, -1, 0), '+Y', 'More of them are dark every time I fall.', { width: 6.5, top: V(0, 0, 1) });
+  // On the +X wall beside W, read under +X before the throw.
+  b.note(V(W, -0.5, 6), V(-1, 0, 0), '+X', 'More of them are dark every time I fall.', { width: 6.5, top: V(0, 0, 1) });
 
   return b.finish({
-    name: 'X · THE TURNSTILE',
+    name: 'XIII · THE TURNSTILE',
     hint: 'A white lever turns gravity clockwise, as you face it. Same lever, different floor, different turn.',
     spawnPosition: V(0, -W + 0.5, -5),
     entranceAxis: '-Y',

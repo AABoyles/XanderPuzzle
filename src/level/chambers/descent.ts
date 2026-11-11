@@ -40,7 +40,7 @@ export function buildDescent(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.note(V(3.2, R, 0), V(0, -1, 0), '+Y', 'Steer.', { width: 2.6, lineHeight: 0.9, top: V(-1, 0, 0) });
 
   return b.finish({
-    name: 'XV · THE DESCENT',
+    name: 'XXI · THE DESCENT',
     hint: 'The way out is down. All the way down.',
     spawnPosition: V(0, -R + 0.5, -R - 5),
     entranceAxis: '-Y',

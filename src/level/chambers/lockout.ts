@@ -42,13 +42,17 @@ export function buildLockout(scene: Scene, skin: SkinRuntime): BuiltLevel {
   // The hidden lever, in the pocket on the -X wall: -Y -> -X without spending the one-shot.
   b.addSwitch(V(-R + 0.3, -R + 1.5, -5), V(1, 0, 0), '-X');
 
+  // A burnt-out lever on the corridor's east wall, at eye level by the doorway: dark, no arrow. The hint's
+  // "this one" points at it, and it shows the white lever's fate. Set dressing only.
+  b.addSpentLever(V(2 - 0.3, -R + 1.5, -R - 3), V(-1, 0, 0));
+
   b.placard(V(-2, -R + 1.6, -R - 4), V(1, 0, 0), '-Y', 'CUBE 0129', { width: 2.6 });
   b.placard(V(-4.5, -3.5, R), V(0, 0, -1), '-Y', 'SINGLE-USE LEVER\nONE THROW PER ATTENDANT', { width: 6.5 });
   // Beside the trap hole in the -X wall: only seen by someone stranded there.
   b.note(V(-R, -5, 1), V(1, 0, 0), '-X', 'I found them.', { width: 3, top: V(0, 1, 0) });
 
   return b.finish({
-    name: 'XI · THE LOCKOUT',
+    name: 'XIV · THE LOCKOUT',
     hint: 'Levers burn out after one use. Someone threw this one first.',
     spawnPosition: V(0, -R + 0.5, -R - 6),
     entranceAxis: '-Y',

@@ -1,20 +1,20 @@
 # Chamber roadmap
 
-Ideas for chambers VI–XIV, roughly in the order they should be built. Each one teaches or tests a single idea. The first three need nothing the engine lacks today; the rest each introduce one new mechanic, listed under "Needs".
+The chambers after the first five, roughly in the order they were built. Each one teaches or tests a single idea. All of them are built; the headings below use the numbers they were planned under, and the play order (with today's numbers) is in `README.md`. The level-design pass at the end of this file added six more and reworked most of the rest.
 
 What exists today: static axis-aligned boxes, wall-mounted levers that set gravity to a fixed axis (90° steps only), one exit trigger per chamber, and the `Builder` helpers (`slab`, `tube`, `addSwitch`) in `src/level/Builder.ts`.
 
 ## Buildable now
 
 ### VI · The Staircase
-- **Status:** built (`staircase.ts`). Five cells of 3-high risers split into two lanes by a divider; each climb under +X drops you into a lane sealed overhead, so you must shift back to -Y and walk through the divider's doorway before the next climb. Eight levers, four shifts each way.
+- **Status:** built (`staircase.ts`), then cut from four risers to three in the level-design pass. Each climb under +X drops you into a lane sealed overhead, so you must shift back to -Y and walk through the divider's doorway before the next climb; the last cell swaps its lanes, so the habit of crossing the divider leads into a dead end. Five levers.
 - **Idea:** a room of large stepped blocks. Each step is too tall to jump under any single gravity, but every step's riser is another gravity's tread.
 - **Route:** alternate `-Y ↔ +X` four or five times, climbing diagonally.
 - **Teaches:** returning to an orientation you have already used.
 - **Needs:** nothing new. Several levers targeting the same axis.
 
 ### VII · The Atrium
-- **Status:** built (`atrium.ts`). Rooms on +X, -X and +Z hold levers; the exit room is on +Y. Route `-Y → +X → -Z → -X → +Z → +Y`. Every decoy is a backward edge, so nothing traps you, but that also makes it closer to following levers than planning. Playtest whether a real fork (perhaps with one-shot levers) is needed.
+- **Status:** built (`atrium.ts`). Rooms on +X, -X and +Z hold levers; the exit room is on +Y. Route `-Y → +X → -Z → -X → +Z → +Y`. The level-design pass gave it a real fork: room A now holds three levers (-Z the long way, +Z straight to room C for a three-shift route, -Y back to the start), and three decoys that had become noise were removed. It also holds a caged crate that slides with every shift and does nothing, so the player has watched a crate move before the Ballast asks them to move one.
 - **Idea:** the first chamber with more than one room. A central cube with a side room on each of four faces, reachable only when that face is the floor. Three side rooms hold a lever; one holds the exit.
 - **Route:** five or six shifts, with the order to work out.
 - **Teaches:** planning a route rather than following the next lever.
@@ -59,7 +59,7 @@ What exists today: static axis-aligned boxes, wall-mounted levers that set gravi
 - **Needs:** a gravity sequencer and a HUD countdown showing the next axis.
 
 ### XIV · The Orrery
-- **Status:** built (`orrery.ts`). Route `-Y → +X → +Z → +Y → -X → -Z → +Y`, one crate riding every shift to a plate in the top-west corner of the south wall, a one-shot lever and a relative lever, and the exit in the entrance corridor's ceiling. The one-shot lever is only reachable when it is meant to be used, so its one-shot nature barely matters yet.
+- **Status:** built (`orrery.ts`). Route `-Y → +X → +Z → +Y → -X → -Z → +Y`, one crate riding every shift to a plate in the top-west corner of the south wall, a one-shot lever and a relative lever, and the exit in the entrance corridor's ceiling. The level-design pass added a fork on the ceiling walk: a lever straight to -Z parks the crate in a pocket it cannot leave, and because the one-shot lever is spent by then, that costs a restart.
 - **Idea:** the finale. A large chamber using all six orientations, with crates, a relative lever and a one-shot lever, ending with the exit door in the entrance corridor's ceiling so you leave through the room you came in by, upside down.
 - **Teaches:** nothing new. It combines everything.
 - **Needs:** VIII, X and XI.
@@ -70,8 +70,37 @@ What exists today: static axis-aligned boxes, wall-mounted levers that set gravi
 2. **Lever variants** (X, XI). Done: `addRelativeSwitch` (white, with a ring) and `{ once: true }` (goes dark when spent), sharing `GravitySwitch`.
 3. **Collision filtering** (XII). Done: `grate` (blocks the player, not crates), `glass` (see-through, blocks both) and `barrier` (blocks crates, not the player).
 4. **Gravity sequencer** (XIII). Done: `addSequenceSwitch` and a HUD countdown. Throwing any other lever stops the cycle.
-5. **Checkpoints.** Not done. Chambers VII onward are long enough that restarting from the entrance will sting.
+5. **Checkpoints.** Not done. Chambers VII onward are long enough that restarting from the entrance will sting. The level-design pass kept new trap holes out of the long chambers for this reason; the Orrery's fork is the one place a late mistake costs a long restart.
+7. **Level-design pass engine work.** Done: crates that fall out of the level are lost (`Crate.lost`, `MASS_RELEASED` log line), inverted plates (`addPlate(..., cratesOnly, inverted)`), a burnt-out lever prop (`addSpentLever`), and `tests/crateRoutes.test.ts`, which replays crate routes headlessly.
 6. **Platform.** Done: touch controls, gamepad support, a pause menu with persistent settings and a controls reference, fullscreen with landscape lock, and an installable offline-capable web app. These are outside the chamber designs above.
+
+## Level-design pass
+
+Two aims: the player should see crates move (and learn what gravity does to them by watching), and trap holes should be consequences of a wrong move, not scenery.
+
+### Changes to existing chambers
+- **Shaft:** the trap hole moved from the floor to the +X wall, on the climb; you walk round it.
+- **Spiral:** the dead-end lever pair became one lever that turns a wall with a hole in it into the floor under you. The old side hole is gone.
+- **Chimney:** the pit has no bottom. The end wall and the lever at the bottom are gone; miss the ledge (and the decoy ledge, which is now a second chance) and you fall out of the cube.
+- **Staircase, Atrium, Orrery:** see their entries above.
+- **Ballast, Counterweight, Grate:** every lever is on a low glass screen facing the crates, so the crate, its path and its plate are in front of you when you throw it. The Ballast's slide is longer.
+- **Turnstile:** the trap hole moved from the ceiling to the start wall, where the wrong-turn lever drops you. The two recovery levers are gone.
+- **Lockout:** a burnt-out lever by the entrance shows what a one-shot lever becomes.
+- **Tide:** one trap hole in the north wall, where being too low on the pillar when +Z comes drops you.
+
+### New chambers
+- **IX · The Footing** (`footing.ts`): a crate as a step. A window with a sill 2.6 up; a low stop block catches the crate under it only when it slides east along the floor, and it starts on a ledge that carries its first slide over the block. Route `-Y → -X → -Y → +X → -Y`.
+- **X · The Stopper** (`stopper.ts`): a crate as an obstacle. A 2.5 crate plugs a shaft high in the north wall; -Z pulls it out, but going back by -Y sets it on a shelf at the mouth's height and +Z drops it back in. Route `-Y → -Z → +X → +Z`, then fall into the open shaft.
+- **XII · The Deadman** (`deadman.ts`): the first plate the player presses. Standing on it holds a gate open for the crate. Route `-Y → +X → -Y`.
+- **XVI · The Sieve** (`sieve.ts`): the first `barrier`. The crate stops at the field and has to go over the top. Route `-Y → +X → +Y → +X → -Y`.
+- **XVII · The Surplus** (`surplus.ts`): an inverted plate and a hole to lose a crate through. A decoy lever stacks the crates so the hole takes the one you need. Route `-Y → -X → -Y → +X → -Y`.
+- **XIX · The Pendulum** (`pendulum.ts`): a timed cycle `-Y → +X → -Y → -X` swings a crate between a plate and the far wall; the door is open only while the crate is on the plate.
+
+### Still to do
+- **A manual playtest of all of it.** Every changed and new chamber builds, passes the headless invariants and crate-route tests, and can be "solved" by the teleporting smoke test. Only the Footing's climb and the Stopper's final drop were also driven with real movement. Reach, sightlines and difficulty are otherwise unproven.
+- **The lever's own arrow is in the way.** From the usual standing distance the lever and its arrow fill the middle of the view, so a crate straight behind the lever is partly hidden. Either set the screens to one side of the sightline or make the lever smaller.
+- **The Pendulum is simple.** With a full-height partition the puzzle is only "be on the west side when +X comes". Lowering the partition would make the west floor unsafe too.
+- **The barrier field is faint.** Check the Sieve's field can be seen well enough to read as a thing.
 
 ## Before any of this
 

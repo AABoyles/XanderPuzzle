@@ -5,9 +5,12 @@ import { Scene } from '@babylonjs/core/scene';
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { Aabb, Body, bodyAabb, overlaps, stepBody, Vec3 } from '../physics/boxPhysics';
+import { boundsOf, distanceOutside } from '../environment/fall';
 
 const PLAYER_HALF = 0.5;
 const MAX_STEP = 1 / 20;
+/** A crate this far outside the level's bounds has fallen out through a hole and is gone for good. */
+export const CRATE_LOST_MARGIN = 12;
 
 const arr = (v: Vector3): Vec3 => [v.x, v.y, v.z];
 
@@ -15,6 +18,8 @@ const arr = (v: Vector3): Vec3 => [v.x, v.y, v.z];
 export class Crate {
   public readonly body: Body;
   public readonly mesh: Mesh;
+  /** True once the crate has fallen out of the level through a hole: it is hidden and no longer simulated. */
+  public lost = false;
 
   constructor(scene: Scene, center: Vector3, size: number) {
     this.body = { center: arr(center), half: [size / 2, size / 2, size / 2], velocity: [0, 0, 0] };
@@ -41,7 +46,10 @@ export class Crate {
   }
 }
 
-/** A pad on a surface that is "pressed" while a crate (or, optionally, the player) rests on it. */
+/**
+ * A pad on a surface that is "pressed" while a crate (or, optionally, the player) rests on it. An `inverted` plate is
+ * satisfied while nothing rests on it: its door needs it kept clear.
+ */
 export class PressurePlate {
   public pressed = false;
   public readonly trigger: Aabb;
@@ -52,7 +60,14 @@ export class PressurePlate {
    * @param center point on the surface the plate is mounted on
    * @param normal axis-aligned unit vector pointing away from that surface
    */
-  constructor(scene: Scene, center: Vector3, normal: Vector3, size: number, public readonly cratesOnly: boolean) {
+  constructor(
+    scene: Scene,
+    center: Vector3,
+    normal: Vector3,
+    size: number,
+    public readonly cratesOnly: boolean,
+    public readonly inverted = false,
+  ) {
     const c = arr(center);
     const n = arr(normal);
     const min: Vec3 = [0, 0, 0];
@@ -81,6 +96,11 @@ export class PressurePlate {
     this.paint();
   }
 
+  /** What a door asks of this plate: pressed, or for an inverted plate, clear. Lit green while true. */
+  public get satisfied(): boolean {
+    return this.pressed !== this.inverted;
+  }
+
   public setPressed(pressed: boolean): boolean {
     if (pressed === this.pressed) return false;
     this.pressed = pressed;
@@ -89,11 +109,11 @@ export class PressurePlate {
   }
 
   private paint(): void {
-    this.mat.emissiveColor = this.pressed ? new Color3(0.2, 1.0, 0.4) : new Color3(0.9, 0.25, 0.15);
+    this.mat.emissiveColor = this.satisfied ? new Color3(0.2, 1.0, 0.4) : new Color3(0.9, 0.25, 0.15);
   }
 }
 
-/** A solid slab that opens while every linked plate is pressed. */
+/** A solid slab that opens while every linked plate is satisfied (pressed, or clear if the plate is inverted). */
 export class Door {
   public isOpen = false;
   public readonly aabb: Aabb;
@@ -127,6 +147,8 @@ export interface DynamicsEvents {
   impact: number;
   plateChanged: boolean;
   doorChanged: boolean;
+  /** A crate fell out of the level this frame. */
+  crateLost: boolean;
 }
 
 /** Owns a level's crates, plates and doors and advances them each frame. */
@@ -138,8 +160,11 @@ export class LevelDynamics {
   /** @param statics the level's fixed geometry; the array is read live, not copied */
   constructor(private readonly statics: Aabb[]) {}
 
+  /** The level's bounds, from its statics; worked out on first use, once the level is fully built. */
+  private bounds?: Aabb;
+
   public update(dt: number, gravity: Vector3, playerPos: Vector3): DynamicsEvents {
-    const events: DynamicsEvents = { impact: 0, plateChanged: false, doorChanged: false };
+    const events: DynamicsEvents = { impact: 0, plateChanged: false, doorChanged: false, crateLost: false };
     if (!this.crates.length && !this.plates.length && !this.doors.length) return events;
 
     const g = arr(gravity);
@@ -149,29 +174,41 @@ export class LevelDynamics {
       max: [p[0] + PLAYER_HALF, p[1] + PLAYER_HALF, p[2] + PLAYER_HALF],
     };
 
+    let live = this.crates.filter((c) => !c.lost);
     // Crates: sub-step long frames so stacks settle the same at any frame rate.
     for (let remaining = Math.min(dt, 0.25); remaining > 1e-6; remaining -= MAX_STEP) {
       const step = Math.min(remaining, MAX_STEP);
       const fixed = [...this.statics, ...this.doors.filter((d) => !d.isOpen).map((d) => d.aabb), player];
-      for (const crate of this.crates) {
-        const others = this.crates.filter((c) => c !== crate).map((c) => c.aabb);
+      for (const crate of live) {
+        const others = live.filter((c) => c !== crate).map((c) => c.aabb);
         const r = stepBody(crate.body, g, step, [...fixed, ...others]);
         events.impact = Math.max(events.impact, r.impactSpeed);
       }
     }
-    this.crates.forEach((c) => c.sync());
+    // A crate that has fallen out through a hole in the shell is gone: nothing brings it back but a restart.
+    this.bounds ??= boundsOf(this.statics);
+    for (const crate of live) {
+      crate.sync();
+      if (distanceOutside(this.bounds, crate.body.center) > CRATE_LOST_MARGIN) {
+        crate.lost = true;
+        crate.mesh.setEnabled(false);
+        crate.mesh.checkCollisions = false;
+        events.crateLost = true;
+      }
+    }
+    live = live.filter((c) => !c.lost);
 
     for (const plate of this.plates) {
       const held =
-        this.crates.some((c) => overlaps(c.aabb, plate.trigger)) ||
+        live.some((c) => overlaps(c.aabb, plate.trigger)) ||
         (!plate.cratesOnly && overlaps(player, plate.trigger));
       if (plate.setPressed(held)) events.plateChanged = true;
     }
 
     for (const door of this.doors) {
-      const want = door.plates.every((pl) => pl.pressed);
+      const want = door.plates.every((pl) => pl.satisfied);
       // Never close on top of something standing in the doorway.
-      const blocked = overlaps(player, door.aabb) || this.crates.some((c) => overlaps(c.aabb, door.aabb));
+      const blocked = overlaps(player, door.aabb) || live.some((c) => overlaps(c.aabb, door.aabb));
       if (want !== door.isOpen && (want || !blocked) && door.setOpen(want)) events.doorChanged = true;
     }
     return events;
