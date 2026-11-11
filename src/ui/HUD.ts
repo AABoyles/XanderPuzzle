@@ -81,6 +81,9 @@ export class HUD {
   private readonly hintLabel: TextBlock;
   private readonly logLabel: TextBlock;
   private logTimer: ReturnType<typeof setTimeout> | undefined;
+  private readonly printFog: Rectangle;
+  private readonly printBar: Rectangle;
+  private printTimer: ReturnType<typeof setInterval> | undefined;
   private readonly endOverlay: Rectangle;
   private readonly endTitle: TextBlock;
   private readonly endBody: TextBlock;
@@ -199,6 +202,26 @@ export class HUD {
     this.logLabel.isVisible = false;
     this.ui.addControl(this.logLabel);
 
+    // The print-in (see `printIn`): a pale fog over the view that a bright line wipes away from the feet up. It sits
+    // under every overlay added after it.
+    this.printFog = new Rectangle('printFog');
+    this.printFog.width = 1;
+    this.printFog.thickness = 0;
+    this.printFog.background = 'rgb(196,240,255)';
+    this.printFog.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    this.printFog.isHitTestVisible = false;
+    this.printFog.isVisible = false;
+    this.ui.addControl(this.printFog);
+    this.printBar = new Rectangle('printBar');
+    this.printBar.width = 1;
+    this.printBar.height = '5px';
+    this.printBar.thickness = 0;
+    this.printBar.background = 'white';
+    this.printBar.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    this.printBar.isHitTestVisible = false;
+    this.printBar.isVisible = false;
+    this.ui.addControl(this.printBar);
+
     const keys = (this.keysLabel = new TextBlock('keys', ''));
     this.setSkin('');
     keys.color = 'rgba(255,255,255,0.75)';
@@ -298,13 +321,13 @@ export class HUD {
     winTitle.color = '#9dffb0';
     winTitle.fontSize = 56;
     winTitle.fontWeight = 'bold';
-    winTitle.top = '-40px';
+    winTitle.top = '-120px'; // clear of the body, which is centred and up to eight lines tall
     this.winOverlay.addControl(winTitle);
 
     const winSubtitle = (this.winSubtitle = new TextBlock('winSubtitle', ''));
     winSubtitle.color = 'white';
     winSubtitle.fontSize = 22;
-    winSubtitle.top = '30px';
+    winSubtitle.top = '40px';
     this.winOverlay.addControl(winSubtitle);
 
     // End card, after the final fall: fades to black on the facility's last log line, then the game's name.
@@ -312,7 +335,8 @@ export class HUD {
     this.endOverlay.width = 1;
     this.endOverlay.height = 1;
     this.endOverlay.thickness = 0;
-    this.endOverlay.background = 'black';
+    // Not quite opaque: the planet, and the one new light on it, stay faintly in view behind the card.
+    this.endOverlay.background = 'rgba(0,0,0,0.72)';
     this.endOverlay.isVisible = false;
     this.ui.addControl(this.endOverlay);
     this.endTitle = new TextBlock('endTitle', '');
@@ -555,9 +579,10 @@ export class HUD {
     const start = performance.now();
     this.endTimer = setInterval(() => {
       const t = (performance.now() - start) / 1000;
-      this.endOverlay.alpha = Math.min(1, t / 2);
-      this.endBody.alpha = Math.min(1, Math.max(0, (t - 3) / 1.5));
-      if (t > 4.5) clearInterval(this.endTimer);
+      // The card waits a moment, so the light is seen coming up first.
+      this.endOverlay.alpha = Math.min(1, Math.max(0, (t - 2) / 2));
+      this.endBody.alpha = Math.min(1, Math.max(0, (t - 5) / 1.5));
+      if (t > 6.5) clearInterval(this.endTimer);
     }, 33);
   }
 
@@ -583,6 +608,65 @@ export class HUD {
     this.logTimer = setTimeout(() => {
       this.logLabel.isVisible = false;
     }, seconds * 1000);
+  }
+
+  /**
+   * The attendant is printed (NARRATIVE.md): the view starts as a pale blank and the print head's line sweeps up it,
+   * leaving the chamber behind, as if the eyes were the last thing made. Under a second. With `reduced` motion it is a
+   * plain fade.
+   */
+  public printIn(reduced = false): void {
+    clearInterval(this.printTimer);
+    const duration = reduced ? 0.45 : 0.85;
+    const start = performance.now();
+    this.printFog.isVisible = true;
+    this.printBar.isVisible = !reduced;
+    const step = () => {
+      const p = Math.min(1, (performance.now() - start) / 1000 / duration);
+      if (reduced) {
+        this.printFog.height = 1;
+        this.printFog.alpha = 0.7 * (1 - p);
+      } else {
+        // The line eases upwards; everything above it is still unprinted.
+        const done = p * p * (3 - 2 * p);
+        const left = 1 - done;
+        this.printFog.height = `${(left * 100).toFixed(2)}%`;
+        this.printFog.alpha = 0.55 + 0.35 * left;
+        this.printBar.top = `${(left * 100).toFixed(2)}%`;
+      }
+      if (p >= 1) {
+        clearInterval(this.printTimer);
+        this.printFog.isVisible = false;
+        this.printBar.isVisible = false;
+      }
+    };
+    step();
+    this.printTimer = setInterval(step, 16);
+  }
+
+  /**
+   * The attendant is reclaimed at the exit: `printIn` run backwards. The line sweeps down from the top and leaves the
+   * pale blank behind it, which stays (faintly, under the win screen) until the next `printIn` clears it.
+   */
+  public printOut(reduced = false): void {
+    clearInterval(this.printTimer);
+    const duration = reduced ? 0.4 : 0.8;
+    const start = performance.now();
+    this.printFog.isVisible = true;
+    this.printBar.isVisible = !reduced;
+    const step = () => {
+      const p = Math.min(1, (performance.now() - start) / 1000 / duration);
+      const done = reduced ? 1 : p * p * (3 - 2 * p);
+      this.printFog.height = `${(done * 100).toFixed(2)}%`;
+      this.printFog.alpha = reduced ? 0.45 * p : 0.75 - 0.3 * p;
+      this.printBar.top = `${(done * 100).toFixed(2)}%`;
+      if (p >= 1) {
+        clearInterval(this.printTimer);
+        this.printBar.isVisible = false;
+      }
+    };
+    step();
+    this.printTimer = setInterval(step, 16);
   }
 
   public setPrompt(visible: boolean, text?: string): void {
@@ -625,6 +709,7 @@ export class HUD {
   public dispose(): void {
     clearInterval(this.endTimer);
     clearTimeout(this.logTimer);
+    clearInterval(this.printTimer);
     this.ui.dispose();
   }
 }

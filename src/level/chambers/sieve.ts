@@ -62,8 +62,8 @@ export function buildSieve(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.placard(V(-13, F + 1.6, doorZ[0]), V(0, 0, 1), '-Y', 'CUBE 0131', { width: 2.6 });
   b.placard(V(-4, F + 3.5, R), V(0, 0, -1), '-Y', 'MASS FIELD\nATTENDANTS MAY PASS', { width: 5 });
   // On the east wall, where the first shift east puts you.
-  b.note(V(R, F + 6, -4.5), V(-1, 0, 0), '+X', 'It let me through.\nI keep wondering why.', {
-    width: 4.5,
+  b.note(V(R, F + 6, -4.5), V(-1, 0, 0), '+X', 'There are lights down there now.\nOne for every cube gone dark.', {
+    width: 5.2,
     top: V(0, 0, 1),
   });
 

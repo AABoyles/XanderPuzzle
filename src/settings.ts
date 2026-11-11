@@ -15,6 +15,8 @@ export interface Settings {
   invertY: boolean;
   /** Master volume, 0-100. */
   volume: number;
+  /** Music volume, 0-100, under the master volume. */
+  musicVolume: number;
   muted: boolean;
   /** Snaps the camera to a new gravity instead of rolling into it (the OS preference also forces this). */
   reducedMotion: boolean;
@@ -31,18 +33,20 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   gamepadLookSpeed: 1,
   invertY: false,
   volume: 100,
+  musicVolume: 60,
   muted: false,
   reducedMotion: false,
   fov: DEFAULT_FOV_DEGREES,
 };
 
-export type NumericSetting = 'mouseSensitivity' | 'touchSensitivity' | 'gamepadLookSpeed' | 'volume' | 'fov';
+export type NumericSetting = 'mouseSensitivity' | 'touchSensitivity' | 'gamepadLookSpeed' | 'volume' | 'musicVolume' | 'fov';
 
 export const LIMITS: Readonly<Record<NumericSetting, { min: number; max: number; step: number }>> = {
   mouseSensitivity: { min: 0.25, max: 3, step: 0.05 },
   touchSensitivity: { min: 0.25, max: 3, step: 0.05 },
   gamepadLookSpeed: { min: 0.25, max: 3, step: 0.05 },
   volume: { min: 0, max: 100, step: 5 },
+  musicVolume: { min: 0, max: 100, step: 5 },
   fov: { min: 50, max: 100, step: 1 },
 };
 
@@ -111,10 +115,15 @@ export const fovToRadians = (degrees: number): number => (degrees * Math.PI) / 1
 
 /** How a numeric setting reads in the menu: multipliers as a percentage, volume as a percentage, FOV in degrees. */
 export function formatSetting(key: NumericSetting, value: number): string {
-  return key === 'fov' ? `${Math.round(value)}°` : key === 'volume' ? `${Math.round(value)}%` : `${Math.round(value * 100)}%`;
+  return key === 'fov' ? `${Math.round(value)}°` : key === 'volume' || key === 'musicVolume' ? `${Math.round(value)}%` : `${Math.round(value * 100)}%`;
 }
 
 /** The gain multiplier for sound effects: zero when muted. */
 export function masterGain(settings: Settings): number {
   return settings.muted ? 0 : clamp(settings.volume, 0, 100) / 100;
+}
+
+/** The gain multiplier for the music: the master gain times the music volume. */
+export function musicGain(settings: Settings): number {
+  return masterGain(settings) * (clamp(settings.musicVolume, 0, 100) / 100);
 }

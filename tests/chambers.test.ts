@@ -99,6 +99,22 @@ for (const [index, chamber] of CHAMBERS.entries()) {
           }
         }
 
+        // The reclaimer: every chamber but an ending one is won on its plate, so there must be one, inside the level,
+        // on a floor under the exit gravity, with room for the player to stand on it.
+        if (level.ending) assert.equal(level.reclaimer, undefined, 'an ending chamber has no reclaimer');
+        else {
+          const rec = level.reclaimer;
+          assert.ok(rec, 'no reclaimer: nothing within reach under exitCenter along exitAxis');
+          assert.ok(inside(bounds, rec.bed), `reclaimer bed ${rec.bed} is outside bounds`);
+          const standBox = playerBox(rec.stand);
+          const blocked = solids.find((s) => overlaps(standBox, s));
+          assert.equal(blocked, undefined, `the reclaimer's plate at ${rec.bed} has no room to stand on it`);
+          assert.ok(overlaps(standBox, rec.trigger), 'standing on the plate does not press it');
+          const g = axisVec(level.exitAxis);
+          const rest = sweep(standBox, [g[0], g[1], g[2]], solids);
+          assert.ok(rest.hit.some(Boolean), 'the reclaimer bed is not a floor under exitAxis');
+        }
+
         // Levers: every one must be usable from some axis the player can reach, and the exit axis must be reachable.
         const reachable = new Set<GravityAxis>([level.entranceAxis]);
         for (let grew = true; grew; ) {

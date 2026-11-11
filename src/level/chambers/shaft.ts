@@ -10,7 +10,7 @@ import { Builder, BuiltLevel, T, V } from '../Builder';
  * Trap hole: a 4 x 4.5 opening in the +X wall at height 12..16, straight ahead of where the first lever
  * lands you. Under +X it is a hole in the floor (the planet shows through it): walk straight up and you
  * walk into it and fall out of the chamber. A 4-wide strip on the +Z side passes it. A placard just
- * before it says what recovery is.
+ * before it says what recovery is: a replacement, printed at the entrance.
  */
 export function buildShaft(scene: Scene, skin: SkinRuntime): BuiltLevel {
   const b = new Builder(scene, skin, new Color3(0.9, 0.35, 0.55));
@@ -36,9 +36,9 @@ export function buildShaft(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.box(V(-W - T, y1, -2), V(-W, y1 + T, 2), b.exit);
 
   // The Margin, on the face overhead during the climb under +X: only seen by looking up on the way.
-  b.note(V(-W, 20, 0), V(1, 0, 0), '+X', 'It is a long way up.\nIt is a longer way down.\nI checked.', {
+  b.note(V(-W, 20, 0), V(1, 0, 0), '+X', 'It is a long way up.\nIt is a longer way down.\nI checked. It printed me back.', {
     top: V(0, 1, 0),
-    width: 4.5,
+    width: 5,
   });
 
   b.addSwitch(V(W - 0.3, y0 + 1.5, 0), V(-1, 0, 0), '+X');
@@ -46,7 +46,7 @@ export function buildShaft(scene: Scene, skin: SkinRuntime): BuiltLevel {
 
   b.placard(V(-2, y0 + 1.6, -W - 3), V(1, 0, 0), '-Y', 'CUBE 0113', { width: 2.6 });
   // On the +X wall just before the hole, read while walking up under +X (text top towards +Y).
-  b.placard(V(W, 8.5, 2.6), V(-1, 0, 0), '+X', 'OPEN APERTURE\nATTENDANT RECOVERY\nIS AUTOMATIC', {
+  b.placard(V(W, 8.5, 2.6), V(-1, 0, 0), '+X', 'OPEN APERTURE\nLOST ATTENDANTS\nARE REPRINTED\nAT THE ENTRANCE', {
     width: 4,
     top: V(0, 1, 0),
   });

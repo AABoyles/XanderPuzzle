@@ -316,6 +316,7 @@ export class PauseMenu {
       this.slider('Gamepad look speed', 'gamepadLookSpeed'),
       this.toggle('Invert Y', 'invertY'),
       this.slider('Master volume', 'volume'),
+      this.slider('Music volume', 'musicVolume'),
       this.toggle('Mute', 'muted'),
       this.reducedMotionRow(),
       this.slider('Field of view', 'fov'),
