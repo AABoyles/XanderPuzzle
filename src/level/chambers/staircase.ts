@@ -4,18 +4,22 @@ import { SkinRuntime } from '../../skins/Skin';
 import { Builder, BuiltLevel, V } from '../Builder';
 
 /**
- * Level 6 - a staircase of four 3-high risers, climbed east. Gravity route: -Y -> +X -> -Y -> +X -> -Y
- * -> +X -> -Y -> +X -> -Y (the first -Y is the entrance, the last is the exit).
+ * Level 6 - a staircase of three 3-high risers, climbed east. Gravity route: -Y -> +X -> -Y -> +X -> -Y
+ * -> +X (the first -Y is the entrance; the last +X is the exit, you fall straight out of it).
  *
  * A divider wall splits the room into a north and a south lane. In each cell one lane is open to the
  * sky (its riser can be climbed under +X: walk up the wall, step off the top, fall east) and the other
- * lane has a solid block overhead that seals the riser's top. The climb drops you into the sealed lane
- * of the next cell, where you can only throw a lever back to -Y, walk through the divider's doorway
- * (too far west to reach while pinned to the riser) into the open lane, and go again.
+ * lane has a solid block overhead that seals the riser's top. In the first two cells the climb drops you
+ * into the sealed lane of the next cell, where you can only throw a lever back to -Y, walk through the
+ * divider's doorway (too far west to reach while pinned to the riser) into the open lane, and go again.
+ * The last cell swaps the lanes: the climb lands you in the lane that is already open, and the exit is
+ * at the end of it, so you fall straight out. The habit of crossing the divider would take you into the
+ * sealed lane, a dead end with nothing in it that you simply walk back out of (the doorway is at floor
+ * level under -Y), so nothing can strand you.
  */
 export function buildStaircase(scene: Scene, skin: SkinRuntime): BuiltLevel {
   const b = new Builder(scene, skin, new Color3(0.65, 0.9, 0.25));
-  const CELLS = 5;
+  const CELLS = 4;
   const L = 8; // cell length along x
   const H = 3; // riser height
   const TOP = 17; // ceiling height
@@ -37,7 +41,7 @@ export function buildStaircase(scene: Scene, skin: SkinRuntime): BuiltLevel {
     const f = k * H;
     if (k > 0) b.box(V(x, 0, -6), V(x + L, f, 6));
     // Sealed lane: alternates, starting with the north lane in cell 0.
-    const closed = k % 2 === 0 ? N : S;
+    const closed = k === CELLS - 1 || k % 2 === 0 ? N : S; // the last cell swaps the pattern
     b.box(V(x, f + 3.4, closed[0]), V(x + L, TOP, closed[1]));
     // Divider with a 2.2-wide doorway at floor level.
     b.box(V(x, f, -0.5), V(x + 3, TOP, 0.5));
@@ -48,14 +52,14 @@ export function buildStaircase(scene: Scene, skin: SkinRuntime): BuiltLevel {
     const wallN = (lane: [number, number]) => (lane === S ? V(0, 0, -1) : V(0, 0, 1));
     // +X lever in the open lane, near the riser.
     if (k < CELLS - 1) {
-      const open = k % 2 === 0 ? S : N;
+      const open = closed === N ? S : N;
       b.addSwitch(V(x + 6.2, f + 1.5, zs(open)), wallN(open), '+X');
     }
-    // -Y lever in the sealed lane, where the fall east leaves you.
-    if (k > 0) b.addSwitch(V(x + 6.5, f + 1.5, zs(closed)), wallN(closed), '-Y');
+    // -Y lever in the sealed lane, where the fall east leaves you (not in the last cell: you land open).
+    if (k > 0 && k < CELLS - 1) b.addSwitch(V(x + 6.5, f + 1.5, zs(closed)), wallN(closed), '-Y');
   }
 
-  // Exit doorway in the south lane of the top cell.
+  // Exit doorway in the south lane of the top cell: the lane the last climb lands you in, under +X it is a hole.
   b.box(V(XE, fTop - 1, 1), V(XE + 1, fTop, 5), b.exit);
   b.tube(V(XE + 1, fTop, 1), V(XE + 10, fTop + 3, 5), ['-x'], b.exit);
 
@@ -63,7 +67,7 @@ export function buildStaircase(scene: Scene, skin: SkinRuntime): BuiltLevel {
   // The first riser, in the open lane.
   b.placard(V(L, 1.6, 3.2), V(-1, 0, 0), '-Y', [
     'RISER MAINTENANCE',
-    '4 CLIMBS SCHEDULED',
+    '3 CLIMBS SCHEDULED',
     'SCHEDULE UNCHANGED',
     'SINCE CYCLE 1',
   ].join('\n'), {
@@ -75,10 +79,10 @@ export function buildStaircase(scene: Scene, skin: SkinRuntime): BuiltLevel {
 
   return b.finish({
     name: 'VI · THE STAIRCASE',
-    hint: 'Climb, step off, turn the cube back, walk round. Repeat until it\'s done.',
+    hint: 'Climb, step off, turn the cube back, walk round. Look where you land.',
     spawnPosition: V(2, 0.5, -3),
     entranceAxis: '-Y',
-    exitAxis: '-Y',
+    exitAxis: '+X',
     exitCenter: V(XE + 5, fTop + 1, 3),
     exitRadius: 2,
   });

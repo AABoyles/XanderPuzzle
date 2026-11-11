@@ -41,9 +41,13 @@ export function buildGrate(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.addDoor(V(door.x[0], door.y[0], R), V(door.x[1], door.y[1], R + T), [plate]);
   b.addCrate(V(-4, F + 0.75, 4), 1.5, { stamp: 'BALLAST MASS\nBM-2307' });
 
-  // East wall: shift east. South wall: shift back down once you have landed on the east wall.
-  b.addSwitch(V(R - 0.3, F + 1.5, -4), V(-1, 0, 0), '+X');
-  b.addSwitch(V(R - 1.5, F + 0.5, -R + 0.3), V(0, 0, 1), '-Y');
+  // Block lever: shift east. Second block: shift back down once you have landed on the east wall.
+  // Both levers face south, on low blocks in the south half, so the player throws them looking north across the
+  // glass at the crate and the east wall. The second block stands near the east wall, where the shift lands you.
+  b.glass(V(-0.75, F - 0.5, -5.5), V(0.75, F + 1, -4.5));
+  b.addSwitch(V(0, F + 0.5, -5.8), V(0, 0, -1), '+X');
+  b.glass(V(5.5, lo, -5.5), V(7.5, F + 1, -4.5));
+  b.addSwitch(V(6.5, F + 0.5, -5.8), V(0, 0, -1), '-Y');
 
   b.placard(V(-2, F + 1.6, -R - 3), V(1, 0, 0), '-Y', 'CUBE 0130', { width: 2.6 });
   // On the glass, read looking down at the lower deck.
@@ -55,7 +59,7 @@ export function buildGrate(scene: Scene, skin: SkinRuntime): BuiltLevel {
   });
 
   return b.finish({
-    name: 'XII · THE GRATE',
+    name: 'XV · THE GRATE',
     hint: 'You cannot go down there. The crate can.',
     spawnPosition: V(0, F + 0.5, -R - 5),
     entranceAxis: '-Y',

@@ -12,8 +12,11 @@ import { Builder, BuiltLevel, T, V } from '../Builder';
  *   +Z: climb and slide along that wall until you are over the high ledge so that -Y drops you onto it,
  *   -Y: stand on the ledge; the next +X carries you through the doorway at the same height into the exit.
  * The exit doorway is framed so it cannot be reached by walking up the east wall during a +X phase.
- * Any mistake just drops you onto a shell wall; the cycle keeps running and brings you back to the
+ * Most mistakes just drop you onto a shell wall; the cycle keeps running and brings you back to the
  * floor within a couple of phases to try again.
+ *
+ * Trap hole: one opening in the north wall (x 12-17, y 3.1-6). Be on the pillar's west face too low (below the
+ * tall wall, above y 3.6) when +Z comes and you fall under the wall, through it and out of the chamber.
  */
 export function buildTide(scene: Scene, skin: SkinRuntime): BuiltLevel {
   const b = new Builder(scene, skin, new Color3(0.15, 0.85, 0.72));
@@ -28,7 +31,11 @@ export function buildTide(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.slab('x', -T, 0, [0, Y], [-T, Z + T], b.wall);
   b.slab('x', X, X + T, [0, Y], [-T, Z + T], b.wall, { u: exit.y, v: exit.z });
   b.slab('z', -T, 0, [0, X], [0, Y], b.wall, { u: door.x, v: door.y });
-  b.slab('z', Z, Z + T, [0, X], [0, Y], b.wall);
+  // Trap hole open to space, where the one costly mistake lands: on the pillar's west face (x 14-15) below the
+  // tall wall's underside (y 6) when +Z comes, you fall north past the wall's end to here. Its bottom edge is 3.1
+  // up so nobody on the floor can jump into it; it ends at the wall's underside. The east wall (x 23.5) and the
+  // route (tall wall's south face, z 19.5) never reach it.
+  b.slab('z', Z, Z + T, [0, X], [0, Y], b.wall, { u: [12, 17], v: [3.1, 6] });
 
   // The pillar: +X lands you on its west face (x = 15), which reaches up to y = 10.
   b.box(V(15, 0, 12), V(17, 10, 15));
@@ -61,7 +68,7 @@ export function buildTide(scene: Scene, skin: SkinRuntime): BuiltLevel {
   });
 
   return b.finish({
-    name: 'XIII · THE TIDE',
+    name: 'XVIII · THE TIDE',
     hint: 'The cube turns itself now. Be where the next shift needs you.',
     spawnPosition: V(10, 0.5, -5),
     entranceAxis: '-Y',

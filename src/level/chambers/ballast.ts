@@ -7,7 +7,7 @@ import { Builder, BuiltLevel, T, V } from '../Builder';
  * Level 8 - the first crate chamber (-Y -> +X -> -Y). A crate sits in a trough in the floor and the
  * exit door in the far wall is shut. The first lever turns gravity toward the east wall, the crate
  * slides out of the trough and lands on a pressure plate there (crates only), which opens the door.
- * The second lever, on the same wall, puts you back on the floor; the crate stays against the plate.
+ * The second lever, on the floor by that wall, puts you back on the floor; the crate stays against the plate.
  */
 export function buildBallast(scene: Scene, skin: SkinRuntime): BuiltLevel {
   const b = new Builder(scene, skin, new Color3(0.35, 0.85, 0.75));
@@ -31,13 +31,17 @@ export function buildBallast(scene: Scene, skin: SkinRuntime): BuiltLevel {
   // The trough: two walls taller than the crate, open at the east end, running from the west wall.
   b.box(V(-R, -R, 2.5), V(-1, -R + 2, 3.2));
   b.box(V(-R, -R, 4.8), V(-1, -R + 2, 5.5));
-  b.addCrate(V(-3, -R + 0.75, 4), 1.5, { stamp: 'BALLAST MASS\nBM-2231' });
+  b.addCrate(V(-6.5, -R + 0.75, 4), 1.5, { stamp: 'BALLAST MASS\nBM-2231' });
 
   const plate = b.addPlate(V(R, -R + 0.75, 4), V(-1, 0, 0), 2.5, true);
   b.addDoor(V(-2, -R, R), V(2, -R + 3, R + T), [plate]);
 
-  b.addSwitch(V(R - 0.3, -R + 1.5, -4), V(-1, 0, 0), '+X');
-  b.addSwitch(V(R - 1.5, -R + 0.3, -4), V(0, 1, 0), '-Y');
+  // A low glass screen just inside the door, lever on its south face: the player throws it facing north, with the
+  // crate in its trough (left), the plate on the east wall (right) and the shut door all ahead of them.
+  b.glass(V(-0.75, -R, -5.5), V(0.75, -R + 1.2, -4.5));
+  b.addSwitch(V(0, -R + 0.7, -5.8), V(0, 0, -1), '+X');
+  // Under +X the player lands on the east wall at the same z, still facing north toward the plate.
+  b.addSwitch(V(R - 1.5, -R + 0.3, -6.5), V(0, 1, 0), '-Y');
 
   b.placard(V(-2, -R + 1.6, -R - 3), V(1, 0, 0), '-Y', 'CUBE 0121', { width: 2.6 });
   // On the east wall above the plate, upright once it is the floor.

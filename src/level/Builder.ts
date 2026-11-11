@@ -85,6 +85,8 @@ export const T = 1;
 export class Builder {
   public readonly meshes: Mesh[] = [];
   public readonly switches: GravitySwitch[] = [];
+  /** Burnt-out levers that are only set dressing: never updated, never in `switches`. */
+  private readonly spentLevers: GravitySwitch[] = [];
   public readonly placards: PlacardInfo[] = [];
   /** Fixed crates own their material and stamps, so they are disposed with them. */
   private readonly fixedCrates: Mesh[] = [];
@@ -222,6 +224,18 @@ export class Builder {
     return this.lever(position, wallNormal, { kind: 'sequence', sequencer: this.sequencer });
   }
 
+  /**
+   * A lever that was burnt out before you arrived: dark, arrowless and dead. Set dressing only (it is not in
+   * `switches` and can never be thrown), for showing what a spent one-shot lever looks like.
+   */
+  public addSpentLever(position: Vector3, wallNormal: Vector3): void {
+    const spec: LeverSpec = { kind: 'fixed', target: '-Y' };
+    const sw = new GravitySwitch(this.scene, position, wallNormal, spec, (a) => this.skin.leverColor(a), true);
+    sw.root.getChildMeshes().forEach((m) => this.skin.decorateProp(m as Mesh));
+    sw.burnOut();
+    this.spentLevers.push(sw);
+  }
+
   private lever(position: Vector3, wallNormal: Vector3, spec: LeverSpec, once = false): GravitySwitch {
     const sw = new GravitySwitch(this.scene, position, wallNormal, spec, (a) => this.skin.leverColor(a), once);
     sw.root.getChildMeshes().forEach((m) => this.skin.decorateProp(m as Mesh));
@@ -354,15 +368,18 @@ export class Builder {
     return crate;
   }
 
-  /** A pressure plate on the surface at `center`, facing along `normal`. */
-  public addPlate(center: Vector3, normal: Vector3, size = 2.5, cratesOnly = false): PressurePlate {
-    const plate = new PressurePlate(this.scene, center, normal, size, cratesOnly);
+  /**
+   * A pressure plate on the surface at `center`, facing along `normal`. With `cratesOnly` the player cannot press it.
+   * An `inverted` plate is the opposite of a normal one: its door needs it clear, and it lights green while it is.
+   */
+  public addPlate(center: Vector3, normal: Vector3, size = 2.5, cratesOnly = false, inverted = false): PressurePlate {
+    const plate = new PressurePlate(this.scene, center, normal, size, cratesOnly, inverted);
     this.skin.decorateProp(plate.mesh);
     this.dynamics.plates.push(plate);
     return plate;
   }
 
-  /** A solid slab filling [min, max] that opens while all of `plates` are pressed. */
+  /** A solid slab filling [min, max] that opens while all of `plates` are satisfied (pressed; clear if inverted). */
   public addDoor(min: Vector3, max: Vector3, plates: PressurePlate[]): Door {
     const door = new Door(this.scene, min, max, plates);
     this.skin.decorateProp(door.mesh);
@@ -385,6 +402,7 @@ export class Builder {
       dispose: () => {
         this.meshes.forEach((m) => m.dispose());
         this.switches.forEach((s) => s.dispose());
+        this.spentLevers.forEach((s) => s.dispose());
         this.dynamics.dispose();
         this.fixedCrates.forEach((m) => m.dispose(false, true));
         this.ownMaterials.forEach((m) => m.dispose(true, true));

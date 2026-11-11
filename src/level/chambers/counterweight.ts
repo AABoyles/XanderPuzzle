@@ -45,14 +45,22 @@ export function buildCounterweight(scene: Scene, skin: SkinRuntime): BuiltLevel 
   const wallPlate = b.addPlate(V(R, -R + 0.75, -3), V(-1, 0, 0), 2, true);
   b.addDoor(V(5, doorY[0], R), V(R, doorY[1], R + T), [pitPlate, wallPlate]);
 
-  // -Y -> -X on the -X wall; -X -> -Y on the +Z wall; -Y -> +X on the +X wall.
-  b.addSwitch(V(-R + 0.3, -R + 1.5, 6), V(1, 0, 0), '-X');
-  b.addSwitch(V(-R + 1.5, -R + 0.5, R - 0.3), V(0, 0, -1), '-Y');
-  b.addSwitch(V(R - 0.3, -R + 1.5, 6), V(-1, 0, 0), '+X');
-  // Undo for a wrong order: -X-side lever to get back to -Y from the +X wall.
-  b.addSwitch(V(R - 1.5, -R + 0.5, -R + 0.3), V(0, 0, 1), '-Y');
+  // Every lever sits on the south face of a low glass screen in the south strip (z -5.5..-4.5), clear of both crate
+  // lanes (z 0 and z -3), so each is thrown facing north with the crates, the pit and the plates beyond it.
+  // -Y -> -X: from the entrance side, the pit crate dead ahead and the pit to its left.
+  b.glass(V(-4.75, -R, -5.5), V(-3.25, -R + 1.2, -4.5));
+  b.addSwitch(V(-4, -R + 0.7, -5.8), V(0, 0, -1), '-X');
+  // -X -> -Y: where the shift west lands you (west wall, same z); watch the pit crate drop into the pit.
+  b.glass(V(-R + 0.1, -R, -5.5), V(-5.5, -R + 1.2, -4.5));
+  b.addSwitch(V(-6.5, -R + 0.7, -5.8), V(0, 0, -1), '-Y');
+  // -Y -> +X: far enough west that the pit and both crates are in one view; the wrong order is seen at once.
+  b.glass(V(-2.25, -R, -5.5), V(-0.75, -R + 1.2, -4.5));
+  b.addSwitch(V(-1.5, -R + 0.7, -5.8), V(0, 0, -1), '+X');
+  // Undo for a wrong order: -Y from the +X wall, where the shift east lands you.
+  b.glass(V(5.5, -R, -5.5), V(R - 0.1, -R + 1.2, -4.5));
+  b.addSwitch(V(6.5, -R + 0.7, -5.8), V(0, 0, -1), '-Y');
 
-  b.placard(V(-2, -R + 1.6, -R - 3), V(1, 0, 0), '-Y', 'CUBE 0122', { width: 2.6 });
+  b.placard(V(-2, -R + 1.6, -R - 3), V(1, 0, 0), '-Y', 'CUBE 0124', { width: 2.6 });
   b.placard(V(0, -5.5, R), V(0, 0, -1), '-Y', 'TRIM REQUIRES 2 MASSES\nATTENDANTS ON THIS CYCLE: 1', { width: 6 });
   // On the -X wall above the pit, upright once it is the floor.
   b.note(V(-R, -3, -4), V(1, 0, 0), '-X', 'I have never met another attendant.\nThe roster has room for hundreds.', {
@@ -61,7 +69,7 @@ export function buildCounterweight(scene: Scene, skin: SkinRuntime): BuiltLevel 
   });
 
   return b.finish({
-    name: 'IX · THE COUNTERWEIGHT',
+    name: 'XI · THE COUNTERWEIGHT',
     hint: 'Pin one crate where gravity cannot move it, then seat the other.',
     spawnPosition: V(0, -R + 0.5, -R - 5),
     entranceAxis: '-Y',

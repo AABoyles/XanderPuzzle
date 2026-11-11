@@ -160,9 +160,7 @@ export class GravitySwitch {
     // Relative and sequence levers point at whatever they would do next.
     if (this.spec.kind !== 'fixed') this.showTarget(this.targetFor(gravity.axis));
     if (this.spent) {
-      this.glowMat.diffuseColor = SPENT_COLOR;
-      this.glowMat.emissiveColor = Color3.Black();
-      this.arrow.setEnabled(false);
+      this.burnOut();
       return fired;
     }
     const isActive =
@@ -173,6 +171,14 @@ export class GravitySwitch {
     const pulse = isActive ? 1.4 : inRange ? 0.9 : 0.5;
     this.glowMat.emissiveColor = this.baseColor().scale(pulse);
     return fired;
+  }
+
+  /** Marks the lever spent and paints it dark. Also used for levers that are already burnt out when you arrive. */
+  public burnOut(): void {
+    this.spent = true;
+    this.glowMat.diffuseColor = SPENT_COLOR;
+    this.glowMat.emissiveColor = Color3.Black();
+    this.arrow.setEnabled(false);
   }
 
   public dispose(): void {

@@ -22,7 +22,8 @@ import { PlayerController } from './player/PlayerController';
 import { canFullscreen, isFullscreen, isIOS, isStandalone, onFullscreenChange, toggleFullscreen } from './pwa/fullscreen';
 import { loadFonts } from './level/fonts';
 import {
-  darkFraction, descentAlarm, dutyLine, endCard, NOT_RECOVERED, planetLights, recoveryLine, winTitle, workLog,
+  darkFraction, descentAlarm, dutyLine, endCard, MASS_RELEASED, NOT_RECOVERED, planetLights, recoveryLine, winTitle,
+  workLog,
 } from './narrative';
 import { registerServiceWorker } from './pwa/register';
 import { shiftTone } from './gravity/shiftSound';
@@ -642,6 +643,10 @@ engine.runRenderLoop(() => {
     if (dyn.impact > 4) beep(90, 45, 0.18, 'square', Math.min(0.2, dyn.impact / 150));
     if (dyn.plateChanged) beep(520, 520, 0.08, 'square', 0.06);
     if (dyn.doorChanged) beep(180, 360, 0.3, 'triangle', 0.12);
+    if (dyn.crateLost) {
+      beep(300, 60, 0.9, 'sine', 0.1);
+      hud.log(MASS_RELEASED);
+    }
 
     // Anyone who escapes the geometry falls through space for a while, then is put back at the entrance.
     // Leaving an ending chamber is the final fall instead: it is the exit, and it ends on the end card.
@@ -751,7 +756,9 @@ if (import.meta.env.DEV) {
     setSkin: (id: SkinId) => setSkin(SKIN_IDS.indexOf(id)),
     crates: () => level.dynamics.crates.map((c) => [...c.body.center]),
     placards: () => level.placards,
-    plates: () => level.dynamics.plates.map((pl) => pl.pressed),
+    /** Whether each plate is as its door needs it: pressed, or clear for an inverted plate. */
+    plates: () => level.dynamics.plates.map((pl) => pl.satisfied),
+    cratesLost: () => level.dynamics.crates.map((c) => c.lost),
     doors: () => level.dynamics.doors.map((d) => d.isOpen),
     switches: () =>
       level.switches.map((sw) => ({

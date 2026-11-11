@@ -41,6 +41,9 @@ export function workLog({ time, best, shifts, next }: WorkLog): string {
   return `${stats}\n${instruction}`;
 }
 
+/** Logged when a crate falls out of the cube through a hole. Nothing replaces it. */
+export const MASS_RELEASED = 'BALLAST MASS RELEASED. REPLACEMENT NOT SCHEDULED.';
+
 /** The share of the ballast field gone dark, seen when falling from chamber `index` of `count`: it grows each chamber. */
 export const darkFraction = (index: number, count: number): number =>
   0.15 + 0.5 * Math.min(Math.max(index / Math.max(count - 1, 1), 0), 1);

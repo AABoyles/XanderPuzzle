@@ -24,6 +24,14 @@ import { Builder, BuiltLevel, T, V } from '../Builder';
  *   7. Throw the corridor lever (+Y); you land on the corridor ceiling. The crate keeps the door open,
  *      so walk into the hole and fall up into the exit.
  * The +Y lever in step 3 is one-shot: throw it at the wrong time and you need R.
+ *
+ * The trap (a fork at step 4): from the ceiling a second lever, on the ceiling itself, sends gravity straight to -Z,
+ * which looks like the quick way to the south wall. It slides the crate south along the ceiling's east edge into the
+ * corner by the south wall, where a block on the ceiling stops it under -X. From the south wall the only levers in
+ * reach are the corridor's +Y and the dead -Z, so gravity only cycles -Z, +Y, -X and the crate never leaves. The +Y
+ * lever that got you to the ceiling is already spent, so there is no way round: restart (as in the Lockout, with a
+ * crate). The fork lever is more than 4 from every wall, so it cannot be thrown early from the east or north wall.
+ * (A crate-only way round exists on paper, -Z, -Y, -X, +Y, but no lever gives -Y from there.)
  */
 export function buildOrrery(scene: Scene, skin: SkinRuntime): BuiltLevel {
   const b = new Builder(scene, skin, new Color3(0.72, 0.4, 1));
@@ -54,6 +62,12 @@ export function buildOrrery(scene: Scene, skin: SkinRuntime): BuiltLevel {
     b.box(V(-1, -1, s - 1), V(1, 1, s + 1));
   }
 
+  // The pocket: the -Z lever slides the crate down the east wall's top edge into the corner where the south wall
+  // begins. This block, on the ceiling beside that corner, then stops it under -X, the only shift that could
+  // carry it west to the plate. From the south wall the levers within reach (the corridor's +Y, the dead -Z)
+  // never leave the {-Z, +Y, -X} cycle, so the crate stays here. Clear of the walk to the white lever at x = 4.
+  b.box(V(8.5, 9, -H), V(10.5, H, -9));
+
   const crate = V(0, -H + 0.75, 6);
   b.addCrate(crate, 1.5, { stamp: 'BALLAST MASS\nBM-2390' });
   const plate = b.addPlate(V(-H + 0.75, H - 0.75, -H), V(0, 0, 1), 2.5, true);
@@ -71,11 +85,15 @@ export function buildOrrery(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.addSwitch(V(-10.5, 5, -H + 0.3), V(0, 0, 1), '-Z');
   // 6. -Z -> +Y, in the corridor, 1.5 above its far end wall.
   b.addSwitch(V(1.7, -10, -20.5), V(-1, 0, 0), '+Y');
+  // 7. The fork (+Y -> -Z), on the ceiling beside the walk from the one-shot lever's landing to the relative lever,
+  // with the crate's corner (NE) and the pocket (SE) in view beyond it. Far enough from the east and north walls
+  // (4.5 and 8.5) that it can only be thrown from the ceiling. Last in the list so the route keeps its indexes.
+  b.addSwitch(V(7, H - 0.3, 3), V(0, -1, 0), '-Z');
 
   b.placard(V(-2, -H + 1.6, -18.5), V(1, 0, 0), '-Y', 'CUBE 0140', { width: 2.6 });
   // On the north wall, upright once it is the floor.
   b.placard(V(4, -4, H), V(0, 0, -1), '+Z', [
-    'FIELD ALIGNMENT: 39% OF CUBES RESPONDING',
+    'FIELD ALIGNMENT: 38% OF CUBES RESPONDING',
     'ATTENDANT SUPPLY INCREASED TO COMPENSATE',
   ].join('\n'), {
     width: 10,
@@ -92,7 +110,7 @@ export function buildOrrery(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.note(V(-H, -4, 6), V(1, 0, 0), '-X', 'If you\'re reading this, I didn\'t', { width: 4.5, top: V(0, 1, 0) });
 
   return b.finish({
-    name: 'XIV · THE ORRERY',
+    name: 'XX · THE ORRERY',
     hint: 'Everything you have learned, in one room. The way out is the way you came in.',
     spawnPosition: V(0, -H + 0.5, -21),
     entranceAxis: '-Y',

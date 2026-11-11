@@ -42,27 +42,33 @@ Shiftbound is an installable web app that works offline after the first visit.
 - **Updates:** a new version is picked up on the next launch, or choose *Update and reload* in the pause menu when the "Update available" notice appears. It never reloads mid-chamber; between chambers it installs on its own.
 - **Fullscreen:** a button on the start screen (touch) and an item in the pause menu, which also asks for landscape where the browser supports it.
 
-Fifteen chambers ship with the game, each teaching or testing one idea:
+Twenty-one chambers ship with the game, each teaching or testing one idea:
 
 1. **The Vault** (`-Y → +Z → +X`) — a hollow cube; drop through the hole in the final "floor".
-2. **The Shaft** (`-Y → +X → +Y`) — a 40-unit vertical shaft whose exit door is at the top, upside down. A hole in the floor opens onto space.
+2. **The Shaft** (`-Y → +X → +Y`) — a 40-unit vertical shaft whose exit door is at the top, upside down. Partway up the climb a hole in the wall you are walking on opens onto space; walk round it.
 3. **The Divide** (`-Y → +X → +Z`) — a partition too tall to jump, but not too tall to walk around. A hole in the far wall opens onto space.
-4. **The Spiral** (`-Y → -X → +Y → +X`) — three shifts, each lever reachable only from the surface the last one put you on. A hole in the west wall opens onto space.
-5. **The Chimney** (`-Y → +Z`) — a long tunnel one lever turns into a 60-unit pit; steer mid-fall onto the ledge below the exit door, past a decoy that catches anyone who drops straight down.
-6. **The Staircase** (`-Y ↔ +X`, four times) — climb a riser under +X, step off the top, then shift back and walk round a divider before the next.
-7. **The Atrium** (`-Y → +X → -Z → -X → +Z → +Y`) — a cube with a room behind four of its faces, each enterable only when that face is the floor.
-8. **The Ballast** (`-Y → +X → -Y`) — the first crate: shift gravity and it slides onto the plate that opens the door.
-9. **The Counterweight** (`-Y → -X → -Y → +X`) — two crates, two plates; pin one in a pit before seating the other.
-10. **The Turnstile** (`-Y → +X → +Y → +Z`) — relative levers, which turn gravity clockwise around their own wall. A hole in the ceiling opens onto space.
-11. **The Lockout** (`-Y → -X → +Y`) — a one-shot lever that strands you if you throw it first. A hole in the west wall opens onto space.
-12. **The Grate** (`-Y → +X → -Y`) — a crate falls through the grate you stand on.
-13. **The Tide** (`-Y → +X → +Z`, on a timer) — a lever starts gravity cycling; be in the right place when each change comes.
-14. **The Orrery** (all six) — the finale: a crate, a relative lever and a one-shot lever, leaving through the entrance corridor's ceiling.
-15. **The Descent** (`-Y → +X → +Y`) — the epilogue: two one-shot levers and no door. The only way out is a hole in the ceiling, and the fall through it ends the game.
+4. **The Spiral** (`-Y → -X → +Y → +X`) — three shifts, each lever reachable only from the surface the last one put you on. A fourth lever leads nowhere: it turns a wall with a hole in it into the floor beneath you.
+5. **The Chimney** (`-Y → +Z`) — a long tunnel one lever turns into a 60-unit pit with no bottom; steer mid-fall onto the ledge below the exit door, past a decoy ledge that catches anyone who drops straight down. Miss both and you fall out of the cube.
+6. **The Staircase** (`-Y ↔ +X`, three climbs) — climb a riser under +X, step off the top, then shift back and walk round a divider before the next. The last cell swaps its lanes.
+7. **The Atrium** (`-Y → +X → -Z → -X → +Z → +Y`, or `-Y → +X → +Z → +Y`) — a cube with a room behind four of its faces, each enterable only when that face is the floor. Room A offers three levers; working back from the exit finds the short way. In a glass cage in one corner a crate slides with every shift, with nothing to do.
+8. **The Ballast** (`-Y → +X → -Y`) — the first crate you move: shift gravity and watch it slide the length of the room onto the plate that opens the door.
+9. **The Footing** (`-Y → -X → -Y → +X → -Y`) — a window too high to jump to; park the crate under it and use it as a step.
+10. **The Stopper** (`-Y → -Z → +X → +Z`) — a crate plugs the way out. Gravity pulls it out easily; the obvious way back drops it straight in again.
+11. **The Counterweight** (`-Y → -X → -Y → +X`) — two crates, two plates; pin one in a pit before seating the other.
+12. **The Deadman** (`-Y → +X → -Y`) — a gate that only your own weight holds open, for a crate that has to get through it.
+13. **The Turnstile** (`-Y → +X → +Y → +Z`) — relative levers, which turn gravity clockwise around their own wall. The wrong turn drops you out through a hole in the start wall.
+14. **The Lockout** (`-Y → -X → +Y`) — a one-shot lever that strands you if you throw it first; a burnt-out one by the entrance shows what it becomes. A hole in the west wall opens onto space.
+15. **The Grate** (`-Y → +X → -Y`) — a crate falls through the grate you stand on.
+16. **The Sieve** (`-Y → +X → +Y → +X → -Y`) — the reverse: a field that stops the crate and lets you through, so the crate has to go over the top.
+17. **The Surplus** (`-Y → -X → -Y → +X → -Y`) — one crate too many, and a hole in the cube to throw it out of. Throw out the wrong one and there is no replacement.
+18. **The Tide** (`-Y → +X → +Z`, on a timer) — a lever starts gravity cycling; be in the right place when each change comes. Too low on the pillar and the next shift drops you out through the north wall.
+19. **The Pendulum** (`-Y → +X → -Y → -X`, on a timer) — the cycle swings a crate back and forth, and the door is open only while the crate holds its plate; be on the door's side of the partition when it does.
+20. **The Orrery** (all six) — the finale: a crate, a relative lever and a one-shot lever, leaving through the entrance corridor's ceiling. One lever on the way parks the crate where it can never reach its plate.
+21. **The Descent** (`-Y → +X → +Y`) — the epilogue: two one-shot levers and no door. The only way out is a hole in the ceiling, and the fall through it ends the game.
 
 Each lever carries an arrow pointing the way "down" will be once it is thrown. White levers with a ring are **relative**: they turn gravity a quarter turn clockwise as you face their wall, so the arrow changes with your orientation. A lever that goes dark after use is **one-shot**. A gold lever with four studs starts a **timed cycle**, with a countdown to the next shift on the HUD. **Shift** runs, **R** restarts the chamber, and clearing one shows your time and number of gravity shifts before moving on.
 
-Some chambers have **trap holes** in their shell. Seen from inside, a hole is pitch black, unless it is in the floor you are standing on: then you can see the planet below. Fall through one and you drop out into open space, past the other cubes of the ballast field, towards a planet that always lies the way gravity points; after a few seconds (or on **R**) you are put back at the chamber entrance, and the facility logs the recovery.
+Some chambers have **trap holes** in their shell, placed where a wrong move puts you: under the lever that leads nowhere, at the bottom of the pit you failed to steer out of. Seen from inside, a hole is pitch black, unless it is in the floor you are standing on: then you can see the planet below. Fall through one and you drop out into open space, past the other cubes of the ballast field, towards a planet that always lies the way gravity points; after a few seconds (or on **R**) you are put back at the chamber entrance, and the facility logs the recovery. Crates fall out of holes too, and a crate that does is gone until the chamber restarts.
 
 The story is told by the facility's own log lines and placards: see [NARRATIVE.md](NARRATIVE.md).
 
@@ -90,7 +96,7 @@ Then open the printed local URL, click into the canvas to lock the pointer, and 
 
 ## Crates, plates and doors
 
-Gravity-driven crates, pressure plates and plate-controlled doors (`Builder.addCrate` / `addPlate` / `addDoor`) appear from chamber VIII on. `Builder.grate` (blocks you, not crates), `glass` (see-through, blocks both) and `barrier` (blocks crates, not you) filter who collides with what. Open the dev server with `?sandbox` in the URL for a test room. `npm test` runs the unit tests (box physics, gravity-axis maths, settings, progress and so on) plus headless structural checks that build every chamber under Babylon's `NullEngine` (valid lever axes, spawn and exit placement, a lever route to the exit, crates, doors, clean `dispose()`).
+Gravity-driven crates, pressure plates and plate-controlled doors (`Builder.addCrate` / `addPlate` / `addDoor`) appear from chamber VIII on (chamber VII has one in a glass cage, to watch). `Builder.grate` (blocks you, not crates), `glass` (see-through, blocks both) and `barrier` (blocks crates, not you) filter who collides with what. A plate is pressed by crates, or by crates and you; an *inverted* plate is satisfied only while nothing rests on it. Levers that move crates are mounted on low glass screens, so you are looking at the crate when you throw one. Open the dev server with `?sandbox` in the URL for a test room. `npm test` runs the unit tests (box physics, gravity-axis maths, settings, progress and so on) plus headless structural checks that build every chamber under Babylon's `NullEngine` (valid lever axes, spawn and exit placement, a lever route to the exit, crates, doors, clean `dispose()`), and `tests/crateRoutes.test.ts`, which replays each crate chamber's gravity route, and the wrong orders it is built around, on the real crate physics.
 
 `npm run test:e2e` runs the chamber smoke tests (Playwright, headless Chromium with software WebGL) against the Vite dev server, which it starts itself on port 5174; `__debug` exists only in dev builds, so it never uses the production bundle. Run `npx playwright install chromium` once first (add `--with-deps` on a bare Linux box). Each chamber is loaded, checked for browser errors and a grounded spawn, then "solved" by teleporting to each lever in its route and throwing it, and finally to the exit. Walking between levers and to the exit is not tested. On failure, screenshots land in `test-results/` and an HTML report in `playwright-report/` (`npx playwright show-report`); CI uploads both.
 
