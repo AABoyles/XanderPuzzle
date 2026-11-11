@@ -63,6 +63,8 @@ type Debug = {
   plates(): boolean[];
   doors(): boolean[];
   exit(): { center: number[]; radius: number; button?: number[] };
+  simTime(): number;
+  setRenderScale(level: number): void;
 };
 
 const dbg = <T>(page: Page, fn: (d: Debug) => T) => page.evaluate(`(${fn.toString()})(window.__debug)`) as Promise<T>;
@@ -76,12 +78,38 @@ async function boot(page: Page, errors: string[]) {
   // slows the frame rate enough to starve the game clock, and the routes are the same in every skin.
   await page.goto('/?skin=axis');
   await page.waitForFunction(() => '__debug' in window);
+  // A sixteenth of the pixels: under software WebGL the frame rate, and with it the game clock, depends on them.
+  await dbg(page, (d) => d.setRenderScale(4));
+}
+
+/**
+ * The game clock advances by at most 1/20 s a frame, so on a slow renderer (CI's software WebGL) it runs well behind
+ * the wall clock. Everything below therefore waits in simulated seconds: a wall-clock wait that is long enough on a
+ * fast machine gives the crates or the gravity cycle too little game time on a slow one.
+ */
+const simTime = (page: Page) => dbg(page, (d) => d.simTime());
+
+/** Waits until `seconds` of game time have passed. */
+async function simWait(page: Page, seconds: number) {
+  const start = await simTime(page);
+  while ((await simTime(page)) - start < seconds) await page.waitForTimeout(50);
+}
+
+/** Polls `read` until it gives `want`; fails once `simSeconds` of game time have passed without it. */
+async function untilSim<T>(page: Page, read: () => Promise<T>, want: T, simSeconds: number, message: string) {
+  const start = await simTime(page);
+  let last = await read();
+  while (!Object.is(last, want) && (await simTime(page)) - start < simSeconds) {
+    await page.waitForTimeout(50);
+    last = await read();
+  }
+  expect(last, `${message} (within ${simSeconds}s of game time)`).toBe(want);
 }
 
 async function load(page: Page, index: number) {
   await page.evaluate((i) => (window as any).__debug.startLevel(i), index);
   // The player starts on solid ground: nothing but gravity moves them, and they must stay put and grounded.
-  await expect.poll(() => dbg(page, (d) => d.grounded()), { timeout: 10_000 }).toBe(true);
+  await untilSim(page, () => dbg(page, (d) => d.grounded()), true, 5, 'grounded at the spawn');
 }
 
 test.describe('chambers', () => {
@@ -105,7 +133,7 @@ test.describe('chambers', () => {
       // Valid spawn: still inside the level bounds a moment later, still grounded, still under -Y gravity.
       const spawn = await dbg(page, (d) => d.position());
       const exit = await dbg(page, (d) => d.exit());
-      await page.waitForTimeout(500);
+      await simWait(page, 0.5);
       const now = await dbg(page, (d) => d.position());
       expect(Math.hypot(now[0] - spawn[0], now[1] - spawn[1], now[2] - spawn[2])).toBeLessThan(1);
       expect(await dbg(page, (d) => d.grounded())).toBe(true);
@@ -123,7 +151,8 @@ test.describe('chambers', () => {
           lever.position,
         );
         for (const axis of row.axes) {
-          await expect.poll(() => dbg(page, (d) => d.gravityAxis()), { timeout: 30_000 }).toBe(axis);
+          // Each step of the cycle is a few seconds of game time.
+          await untilSim(page, () => dbg(page, (d) => d.gravityAxis()), axis, 15, 'gravity after an automatic shift');
         }
       }
 
@@ -133,8 +162,8 @@ test.describe('chambers', () => {
       }
 
       if (row.plates) {
-        await expect.poll(() => dbg(page, (d) => d.plates().every(Boolean)), { timeout: 10_000 }).toBe(true);
-        await expect.poll(() => dbg(page, (d) => d.doors().every(Boolean)), { timeout: 10_000 }).toBe(true);
+        await untilSim(page, () => dbg(page, (d) => d.plates().every(Boolean)), true, 8, 'every plate pressed');
+        await untilSim(page, () => dbg(page, (d) => d.doors().every(Boolean)), true, 8, 'every door open');
       }
 
       if (row.ending) {
@@ -144,12 +173,12 @@ test.describe('chambers', () => {
         const k = 'XYZ'.indexOf(exitAxis[1]);
         const out = exit.center.map((v, i) => (i === k ? v + (exitAxis[0] === '+' ? 6 : -6) : v));
         await page.evaluate(([x, y, z]) => (window as any).__debug.setPosition(x, y, z), out);
-        await expect.poll(() => dbg(page, (d) => d.state()), { timeout: 10_000 }).toBe('descending');
+        await untilSim(page, () => dbg(page, (d) => d.state()), 'descending', 5, 'the final fall begins');
         await page.keyboard.press('KeyR');
-        await page.waitForTimeout(300);
+        await simWait(page, 0.3);
         expect(await dbg(page, (d) => d.state())).toBe('descending');
         await dbg(page, (d) => d.endFall());
-        await expect.poll(() => dbg(page, (d) => d.state()), { timeout: 10_000 }).toBe('ended');
+        await untilSim(page, () => dbg(page, (d) => d.state()), 'ended', 5, 'the end card');
         await page.keyboard.press('Enter');
         await expect.poll(() => dbg(page, (d) => d.state()), { timeout: 10_000 }).toBe('title');
         return;
@@ -164,7 +193,7 @@ test.describe('chambers', () => {
         void page.evaluate(([x, y, z]) => (window as any).__debug.setPosition(x, y, z), stand).catch(() => {});
       }, 100);
       try {
-        await expect.poll(() => dbg(page, (d) => d.hasWon()), { timeout: 10_000 }).toBe(true);
+        await untilSim(page, () => dbg(page, (d) => d.hasWon()), true, 5, 'reclaimed on the plate');
       } finally {
         clearInterval(hold);
       }
@@ -172,12 +201,12 @@ test.describe('chambers', () => {
   });
 });
 
-/** Waits until no crate has moved for a moment, so the next lever is thrown after the crates have slid home. */
+/** Waits until no crate has moved for 0.6 s of game time, so the next lever is thrown after the crates have slid home. */
 async function settleCrates(page: Page) {
   let last = '';
   let still = 0;
   for (let i = 0; i < 100 && still < 4; i++) {
-    await page.waitForTimeout(150);
+    await simWait(page, 0.15);
     const now = JSON.stringify(await dbg(page, (d) => d.crates()));
     still = now === last ? still + 1 : 0;
     last = now;
@@ -188,21 +217,18 @@ async function settleCrates(page: Page) {
 async function throwLever(page: Page, index: number, expected: string) {
   const sw = (await dbg(page, (d) => d.switches()))[index];
   expect(sw.target, `lever ${index} should offer ${expected}`).toBe(expected);
-  await expect
-    .poll(
-      async () => {
-        await page.evaluate(
-          ([x, y, z]) => {
-            const d = (window as any).__debug;
-            d.setPosition(x, y, z);
-            d.interact();
-          },
-          sw.position,
-        );
-        await page.waitForTimeout(250);
-        return dbg(page, (d) => d.gravityAxis());
+  let axis = '';
+  for (let tries = 0; tries < 30 && axis !== expected; tries++) {
+    await page.evaluate(
+      ([x, y, z]) => {
+        const d = (window as any).__debug;
+        d.setPosition(x, y, z);
+        d.interact();
       },
-      { message: `gravity after lever ${index}`, timeout: 10_000, intervals: [100] },
-    )
-    .toBe(expected);
+      sw.position,
+    );
+    await simWait(page, 0.25);
+    axis = await dbg(page, (d) => d.gravityAxis());
+  }
+  expect(axis, `gravity after lever ${index}`).toBe(expected);
 }

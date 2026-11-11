@@ -246,6 +246,8 @@ const lastPosition = player.position.clone();
 
 /** Simulated seconds in this chamber: accumulates the clamped `dt`, so a hitch or hidden tab can't change a best time. */
 let levelTime = 0;
+/** Simulated seconds since the page loaded, across chambers: what the smoke tests wait on (see `__debug.simTime`). */
+let simClock = 0;
 let shifts = 0;
 /** Attendants lost to the void this session (NARRATIVE.md). Never saved. */
 let recoveries = 0;
@@ -643,6 +645,7 @@ engine.runRenderLoop(() => {
   const frozen = isFrozen(game.state, input.lastDevice);
   if (dt > 0 && !consumed && simulates(game.state, input.lastDevice)) {
     levelTime += dt;
+    simClock += dt;
     const wasGrounded = player.isGrounded;
     player.update(dt, frame);
     if (!wasGrounded && player.isGrounded) sound.play('land');
@@ -874,6 +877,13 @@ if (import.meta.env.DEV) {
     gravityAxis: () => gravity.axis,
     setPosition: (x: number, y: number, z: number) => player.collider.position.set(x, y, z),
     state: () => game.kind,
+    /**
+     * Simulated seconds since load. The game clock is clamped per frame, so on a slow renderer it runs behind the wall
+     * clock: tests wait on this, never on real time.
+     */
+    simTime: () => simClock,
+    /** Renders at 1/`level` of the resolution each way, so software WebGL keeps the frame rate (and the clock) up. */
+    setRenderScale: (level: number) => engine.setHardwareScalingLevel(level),
     /** The audio engine's state: context, files decoded, whether the music and the wind are sounding. */
     audio: () => sound.status(),
     /** Starts a stellar storm now (they otherwise come once a minute). */
