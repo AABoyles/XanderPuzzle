@@ -62,7 +62,7 @@ type Debug = {
   crates(): number[][];
   plates(): boolean[];
   doors(): boolean[];
-  exit(): { center: number[]; radius: number };
+  exit(): { center: number[]; radius: number; button?: number[] };
 };
 
 const dbg = <T>(page: Page, fn: (d: Debug) => T) => page.evaluate(`(${fn.toString()})(window.__debug)`) as Promise<T>;
@@ -72,7 +72,9 @@ async function boot(page: Page, errors: string[]) {
   page.on('console', (m) => {
     if (m.type() === 'error') errors.push(`console.error: ${m.text()}`);
   });
-  await page.goto('/');
+  // Axis is the lightest skin to draw. Under software WebGL the default (Station, with its shadow and normal maps)
+  // slows the frame rate enough to starve the game clock, and the routes are the same in every skin.
+  await page.goto('/?skin=axis');
   await page.waitForFunction(() => '__debug' in window);
 }
 
@@ -153,9 +155,19 @@ test.describe('chambers', () => {
         return;
       }
 
-      // The route works; stepping into the exit then wins (walking the last stretch is covered by playtests).
-      await page.evaluate(([x, y, z]) => (window as any).__debug.setPosition(x, y, z), exit.center);
-      await expect.poll(() => dbg(page, (d) => d.hasWon()), { timeout: 10_000 }).toBe(true);
+      // The route works; standing on the reclaimer's plate then wins (walking the last stretch is covered by
+      // playtests). The player is put back on the plate until it takes them, since a timed chamber's gravity may
+      // carry them off it first.
+      expect(exit.button, 'the chamber has a reclaimer').toBeTruthy();
+      const stand = exit.button as number[];
+      const hold = setInterval(() => {
+        void page.evaluate(([x, y, z]) => (window as any).__debug.setPosition(x, y, z), stand).catch(() => {});
+      }, 100);
+      try {
+        await expect.poll(() => dbg(page, (d) => d.hasWon()), { timeout: 10_000 }).toBe(true);
+      } finally {
+        clearInterval(hold);
+      }
     });
   });
 });

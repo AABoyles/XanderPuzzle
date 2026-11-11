@@ -96,6 +96,16 @@ export class PlayerController {
     this.input.drain();
   }
 
+  /**
+   * Turns the view a step towards straight down (towards the planet), for when the player no longer has control: the
+   * end of the last fall. `amount` is the fraction of the remaining angle to close this frame.
+   */
+  public lookDown(amount: number): void {
+    this.pitch += (PITCH_LIMIT - this.pitch) * Math.min(Math.max(amount, 0), 1);
+    const look = Quaternion.RotationAxis(Vector3.Up(), this.yaw).multiply(Quaternion.RotationAxis(Vector3.Right(), this.pitch));
+    this.camera.rotationQuaternion = this.alignRot.multiply(look);
+  }
+
   /** Sets the view direction relative to the current up (radians; positive pitch looks down). */
   public setLook(yaw: number, pitch: number): void {
     this.yaw = yaw;

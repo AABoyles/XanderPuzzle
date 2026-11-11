@@ -120,3 +120,16 @@ test('a longer fall (the Descent) lasts its own duration and ends nearer the pla
   assert.equal(planetDistance(DESCENT_DURATION, DESCENT_DURATION, PLANET_LAST), PLANET_LAST);
   assert.ok(PLANET_LAST > 150, 'the camera stays above the surface');
 });
+
+test('a stellar storm breaks every period: builds fast, holds, dies away, then quiet', async () => {
+  const { STORM_FIRST, STORM_FADE, STORM_HOLD, STORM_PERIOD, STORM_RISE, stormStrength } = await import('../src/environment/fall.ts');
+  assert.equal(stormStrength(0), 0);
+  assert.equal(stormStrength(STORM_FIRST - 0.01), 0);
+  assert.ok(stormStrength(STORM_FIRST + STORM_RISE / 2) > 0.4);
+  assert.equal(stormStrength(STORM_FIRST + STORM_RISE + STORM_HOLD / 2), 1);
+  const dying = stormStrength(STORM_FIRST + STORM_RISE + STORM_HOLD + STORM_FADE / 2);
+  assert.ok(dying > 0.4 && dying < 0.6);
+  assert.equal(stormStrength(STORM_FIRST + STORM_RISE + STORM_HOLD + STORM_FADE + 1), 0);
+  assert.equal(stormStrength(STORM_FIRST + STORM_PERIOD + STORM_RISE + 1), 1);
+  for (let t = 0; t < 200; t += 0.37) assert.ok(stormStrength(t) >= 0 && stormStrength(t) <= 1);
+});

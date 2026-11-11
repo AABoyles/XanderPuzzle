@@ -20,6 +20,26 @@ export const PLANET_NEAR = 190;
 export const DESCENT_DURATION = 25;
 export const PLANET_LAST = 162;
 
+/** Seconds between stellar storms, when the first one breaks, and how long one takes to build, hold and die away. */
+export const STORM_PERIOD = 60;
+export const STORM_FIRST = 6;
+export const STORM_RISE = 1.2;
+export const STORM_HOLD = 3;
+export const STORM_FADE = 7;
+
+/**
+ * How hard the star's storm is blowing (0-1) at backdrop time `t`: nothing most of the time, then every
+ * `STORM_PERIOD` seconds a front that builds fast, holds and dies away. The Crown's ring and the planet's aurora
+ * answer it (NARRATIVE.md: the Crown is the planet's shield).
+ */
+export function stormStrength(t: number): number {
+  const into = (((t - STORM_FIRST) % STORM_PERIOD) + STORM_PERIOD) % STORM_PERIOD;
+  if (t < STORM_FIRST) return 0;
+  if (into < STORM_RISE) return into / STORM_RISE;
+  if (into < STORM_RISE + STORM_HOLD) return 1;
+  return Math.max(0, 1 - (into - STORM_RISE - STORM_HOLD) / STORM_FADE);
+}
+
 /** The box enclosing every solid of a level. */
 export function boundsOf(solids: readonly Aabb[]): Aabb {
   const min: Vec3 = [Infinity, Infinity, Infinity];

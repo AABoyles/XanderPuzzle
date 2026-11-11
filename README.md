@@ -68,17 +68,26 @@ Twenty-one chambers ship with the game, each teaching or testing one idea:
 
 Each lever carries an arrow pointing the way "down" will be once it is thrown. White levers with a ring are **relative**: they turn gravity a quarter turn clockwise as you face their wall, so the arrow changes with your orientation. A lever that goes dark after use is **one-shot**. A gold lever with four studs starts a **timed cycle**, with a countdown to the next shift on the HUD. **Shift** runs, **R** restarts the chamber, and clearing one shows your time and number of gravity shifts before moving on.
 
-Some chambers have **trap holes** in their shell, placed where a wrong move puts you: under the lever that leads nowhere, at the bottom of the pit you failed to steer out of. Seen from inside, a hole is pitch black, unless it is in the floor you are standing on: then you can see the planet below. Fall through one and you drop out into open space, past the other cubes of the ballast field, towards a planet that always lies the way gravity points; after a few seconds (or on **R**) you are put back at the chamber entrance, and the facility logs the recovery. Crates fall out of holes too, and a crate that does is gone until the chamber restarts.
+Some chambers have **trap holes** in their shell, placed where a wrong move puts you: under the lever that leads nowhere, at the bottom of the pit you failed to steer out of. Seen from inside, a hole is pitch black, unless it is in the floor you are standing on: then you can see the planet below. Fall through one and you drop out into open space, past the other cubes of the ballast field, towards a planet that always lies the way gravity points; after a few seconds (or on **R**) a replacement is printed at the chamber entrance, and the facility logs the recovery. Crates fall out of holes too, and a crate that does is gone until the chamber restarts.
 
-The story is told by the facility's own log lines and placards: see [NARRATIVE.md](NARRATIVE.md).
+The story is told by the facility's own log lines and placards, and by the notes an earlier attendant, 416, left on the walls: see [NARRATIVE.md](NARRATIVE.md). In short:
+
+- The cubes are counterweights that hold up the **Crown**, a spoked ring overhead: the coil of a magnetic shield that turns the star's storms away from the planet. About once a minute a storm comes off the star, the ring flares violet and aurora runs round the planet. The title screen shows the cube you are in from outside, with the Crown above it and the planet below; the Vault and the Counterweight have skylights that look up at it.
+- You are an **attendant**, printed in the print bay at each chamber's entrance. The lit corridor at each exit is a **reclaimer**, the same machine lit amber: stand on the plate on its bed and you are taken apart there and printed again at the next cube. Fall out of a cube and it prints a replacement, so falling is not a way out.
+- A cube out of trim drops off the schedule and its printer stops. The Descent's two levers do exactly that, so the fall out of it is the one nobody is printed back from, and the game ends there: the cube goes dark, and one more light comes up on the planet.
 
 Press **L** (or the button on the start screen, or Back/Select on a gamepad) for the chamber select, which lists every chamber with your best time. You can replay any chamber you've cleared and try the next one; the rest stay locked. Progress and best times are kept in `localStorage` (`shiftbound.progress`, keyed by chamber id, so reordering chambers never moves your times; saves from older versions are migrated automatically). Pause menu > Settings > Erase saved progress (press twice to confirm) wipes them. Add `?unlockall` to the URL to open every chamber for playtesting; it never saves progress or resume points. If storage is unavailable, everything is unlocked.
 
+### Sound
+
+A dark drone loops under the whole game. The printer and the reclaimer crack with a coil's spark (the reclaimer's is the printer's played backwards), the hull groans each time the cube turns, ballast masses land with a slam, and a fall starts in silence and fills with rushing air as the planet comes up. Master and music volume are in the pause menu's settings. Every recording is CC0 from OpenGameArt.org, credited in [`public/audio/CREDITS.md`](public/audio/CREDITS.md); the wind is synthesized.
+
 ## Skins
 
-Press **K** in game to cycle skins (Shift+K goes back), or load with `?skin=axis|monolith|draft|neon`. The choice is remembered.
+Press **K** in game to cycle skins (Shift+K goes back), or load with `?skin=station|axis|monolith|draft|neon`. New players start in Station. The choice is remembered.
 
-- **Axis** (default): matte pastel tiles where every surface is the colour of the lever that makes it the floor, so you can plan a route by colour. Soft sun and shadows.
+- **Station** (default): the cubes as the machinery they are. Brushed, bolted hull plating under cool work lights; each plate carries a painted band in the colour of the lever that makes that face the floor, and the way out is the lit white corridor.
+- **Axis**: matte pastel tiles where every surface is the colour of the lever that makes it the floor, so you can plan a route by colour. Soft sun and shadows.
 - **Monolith**: board-formed concrete with form-tie holes under a low warm sun, with fog and a vignette.
 - **Draft**: ink outlines on drafting paper; floors are clean and walls and ceilings are hatched by orientation.
 - **Neon**: the original glowing grid.
@@ -106,16 +115,16 @@ Gravity-driven crates, pressure plates and plate-controlled doors (`Builder.addC
 - `src/gravity/axes.ts` — dependency-free axis maths (quarter-turn rotation for relative levers) and the timed `GravitySequencer`.
 - `src/input/` — `InputSource` (the shared frame of move/look/jump/use/restart/pause that every device produces, dependency-free and unit-tested), `InputManager` (reads and merges the sources once per frame and tracks the last-used device), `KeyboardMouseInput` (WASD, pointer-lock mouse look), `TouchInput` (on-screen controls) and `GamepadInput` (standard-mapping pads).
 - `src/player/PlayerController.ts` — reads and merges the input sources, and drives a kinematic body whose movement basis, ground checks, and camera orientation all derive from a smoothly-interpolated "up" vector, so a gravity flip reads as a coherent tumble into the new orientation rather than a snap.
-- `src/level/Builder.ts` — the `Builder` that chambers are written against: `slab` (wall with optional hole), `tube` (corridor/chamber), `box`, `grate`/`glass`/`barrier`, `addSwitch`/`addRelativeSwitch`/`addSequenceSwitch`, `addCrate`/`addPlate`/`addDoor`.
+- `src/level/Builder.ts` — the `Builder` that chambers are written against: `slab` (wall with optional hole), `tube` (corridor/chamber), `box`, `grate`/`glass`/`barrier`, `addSwitch`/`addRelativeSwitch`/`addSequenceSwitch`, `addCrate`/`addPlate`/`addDoor`, `placard`/`note`. `finish()` adds the attendant printer at the spawn point.
 - `src/level/chambers/` — one file per chamber; `index.ts` holds `CHAMBERS`, the play order with each chamber's name (shown in the chamber select). To add a chamber, add a file and list it there.
 - `src/physics/boxPhysics.ts` — dependency-free swept axis-aligned box physics used by crates.
 - `src/level/Dynamics.ts` — crates, pressure plates, doors, and the per-frame update that ties them together.
 - `src/level/GravitySwitch.ts` — the wall-mounted lever interactable: fixed, relative or sequence, optionally one-shot.
 - `src/skins/Skin.ts` — the skins: per-axis surface materials, procedural textures, lighting, sky and post-processing.
-- `src/ui/HUD.ts` — Babylon GUI overlay: crosshair, interaction prompt, current-gravity indicator, start/win screens.
-- `src/game/GameState.ts` — the game-flow state machine (title, playing, falling, paused, chamber select, won) and its transition table; unit-tested.
+- `src/ui/HUD.ts` — Babylon GUI overlay: crosshair, interaction prompt, current-gravity indicator, start/win screens, the facility's log line, the print-in and the end card.
+- `src/game/GameState.ts` — the game-flow state machine (title, playing, falling, descending, paused, chamber select, won, ended) and its transition table; unit-tested.
 - `src/ui/PauseMenu.ts` — the pause menu: resume, restart, chamber select, fullscreen, settings and the controls reference.
 - `src/settings.ts` — Babylon-free settings model (defaults, limits, parsing, load/save), tested by Node.
 - `src/pwa/` — fullscreen helpers, service-worker registration and the offline cache policy.
-- `src/main.ts` — scene bootstrap, skin switching, render loop, win-condition check.
+- `src/main.ts` — scene bootstrap, skin switching, render loop, win-condition check, and the title's outside view of the cube.
 - `src/progress.ts` — Babylon-free versioned, id-keyed progress (unlock rule, best times, migration, reset), tested by Node.

@@ -24,7 +24,10 @@ export function buildCounterweight(scene: Scene, skin: SkinRuntime): BuiltLevel 
   b.box(V(-R, -R - 1, -R), V(-6, -R, -1), b.floor);
   b.box(V(-R, -R - 1, 1), V(-6, -R, R), b.floor);
   b.box(V(-6, -R - 1, -R), V(R, -R, R), b.floor);
-  b.slab('y', R, R + T, full, full, b.wall);
+  // A glass skylight in the ceiling, as solid as the wall it replaces: the Crown is straight overhead.
+  const sky: [number, number] = [-6, 6];
+  b.slab('y', R, R + T, full, full, b.wall, { u: sky, v: sky });
+  b.glass(V(sky[0], R, sky[0]), V(sky[1], R + T, sky[1]));
   b.slab('x', -R - T, -R, tall, side, b.wall);
   b.slab('x', R, R + T, tall, side, b.wall);
   b.slab('z', -R - T, -R, full, [-R, R], b.wall, { u: [-2, 2], v: doorY });
@@ -62,6 +65,11 @@ export function buildCounterweight(scene: Scene, skin: SkinRuntime): BuiltLevel 
 
   b.placard(V(-2, -R + 1.6, -R - 3), V(1, 0, 0), '-Y', 'CUBE 0124', { width: 2.6 });
   b.placard(V(0, -5.5, R), V(0, 0, -1), '-Y', 'TRIM REQUIRES 2 MASSES\nATTENDANTS ON THIS CYCLE: 1', { width: 6 });
+  b.placard(V(0, R, -7), V(0, -1, 0), '-Y', 'VIEWPORT · THE CROWN', { width: 6, top: V(0, 0, -1) });
+  // Facing the entrance, above the Stencil: what the Margin saw through the skylight.
+  b.note(V(0, -2.5, R), V(0, 0, -1), '-Y', 'Look up. That is what we hold up.\nIt keeps the star off the ground.\nNobody is up there.', {
+    width: 5.6,
+  });
   // On the -X wall above the pit, upright once it is the floor.
   b.note(V(-R, -3, -4), V(1, 0, 0), '-X', 'I have never met another attendant.\nThe roster has room for hundreds.', {
     width: 6,
@@ -76,5 +84,6 @@ export function buildCounterweight(scene: Scene, skin: SkinRuntime): BuiltLevel 
     exitAxis: '+X',
     exitCenter: V(R - 0.5, -R + 1.5, R + 5),
     exitRadius: 2.2,
+    vista: true,
   });
 }

@@ -15,7 +15,17 @@ import { Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { chamberHull, cubeAngle, FIELD_COUNT, fieldBasis, layoutField, toWorld } from './ballastField';
 import type { Aabb } from '../physics/boxPhysics';
 import type { FieldCube } from './ballastField';
+import { stormStrength } from './fall';
 import type { Vec3 } from './fall';
+
+/**
+ * The Crown is the planet's shield, so it stands between the planet and its star: seen from the field, which hangs
+ * under the Crown, the star is this far (radians, 15 degrees) off the line from the planet through the Crown. That
+ * puts its glare just outside the ring's rim in a skylight, and leaves the planet below in daylight but for the dusk
+ * at one limb. `SUN_AZIMUTH` is which way round that line it is tipped.
+ */
+export const SUN_OFFSET = (15 * Math.PI) / 180;
+const SUN_AZIMUTH = 2.2;
 
 /** Planet radius in world units. */
 export const PLANET_RADIUS = 150;
@@ -37,14 +47,36 @@ export interface BackdropFrame {
   darkFraction?: number;
   /** How many lights show on the planet's night side, 0 (none) to 1. */
   planetLights?: number;
+  /**
+   * The chamber has a window to look out of (`BuiltLevel.vista`): the stars, the field and the Crown show from inside
+   * it too, at full strength, whatever `visibility` is.
+   */
+  vista?: boolean;
+  /**
+   * What the planet, the Crown and the field are placed around, when that is not the camera: the title's outside
+   * view is anchored on the chamber, so the camera can stand back and see all three with the cube between them.
+   */
+  anchor?: Vector3;
+  /** How far the Crown hangs above the camera or anchor; `CROWN_DISTANCE` unless the title's view pulls it in. */
+  crownDistance?: number;
+  /**
+   * Unit direction towards the star, when it is not the usual `SUN_OFFSET` off the line from the planet through the
+   * Crown: the title's view stands to one side, and puts the star where it can be seen above the Crown.
+   */
+  sunDirection?: Vector3;
+  /** The chamber's own hull has gone dark like the field's dead cubes (the Descent's cube, once out of trim). */
+  hullDark?: boolean;
+  /** 0-1: one new light on the planet, straight below the camera (the end of the Descent). */
+  arrival?: number;
 }
 
 const HALO_SCALE = 1.12;
 const MAX_STREAKS = 80;
 
-// Shared GLSL (WebGL1 style). SUN is normalize(0.5, 0.62, 0.6), written out as literals.
+// Shared GLSL (WebGL1 style). SUN is the unit direction towards the star, set every frame (see `SUN_OFFSET`).
 const COMMON = `
-  const vec3 SUN = vec3(0.50141, 0.62174, 0.60169);
+  uniform vec3 sunDir;
+  #define SUN sunDir
 
   float hash(vec3 p) {
     p = fract(p * 0.3183099 + vec3(0.1, 0.2, 0.3));
@@ -93,6 +125,7 @@ const STARS_FRAGMENT = `
   uniform float fade;
   uniform float shine;
   uniform float time;
+  uniform float storm;
   ${COMMON}
 
   vec3 starLayer(vec3 dir, float scale, float density, float seed) {
@@ -129,7 +162,8 @@ const STARS_FRAGMENT = `
     // Sun disc and glow
     float sd = max(dot(dir, SUN), 0.0);
     float disc = smoothstep(0.9993, 0.9997, sd);
-    float halo = pow(sd, 90.0) * 0.55 + pow(sd, 10.0) * 0.1;
+    // A storm on the star: its glare swells.
+    float halo = pow(sd, 90.0) * (0.55 + 1.6 * storm) + pow(sd, 10.0) * (0.1 + 0.5 * storm);
     col += vec3(1.0, 0.95, 0.85) * disc * 2.0 + vec3(1.0, 0.8, 0.55) * halo;
 
     // Inside a chamber (shine 0) the sky through a hole is pitch black; the stars come out after an escape.
@@ -159,6 +193,8 @@ const PLANET_FRAGMENT = `
   varying vec3 vW;
   uniform float fade;
   uniform float lights;
+  uniform float arrival;
+  uniform vec3 arrivalDir;
   uniform vec3 camPos;
   ${COMMON}
 
@@ -185,13 +221,22 @@ const PLANET_FRAGMENT = `
     col = mix(col, vec3(1.0) * (0.03 + lam), cl * 0.75);
 
     // Night side: faint blue ambient, and city lights that only appear late in the game (the lights uniform, 0-1).
+    // The field hangs on the day side, under the Crown, so the only dark ground in view is the dusk towards the
+    // limb furthest from the star: the lights come on there, well before full night.
     float night = 1.0 - smoothstep(-0.15, 0.05, ndl);
+    float dusk = 1.0 - smoothstep(0.0, 0.5, ndl);
     col += vec3(0.01, 0.03, 0.07) * night;
     // Each light is a soft dot in its own cell, so up close they read as points rather than tiles.
     vec3 cell = n * 85.0;
     float spot = 1.0 - smoothstep(0.12, 0.3, length(fract(cell) - 0.5));
     float city = step(1.0 - 0.03 * lights, hash(floor(cell))) * spot * land * (1.0 - cl) * (1.0 - ice);
-    col += vec3(1.0, 0.75, 0.4) * city * night * 0.8;
+    col += vec3(1.0, 0.75, 0.4) * city * dusk * 1.3;
+    // By day the same settlements show as glints: sunlight off whatever has been built there.
+    col += vec3(1.0, 0.96, 0.88) * city * lam * (1.0 - dusk) * 0.9;
+    // One more light, where the last attendant comes down: a point with a soft halo, on any ground, day or night.
+    float away = length(n - arrivalDir);
+    float point = (1.0 - smoothstep(0.0008, 0.0025, away)) + 0.3 * (1.0 - smoothstep(0.0025, 0.012, away));
+    col += vec3(1.0, 0.78, 0.45) * point * arrival * 1.5;
 
     // Atmosphere rim
     float fr = pow(1.0 - max(dot(n, v), 0.0), 3.0);
@@ -222,6 +267,8 @@ const HALO_FRAGMENT = `
   uniform float fade;
   uniform vec3 camPos;
   uniform vec3 planetCenter;
+  uniform float storm;
+  uniform float time;
   ${COMMON}
 
   void main() {
@@ -232,9 +279,18 @@ const HALO_FRAGMENT = `
     float h = length(c - rd * dot(c, rd));
     float g = 1.0 - smoothstep(r * 0.96, rh, h);
     g = g * g;
+    // The air is thick along the limb and thin looking straight down: over the face of the planet, which is the
+    // day side from under the Crown, only a faint veil is left.
+    g *= 0.1 + 0.9 * smoothstep(r * 0.72, r * 0.97, h);
     float sunSide = smoothstep(-0.35, 0.45, dot(normalize(vW - planetCenter), SUN));
     vec3 col = mix(vec3(0.2, 0.5, 1.0), vec3(0.5, 0.8, 1.0), sunSide);
-    gl_FragColor = vec4(col, g * fade * (0.1 + 0.9 * sunSide) * 0.8);
+    // Under a stellar storm the Crown's field turns it aside, and what leaks round lights the sky: green curtains
+    // all round the limb, night side too.
+    vec3 around = normalize(vW - planetCenter);
+    float curtain = vnoise(around * 9.0 + vec3(0.0, time * 0.7, time * 0.3));
+    float aurora = g * storm * (0.35 + 1.3 * curtain);
+    col = mix(col, vec3(0.3, 1.0, 0.55), clamp(storm * 0.85, 0.0, 1.0));
+    gl_FragColor = vec4(col, (g * (0.1 + 0.9 * sunSide) * 0.8 + aurora * 0.9) * fade);
   }
 `;
 
@@ -294,7 +350,9 @@ registerShader('spacePlanet', PLANET_VERTEX, PLANET_FRAGMENT);
 registerShader('spaceHalo', HALO_VERTEX, HALO_FRAGMENT);
 registerShader('spaceCube', CUBE_VERTEX, CUBE_FRAGMENT);
 
-// The Crown (NARRATIVE.md): a huge ring overhead, never lit. Only a faint sunlit sheen picks it out against the stars.
+// The Crown (NARRATIVE.md): a huge spoked ring overhead, the coil of the planet's magnetic shield. Nobody lives on it
+// and it has no lights: a dull grey against the black sky, with a sunlit sheen. But the coil runs. A faint violet
+// current travels round the ring, and flares when a storm comes off the star.
 const CROWN_VERTEX = `
   precision highp float;
   attribute vec3 position;
@@ -302,8 +360,10 @@ const CROWN_VERTEX = `
   uniform mat4 worldViewProjection;
   uniform mat4 world;
   varying vec3 vN;
+  varying vec3 vP;
   void main() {
     vN = mat3(world) * normal;
+    vP = position;
     gl_Position = worldViewProjection * vec4(position, 1.0);
   }
 `;
@@ -311,21 +371,32 @@ const CROWN_VERTEX = `
 const CROWN_FRAGMENT = `
   precision highp float;
   varying vec3 vN;
+  varying vec3 vP;
   uniform float fade;
+  uniform float storm;
+  uniform float time;
   ${COMMON}
 
   void main() {
     float sheen = pow(max(dot(normalize(vN), SUN), 0.0), 3.0);
-    vec3 col = vec3(0.012, 0.014, 0.02) + vec3(0.09, 0.1, 0.13) * sheen;
+    vec3 col = vec3(0.04, 0.044, 0.055) + vec3(0.17, 0.19, 0.24) * sheen;
+    // The coil: only the ring itself (the spokes and hub lie inside this radius in their own coordinates).
+    float ring = step(74.5, length(vP.xz));
+    float current = 0.5 + 0.5 * sin(atan(vP.z, vP.x) * 24.0 - time * 1.5);
+    col += vec3(0.38, 0.3, 1.0) * ring * (0.1 + 0.95 * storm) * (0.3 + 0.7 * current);
     gl_FragColor = vec4(col, fade * 0.95);
   }
 `;
 
 registerShader('spaceCrown', CROWN_VERTEX, CROWN_FRAGMENT);
 
-/** The Crown hangs this far above the camera (opposite the planet), with this diameter: inside the sky sphere. */
-const CROWN_DISTANCE = 330;
-const CROWN_DIAMETER = 440;
+/**
+ * The Crown hangs this far above the camera (opposite the planet), with this diameter: inside the sky sphere. From
+ * straight below, its rim is about 14 degrees off the zenith, so a skylight a few units across frames the whole ring.
+ */
+export const CROWN_DISTANCE = 330;
+const CROWN_DIAMETER = 160;
+const CROWN_THICKNESS = 12;
 
 /**
  * The outer-space scene seen after falling out of a chamber: stars and a sun, a procedural planet with an
@@ -352,6 +423,19 @@ export class SpaceBackdrop {
   private readonly crown: Mesh;
   private readonly crownMat: ShaderMaterial;
   private readonly crownTurn = new Quaternion();
+  private readonly arrivalDir = new Vector3();
+  private readonly sun = new Vector3(0, 1, 0);
+  private stormNow = 0;
+
+  /** Jumps the backdrop's clock to `t` seconds (dev and tests: e.g. to the middle of a storm). */
+  public seek(t: number): void {
+    this.time = t;
+  }
+
+  /** How hard the star's storm is blowing right now (0-1); see `stormStrength`. */
+  public get storm(): number {
+    return this.stormNow;
+  }
   /** One box per field cube, laid out afresh at each escape; `cubeMats` are [lit, dark]. */
   private readonly cubeMeshes: Mesh[] = [];
   private readonly cubeMats: [ShaderMaterial, ShaderMaterial];
@@ -372,7 +456,11 @@ export class SpaceBackdrop {
   private readonly streakEmitter = new Vector3();
   private readonly streakDir = new Vector3();
   private readonly glow: GlowLayer;
-  /** True while the player is outside the chamber: the field, Crown, hull and streaks show only then. */
+  /** The spokes and hub, children of the ring. */
+  private readonly crownParts: Mesh[] = [];
+  /** True while the field and the Crown show: after an escape, or in a chamber with a window (`vista`). */
+  private shown = true;
+  /** True while the player is outside the chamber: its hull and the streaks show only then. */
   private outside = true;
   private streaming = false;
   private time = 0;
@@ -391,7 +479,7 @@ export class SpaceBackdrop {
       { vertex: 'spaceStars', fragment: 'spaceStars' },
       {
         attributes: ['position'],
-        uniforms: ['worldViewProjection', 'fade', 'shine', 'time'],
+        uniforms: ['sunDir', 'worldViewProjection', 'fade', 'shine', 'time', 'storm'],
         needAlphaBlending: true,
       },
     );
@@ -410,7 +498,7 @@ export class SpaceBackdrop {
       { vertex: 'spacePlanet', fragment: 'spacePlanet' },
       {
         attributes: ['position', 'normal'],
-        uniforms: ['worldViewProjection', 'world', 'fade', 'lights', 'camPos'],
+        uniforms: ['sunDir', 'worldViewProjection', 'world', 'fade', 'lights', 'arrival', 'arrivalDir', 'camPos'],
         needAlphaBlending: true,
       },
     );
@@ -429,7 +517,7 @@ export class SpaceBackdrop {
       { vertex: 'spaceHalo', fragment: 'spaceHalo' },
       {
         attributes: ['position'],
-        uniforms: ['worldViewProjection', 'world', 'fade', 'camPos', 'planetCenter'],
+        uniforms: ['sunDir', 'worldViewProjection', 'world', 'fade', 'camPos', 'planetCenter', 'storm', 'time'],
         needAlphaBlending: true,
       },
     );
@@ -439,14 +527,18 @@ export class SpaceBackdrop {
     this.halo.material = this.haloMat;
     this.halo.alphaIndex = 2;
 
-    this.crown = CreateTorus('spaceCrown', { diameter: CROWN_DIAMETER, thickness: 28, tessellation: 96 }, scene);
+    this.crown = CreateTorus(
+      'spaceCrown',
+      { diameter: CROWN_DIAMETER, thickness: CROWN_THICKNESS, tessellation: 96 },
+      scene,
+    );
     this.crownMat = new ShaderMaterial(
       'spaceCrownMat',
       scene,
       { vertex: 'spaceCrown', fragment: 'spaceCrown' },
       {
         attributes: ['position', 'normal'],
-        uniforms: ['worldViewProjection', 'world', 'fade'],
+        uniforms: ['sunDir', 'worldViewProjection', 'world', 'fade', 'storm', 'time'],
         needAlphaBlending: true,
       },
     );
@@ -456,6 +548,18 @@ export class SpaceBackdrop {
     this.crown.rotationQuaternion = new Quaternion();
     // After the stars, before the planet; it is always opposite the planet, so the two never overlap.
     this.crown.alphaIndex = 0.5;
+    // Two spokes across the ring and a hub where they cross: what makes it a structure and not a halo.
+    const spoke = { width: CROWN_DIAMETER - CROWN_THICKNESS, height: 4, depth: 5 };
+    this.crownParts.push(
+      CreateBox('spaceCrownSpokeX', spoke, scene),
+      CreateBox('spaceCrownSpokeZ', { width: spoke.depth, height: spoke.height, depth: spoke.width }, scene),
+      CreateBox('spaceCrownHub', { width: 22, height: 8, depth: 22 }, scene),
+    );
+    for (const part of this.crownParts) {
+      part.parent = this.crown;
+      part.material = this.crownMat;
+      part.alphaIndex = 0.5;
+    }
 
     const cubeMat = (lit: number): ShaderMaterial => {
       const mat = new ShaderMaterial(
@@ -464,7 +568,7 @@ export class SpaceBackdrop {
         { vertex: 'spaceCube', fragment: 'spaceCube' },
         {
           attributes: ['position', 'normal'],
-          uniforms: ['worldViewProjection', 'world', 'fade', 'lit', 'camPos'],
+          uniforms: ['sunDir', 'worldViewProjection', 'world', 'fade', 'lit', 'camPos'],
           needAlphaBlending: true,
         },
       );
@@ -487,7 +591,7 @@ export class SpaceBackdrop {
     // glow of the chamber inside does not bleed through it.
     this.hull.isPickable = false;
 
-    for (const mesh of [this.stars, this.planet, this.halo, this.crown, ...this.cubeMeshes]) {
+    for (const mesh of [this.stars, this.planet, this.halo, this.crown, ...this.crownParts, ...this.cubeMeshes]) {
       mesh.isPickable = false;
       mesh.checkCollisions = false;
       mesh.receiveShadows = false;
@@ -534,48 +638,82 @@ export class SpaceBackdrop {
     ps.disposeOnStop = false;
     this.streaks = ps;
 
-    this.setOutside(false);
+    this.setShown(false, false);
   }
 
   /**
    * Inside a chamber (visibility 0) only the black sky and the planet show, and only through holes: a hole in a wall or
    * ceiling is pitch black, one in the current floor shows the planet below. After an escape the stars, the field, the
-   * Crown, the chamber's hull and the streaks fade in with `visibility`.
+   * Crown, the chamber's hull and the streaks fade in with `visibility`. A chamber with a window (`vista`) shows the
+   * stars, the field and the Crown from inside as well.
    */
   update(frame: BackdropFrame): void {
-    const vis = Math.min(Math.max(frame.visibility, 0), 1);
-    const out = vis > 0;
-    if (out && !this.outside) this.layOutField(frame);
-    this.setOutside(out);
-    this.time += frame.dt;
-    if (out) this.updateField(frame.cameraPosition, vis);
-
+    const out = frame.visibility > 0;
+    // How strongly the stars, the field and the Crown show.
+    const vis = frame.vista ? 1 : Math.min(Math.max(frame.visibility, 0), 1);
+    const show = vis > 0;
     const { cameraPosition: cam, planetDirection: dir } = frame;
-    const px = cam.x + dir.x * frame.planetDistance;
-    const py = cam.y + dir.y * frame.planetDistance;
-    const pz = cam.z + dir.z * frame.planetDistance;
+    const at = frame.anchor ?? cam;
+    if (show && !this.shown) this.layOutField(at, dir, frame.darkFraction);
+    this.setShown(show, out);
+    this.hull.material = this.cubeMats[frame.hullDark ? 1 : 0];
+    this.time += frame.dt;
+    if (show) this.updateField(cam, vis, frame.anchor);
+
+    const px = at.x + dir.x * frame.planetDistance;
+    const py = at.y + dir.y * frame.planetDistance;
+    const pz = at.z + dir.z * frame.planetDistance;
     this.planet.position.set(px, py, pz);
     this.halo.position.set(px, py, pz);
+
+    // The star: beyond the Crown, a little off the line from the planet through it.
+    if (frame.sunDirection) this.sun.copyFrom(frame.sunDirection);
+    else {
+      const axes = fieldBasis([dir.x, dir.y, dir.z]);
+      const c = Math.cos(SUN_OFFSET);
+      const sx = Math.sin(SUN_OFFSET) * Math.cos(SUN_AZIMUTH);
+      const sz = Math.sin(SUN_OFFSET) * Math.sin(SUN_AZIMUTH);
+      this.sun.set(
+        axes.y[0] * c + axes.x[0] * sx + axes.z[0] * sz,
+        axes.y[1] * c + axes.x[1] * sx + axes.z[1] * sz,
+        axes.y[2] * c + axes.x[2] * sx + axes.z[2] * sz,
+      );
+    }
+    this.sun.normalize();
+    for (const mat of [this.starsMat, this.planetMat, this.haloMat, this.crownMat, ...this.cubeMats]) {
+      mat.setVector3('sunDir', this.sun);
+    }
 
     this.starsMat.setFloat('fade', 1);
     this.starsMat.setFloat('shine', vis);
     this.starsMat.setFloat('time', this.time);
+    this.stormNow = stormStrength(this.time);
+    this.starsMat.setFloat('storm', this.stormNow);
+    this.haloMat.setFloat('storm', this.stormNow);
+    this.haloMat.setFloat('time', this.time);
+    this.crownMat.setFloat('storm', this.stormNow);
+    this.crownMat.setFloat('time', this.time);
     this.planetMat.setFloat('fade', 1);
     this.planetMat.setFloat('lights', frame.planetLights ?? 0);
     this.planetMat.setVector3('camPos', cam);
+    // The new light is at the point of the planet nearest the camera: where this fall comes down.
+    this.arrivalDir.set(cam.x - px, cam.y - py, cam.z - pz).normalize();
+    this.planetMat.setFloat('arrival', Math.min(Math.max(frame.arrival ?? 0, 0), 1));
+    this.planetMat.setVector3('arrivalDir', this.arrivalDir);
     this.haloMat.setFloat('fade', 1);
     this.haloMat.setVector3('camPos', cam);
     this.haloMat.setVector3('planetCenter', this.planet.position);
 
     // The Crown: overhead, its ring square to the fall line.
-    const up = CROWN_DISTANCE;
-    this.crown.position.set(cam.x - dir.x * up, cam.y - dir.y * up, cam.z - dir.z * up);
+    const up = frame.crownDistance ?? CROWN_DISTANCE;
+    this.crown.position.set(at.x - dir.x * up, at.y - dir.y * up, at.z - dir.z * up);
     Quaternion.FromUnitVectorsToRef(Vector3.Up(), dir, this.crownTurn);
     this.crown.rotationQuaternion!.copyFrom(this.crownTurn);
     this.crownMat.setFloat('fade', vis);
 
     // Streaks: emitted ahead of the camera, moving away from the planet, so they rush past "upwards".
-    const strength = Math.min(Math.max(frame.speed / 150, 0), 1) * vis;
+    // Only out in the open: a fall inside a chamber with a window has no streaks.
+    const strength = Math.min(Math.max(frame.speed / 150, 0), 1) * Math.min(Math.max(frame.visibility, 0), 1);
     if (strength < 0.01) {
       this.stopStreaks();
       return;
@@ -599,7 +737,7 @@ export class SpaceBackdrop {
     this.stopStreaks();
     this.streaks.dispose();
     this.streakTex.dispose();
-    for (const mesh of [this.stars, this.planet, this.halo, this.crown, ...this.cubeMeshes]) {
+    for (const mesh of [this.stars, this.planet, this.halo, ...this.crownParts, this.crown, ...this.cubeMeshes]) {
       this.glow.removeExcludedMesh(mesh);
       mesh.dispose();
     }
@@ -611,13 +749,17 @@ export class SpaceBackdrop {
     this.haloMat.dispose();
   }
 
-  private setOutside(on: boolean): void {
-    if (on === this.outside) return;
-    this.outside = on;
-    this.crown.setEnabled(on);
-    this.hull.setEnabled(on);
-    this.cubeMeshes.forEach((mesh, i) => mesh.setEnabled(on && i < this.field.length));
-    if (!on) this.stopStreaks();
+  /** `shown`: the field and the Crown. `outside`: the chamber's hull (invisible from inside anyway) and the streaks. */
+  private setShown(shown: boolean, outside: boolean): void {
+    if (outside !== this.outside) {
+      this.outside = outside;
+      this.hull.setEnabled(outside);
+      if (!outside) this.stopStreaks();
+    }
+    if (shown === this.shown) return;
+    this.shown = shown;
+    this.crown.setEnabled(shown);
+    this.cubeMeshes.forEach((mesh, i) => mesh.setEnabled(shown && i < this.field.length));
   }
 
   /** Wraps the chamber with these bounds in its outer hull. Call whenever a chamber is built. */
@@ -625,15 +767,22 @@ export class SpaceBackdrop {
     const { center, size } = chamberHull(bounds);
     this.hull.position.fromArray(center);
     this.hull.scaling.setAll(size);
+    this.resetField();
   }
 
-  /** A new field for each fall, anchored where it starts and turned so its "up" points away from the planet. */
-  private layOutField(frame: BackdropFrame): void {
+  /** Forgets the field, so the next time it shows it is laid out afresh around wherever the view then is. */
+  public resetField(): void {
+    this.setShown(false, this.outside);
+  }
+
+  /**
+   * A new field each time it comes into view (a fall, a chamber with a window, the title), anchored at `origin` and
+   * turned so its "up" points away from the planet.
+   */
+  private layOutField(origin: Vector3, dir: Vector3, darkFraction = 0.3): void {
     this.falls++;
-    this.field = layoutField(this.falls * 7919 + 1, frame.darkFraction ?? 0.3);
-    const cam = frame.cameraPosition;
-    this.fieldOrigin = [cam.x, cam.y, cam.z];
-    const dir = frame.planetDirection;
+    this.field = layoutField(this.falls * 7919 + 1, darkFraction);
+    this.fieldOrigin = [origin.x, origin.y, origin.z];
     this.fieldAxes = fieldBasis([dir.x, dir.y, dir.z]);
     this.field.forEach((cube, i) => {
       const mesh = this.cubeMeshes[i];
@@ -642,7 +791,8 @@ export class SpaceBackdrop {
     });
   }
 
-  private updateField(cam: Vector3, vis: number): void {
+  /** With an `anchor` (the title's view), a cube standing between the camera and the anchor is left out. */
+  private updateField(cam: Vector3, vis: number, anchor?: Vector3): void {
     for (const mat of this.cubeMats) {
       mat.setFloat('fade', vis);
       mat.setVector3('camPos', cam);
@@ -650,6 +800,7 @@ export class SpaceBackdrop {
     this.field.forEach((cube, i) => {
       const mesh = this.cubeMeshes[i];
       mesh.position.fromArray(toWorld(this.fieldOrigin, this.fieldAxes, cube.position));
+      mesh.setEnabled(!anchor || segmentDistance(mesh.position, cam, anchor) > cube.size + 25);
       // The field's axes are world axes up to sign and order (gravity is axis-aligned), so a lit cube turning about
       // one of them stays square to the world between turns.
       this.spinAxis.fromArray(toWorld([0, 0, 0], this.fieldAxes, cube.axis));
@@ -664,4 +815,14 @@ export class SpaceBackdrop {
     this.streaks.reset();
     this.streaming = false;
   }
+}
+
+/** Distance from point `p` to the segment from `a` to `b`. */
+function segmentDistance(p: Vector3, a: Vector3, b: Vector3): number {
+  const abx = b.x - a.x;
+  const aby = b.y - a.y;
+  const abz = b.z - a.z;
+  const len2 = abx * abx + aby * aby + abz * abz;
+  const t = len2 === 0 ? 0 : Math.min(Math.max(((p.x - a.x) * abx + (p.y - a.y) * aby + (p.z - a.z) * abz) / len2, 0), 1);
+  return Math.hypot(p.x - a.x - abx * t, p.y - a.y - aby * t, p.z - a.z - abz * t);
 }

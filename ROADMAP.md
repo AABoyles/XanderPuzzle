@@ -59,7 +59,7 @@ What exists today: static axis-aligned boxes, wall-mounted levers that set gravi
 - **Needs:** a gravity sequencer and a HUD countdown showing the next axis.
 
 ### XIV · The Orrery
-- **Status:** built (`orrery.ts`). Route `-Y → +X → +Z → +Y → -X → -Z → +Y`, one crate riding every shift to a plate in the top-west corner of the south wall, a one-shot lever and a relative lever, and the exit in the entrance corridor's ceiling. The level-design pass added a fork on the ceiling walk: a lever straight to -Z parks the crate in a pocket it cannot leave, and because the one-shot lever is spent by then, that costs a restart.
+- **Status:** built (`orrery.ts`). Route `-Y → +X → +Z → +Y → -X → -Z → +Y`, one crate riding every shift to a plate in the top-west corner of the south wall, a one-shot lever and a relative lever, and the exit in the entrance corridor's ceiling. The level-design pass added a fork on the ceiling walk: a lever straight to -Z parks the crate in a pocket it cannot leave, and because the one-shot lever is spent by then, that costs a restart. Its centrepiece is a model of the ballast field (a ring for the Crown, a plinth for the planet, 13 small cubes of which 5 are lit); see NARRATIVE.md.
 - **Idea:** the finale. A large chamber using all six orientations, with crates, a relative lever and a one-shot lever, ending with the exit door in the entrance corridor's ceiling so you leave through the room you came in by, upside down.
 - **Teaches:** nothing new. It combines everything.
 - **Needs:** VIII, X and XI.
@@ -72,6 +72,7 @@ What exists today: static axis-aligned boxes, wall-mounted levers that set gravi
 4. **Gravity sequencer** (XIII). Done: `addSequenceSwitch` and a HUD countdown. Throwing any other lever stops the cycle.
 5. **Checkpoints.** Not done. Chambers VII onward are long enough that restarting from the entrance will sting. The level-design pass kept new trap holes out of the long chambers for this reason; the Orrery's fork is the one place a late mistake costs a long restart.
 7. **Level-design pass engine work.** Done: crates that fall out of the level are lost (`Crate.lost`, `MASS_RELEASED` log line), inverted plates (`addPlate(..., cratesOnly, inverted)`), a burnt-out lever prop (`addSpentLever`), and `tests/crateRoutes.test.ts`, which replays crate routes headlessly.
+8. **Telling the story.** Done: the attendant printer at every entrance and the print-in (`Builder.finish()`, `HUD.printIn`), skylights and `vista` chambers that show the field and the Crown from inside, the title's outside view of the cube, the Orrery's model of the field (`modelCube`), signed notes from attendant 416, and an ending that says why it is one (the Descent's printer goes offline, its cube goes dark, one more light on the planet). See NARRATIVE.md, "Building it".
 6. **Platform.** Done: touch controls, gamepad support, a pause menu with persistent settings and a controls reference, fullscreen with landscape lock, and an installable offline-capable web app. These are outside the chamber designs above.
 
 ## Level-design pass
@@ -101,6 +102,7 @@ Two aims: the player should see crates move (and learn what gravity does to them
 - **The lever's own arrow is in the way.** From the usual standing distance the lever and its arrow fill the middle of the view, so a crate straight behind the lever is partly hidden. Either set the screens to one side of the sightline or make the lever smaller.
 - **The Pendulum is simple.** With a full-height partition the puzzle is only "be on the west side when +X comes". Lowering the partition would make the west floor unsafe too.
 - **The barrier field is faint.** Check the Sieve's field can be seen well enough to read as a thing.
+- **The story pass is unplayed.** The print bay, the skylights (Vault, Counterweight), the Orrery's model and the ending were checked in screenshots only. NARRATIVE.md, "For playtesting", lists what to look at; the Orrery's model also changes what a mid-hall fall lands on.
 
 ## Before any of this
 

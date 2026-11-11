@@ -4,7 +4,9 @@ import { SkinRuntime } from '../../skins/Skin';
 import { Builder, BuiltLevel, T, V } from '../Builder';
 
 /**
- * Level 14 - the finale. A 24-unit cubic hall with a small "orrery" of blocks floating in the middle.
+ * Level 14 - the finale. A 24-unit cubic hall with an "orrery" floating in the middle: a model of the ballast field
+ * (NARRATIVE.md). A square ring at the top is the Crown, a broad plinth on the floor is the planet, and the 13 small
+ * cubes between them are the field: 5 lit, 8 dark, the 38% the placard reports. Ring and planet are labelled.
  * Gravity route: -Y -> +X -> +Z -> +Y -> -X -> -Z -> +Y, which visits all six orientations and ends
  * with you leaving through the corridor you came in by, upside down.
  *
@@ -54,13 +56,28 @@ export function buildOrrery(scene: Scene, skin: SkinRuntime): BuiltLevel {
   // The exit tube above the hole.
   b.tube(V(-2, -7, -20), V(2, -3, -16), ['-y'], b.exit);
 
-  // The orrery: a core and six satellites, floating clear of every wall.
-  b.box(V(-2, -2, -2), V(2, 2, 2));
-  for (const s of [-7, 7]) {
-    b.box(V(s - 1, -1, -1), V(s + 1, 1, 1));
-    b.box(V(-1, s - 1, -1), V(1, s + 1, 1));
-    b.box(V(-1, -1, s - 1), V(1, 1, s + 1));
-  }
+  // The orrery: a model of the ballast field, floating clear of every wall (all of it within 5 of the hall's centre
+  // line, so 7 clear of the walls the route walks on). The Crown is a square ring at the top.
+  b.box(V(-5, 6, -5), V(5, 7, -3));
+  b.box(V(-5, 6, 3), V(5, 7, 5));
+  b.box(V(-5, 6, -3), V(-3, 7, 3));
+  b.box(V(3, 6, -3), V(5, 7, 3));
+  // The planet, a broad plinth on the floor under it all: low enough to see the field and the Crown over it from the
+  // doorway, and clear of the crate (which leaves along z = 6) and of the walk to the first lever.
+  b.box(V(-3, -H, -3), V(3, -H + 1.5, 3));
+  // The field between them: 13 cubes, 5 still lit (38%, the figure on the north wall's placard).
+  const lit = [V(-3, -3, 2), V(2, -1, -3), V(4, 1, 1), V(-1, 2, 4), V(-4, 3, -2)];
+  const dark = [
+    V(1, -4, 0), V(-2, -1, -1), V(4, -2, -4), V(0, 0, 2), V(-4, 0, 3), V(2, 3, -1), V(-1, 4, -4), V(3, 4, 4),
+  ];
+  // The star, above the Crown: the Crown stands between it and the planet. Clear of anyone walking the ceiling.
+  b.modelCube(V(0, 9.5, 0), 1.4, true);
+  b.placard(V(0, 9.5, -0.7), V(0, 0, -1), '-Y', 'STAR', { width: 1.3, lineHeight: 0.4 });
+  lit.forEach((c) => b.modelCube(c, 1, true));
+  dark.forEach((c) => b.modelCube(c, 1, false));
+  // Labelled on the side that faces the entrance.
+  b.placard(V(0, 6.5, -5), V(0, 0, -1), '-Y', 'CROWN', { width: 3, lineHeight: 0.5 });
+  b.placard(V(0, -H + 0.75, -3), V(0, 0, -1), '-Y', 'PLANET', { width: 3 });
 
   // The pocket: the -Z lever slides the crate down the east wall's top edge into the corner where the south wall
   // begins. This block, on the ceiling beside that corner, then stops it under -X, the only shift that could
@@ -94,6 +111,7 @@ export function buildOrrery(scene: Scene, skin: SkinRuntime): BuiltLevel {
   // On the north wall, upright once it is the floor.
   b.placard(V(4, -4, H), V(0, 0, -1), '+Z', [
     'FIELD ALIGNMENT: 38% OF CUBES RESPONDING',
+    'CROWN SHIELD HOLDING AT 38%',
     'ATTENDANT SUPPLY INCREASED TO COMPENSATE',
   ].join('\n'), {
     width: 10,
@@ -107,7 +125,15 @@ export function buildOrrery(scene: Scene, skin: SkinRuntime): BuiltLevel {
     top: V(-1, 0, 0),
   });
   // The Margin's last note, far from the route on the west wall.
-  b.note(V(-H, -4, 6), V(1, 0, 0), '-X', 'If you\'re reading this, I didn\'t', { width: 4.5, top: V(0, 1, 0) });
+  b.note(V(-H, -4, 6), V(1, 0, 0), '-X', [
+    'If you\'re reading this, I didn\'t',
+    'get back to cube 0147.',
+    'There is a hole in its ceiling.',
+    '\u2014 416',
+  ].join('\n'), {
+    width: 5,
+    top: V(0, 1, 0),
+  });
 
   return b.finish({
     name: 'XX · THE ORRERY',

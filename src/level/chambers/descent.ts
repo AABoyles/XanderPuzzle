@@ -36,6 +36,23 @@ export function buildDescent(scene: Scene, skin: SkinRuntime): BuiltLevel {
 
   b.placard(V(-2, -R + 1.6, -R - 3), V(1, 0, 0), '-Y', 'CUBE 0147', { width: 2.6 });
   b.placard(V(0, -4, R), V(0, 0, -1), '-Y', 'CUBE 0147 · BALANCE ACCESS\nAUTHORISED SHIFTS ONLY', { width: 10 });
+  // Above the first lever: the rule the whole chamber turns on, in the facility's own words.
+  b.placard(V(R, -R + 4.3, -4), V(-1, 0, 0), '-Y', [
+    'A CUBE OUT OF TRIM',
+    'LEAVES THE SCHEDULE.',
+    'ITS PRINTER WILL NOT RUN.',
+  ].join('\n'), {
+    width: 6.5,
+  });
+  // Under the Stencil, facing the entrance: why the notes exist, and why their writer is not here.
+  b.note(V(0, -6.3, R), V(0, 0, -1), '-Y', [
+    'I got this far once.',
+    'I went back to write it all down.',
+    'Don\'t go back.',
+    '\u2014 416',
+  ].join('\n'), {
+    width: 5.6,
+  });
   // The Margin's last word, on the lip of the hole: upright only once the ceiling is the floor.
   b.note(V(3.2, R, 0), V(0, -1, 0), '+Y', 'Steer.', { width: 2.6, lineHeight: 0.9, top: V(-1, 0, 0) });
 
@@ -48,5 +65,7 @@ export function buildDescent(scene: Scene, skin: SkinRuntime): BuiltLevel {
     exitCenter: V(0, R + T, 0),
     exitRadius: 2,
     ending: true,
+    // The hole in the ceiling shows the Crown on the way in, and the planet once the ceiling is the floor.
+    vista: true,
   });
 }

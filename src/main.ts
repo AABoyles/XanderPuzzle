@@ -3,14 +3,18 @@ import { Color4 } from '@babylonjs/core/Maths/math.color';
 import { Engine } from '@babylonjs/core/Engines/engine';
 import { GlowLayer } from '@babylonjs/core/Layers/glowLayer';
 import { Scene } from '@babylonjs/core/scene';
+import { TargetCamera } from '@babylonjs/core/Cameras/targetCamera';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import {
-  chaseDirection, DESCENT_DURATION, distanceOutside, FALL_DURATION, FallTracker, PLANET_LAST, PLANET_NEAR,
+  chaseDirection, DESCENT_DURATION, STORM_FIRST, distanceOutside, FALL_DURATION, FallTracker, PLANET_LAST, PLANET_NEAR,
   planetDistance, Vec3,
 } from './environment/fall';
+import { chamberHull, fieldBasis } from './environment/ballastField';
 import { SpaceBackdrop } from './environment/SpaceBackdrop';
 import { GameState, escapePauses, isFrozen, showsTouchControls, simulates, transition, viewOf } from './game/GameState';
 import type { State } from './game/GameState';
+import { AudioEngine } from './audio/AudioEngine';
+import { impactGain } from './audio/sounds';
 import { GravityAxis, GravitySystem } from './gravity/GravitySystem';
 import { buildSandbox, CHAMBERS, LEVELS as CHAMBER_LEVELS } from './level/chambers';
 import { GamepadInput } from './input/GamepadInput';
@@ -22,15 +26,15 @@ import { PlayerController } from './player/PlayerController';
 import { canFullscreen, isFullscreen, isIOS, isStandalone, onFullscreenChange, toggleFullscreen } from './pwa/fullscreen';
 import { loadFonts } from './level/fonts';
 import {
-  darkFraction, descentAlarm, dutyLine, endCard, MASS_RELEASED, NOT_RECOVERED, planetLights, recoveryLine, winTitle,
-  workLog,
+  darkFraction, DESCENT_OUT_OF_TRIM, descentAlarm, dutyLine, endCard, MASS_RELEASED, NOT_RECOVERED, planetLights,
+  recoveryLine, stormLine, winTitle, workLog,
 } from './narrative';
 import { registerServiceWorker } from './pwa/register';
 import { shiftTone } from './gravity/shiftSound';
 import { simDelta } from './time';
-import { fovToRadians, loadSettings, masterGain, saveSettings } from './settings';
+import { fovToRadians, loadSettings, masterGain, musicGain, saveSettings } from './settings';
 import type { Settings, SettingsStorage } from './settings';
-import { createSkin, SKIN_IDS, SKIN_LABELS, SkinId } from './skins/Skin';
+import { createSkin, DEFAULT_SKIN, SKIN_IDS, SKIN_LABELS, SkinId } from './skins/Skin';
 import {
   formatBest,
   furthestCleared,
@@ -101,9 +105,10 @@ const persistProgress = () => {
 };
 // Resume at the last chamber reached.
 let levelIndex = sandbox ? 0 : Math.min(resumeIndex(progress, CHAMBER_IDS), LEVELS.length - 1);
-// Skin: `?skin=axis|monolith|draft|neon`, else the last one picked with K, else Axis.
+// Skin: `?skin=station|axis|monolith|draft|neon`, else the last one picked with K, else Station.
 const skinParam = params.get('skin') as SkinId | null;
-let skinIndex = skinParam && SKIN_IDS.includes(skinParam) ? SKIN_IDS.indexOf(skinParam) : Math.floor(store.get('skin') ?? 0) % SKIN_IDS.length;
+const storedSkin = Math.floor(store.get('skin') ?? SKIN_IDS.indexOf(DEFAULT_SKIN));
+let skinIndex = skinParam && SKIN_IDS.includes(skinParam) ? SKIN_IDS.indexOf(skinParam) : ((storedSkin % SKIN_IDS.length) + SKIN_IDS.length) % SKIN_IDS.length;
 let skin = createSkin(SKIN_IDS[skinIndex], scene, glow);
 // Placards draw at once in fallback fonts and redraw when the bundled ones arrive.
 void loadFonts();
@@ -116,6 +121,13 @@ const player = new PlayerController(scene, gravity, level.spawnPosition, input);
 
 const hud = new HUD();
 hud.setDevice(input.lastDevice);
+
+// Sound: music, recorded effects and the wind of a fall. Browsers only allow it after the player has acted, so the
+// first click, key or tap unlocks it.
+const sound = new AudioEngine();
+for (const type of ['click', 'keydown', 'pointerup', 'touchend'] as const) {
+  window.addEventListener(type, () => sound.unlock(), { capture: true, passive: true });
+}
 
 // --- Settings ------------------------------------------------------------------------------------
 const settingsStorage = (): SettingsStorage | null => {
@@ -140,6 +152,7 @@ function applySettings(): void {
   input.invertY = settings.invertY; // for every device; GamepadInput.invertY stays off so it isn't applied twice
   player.camera.fov = fovToRadians(settings.fov);
   player.reducedMotion = reducedMotionActive();
+  sound.setVolumes(masterGain(settings), musicGain(settings));
 }
 applySettings();
 
@@ -202,6 +215,31 @@ gravity.onChangeObservable.add(({ axis }) => {
 const backdrop = new SpaceBackdrop(scene, glow);
 backdrop.setChamber(level.bounds);
 const fall = new FallTracker();
+
+/**
+ * The title's view: the cube from outside, hanging in the field with the Crown above it and the planet below (the one
+ * place the whole machine is seen at once, before the attendant is printed inside it). It holds only while the title
+ * is up and the player has not moved from the print bed.
+ */
+const titleCamera = new TargetCamera('titleCamera', Vector3.Zero(), scene);
+titleCamera.fov = 1.45;
+titleCamera.minZ = 1;
+titleCamera.maxZ = 2000;
+scene.activeCamera = player.camera;
+const TITLE_STANDOFF = 200;
+const TITLE_PLANET = 225;
+const TITLE_CROWN = 120;
+const titleSun = new Vector3();
+const titleAnchor = new Vector3();
+let titleTime = 0;
+let titleShot = false;
+let wasStorming = false;
+/** Seconds the player has stood on the reclaimer's plate; it takes them after `RECLAIM_HOLD`. */
+let reclaimHold = 0;
+const RECLAIM_HOLD = 0.4;
+/** 0-1: the new light on the planet, coming up once the last fall has ended. */
+let arrival = 0;
+const atPrintBed = () => Vector3.DistanceSquared(player.position, level.spawnPosition) < 1;
 /** Where the planet is: it chases the gravity direction, so "down" always leads to it. */
 let planetDir = gravity.direction.asArray() as Vec3;
 const lastPosition = player.position.clone();
@@ -224,10 +262,16 @@ function restartLevel(): void {
   if (lost) hud.log(recoveryLine(++recoveries));
 }
 
+/** The view opens as the attendant is printed (see `HUD.printIn`), with the printer's hum. */
+function printIn(): void {
+  hud.printIn(reducedMotionActive());
+  sound.play('print');
+}
+
 type Prompts = { void: string; cycle: string; next: string; again: string; select: string; title: string };
 const TEXT: Record<InputDevice, Prompts> = {
   keyboard: {
-    void: 'Outside the cube · press [R] to recover',
+    void: 'Outside the cube · press [R] to be reprinted',
     cycle: 'Press [E] to start the cycle',
     next: 'Click or press Enter for the next chamber',
     again: 'Click or press Enter to play again',
@@ -235,7 +279,7 @@ const TEXT: Record<InputDevice, Prompts> = {
     title: 'Click or press Enter to return to the title',
   },
   touch: {
-    void: 'Outside the cube · tap \u21BB to recover',
+    void: 'Outside the cube · tap \u21BB to be reprinted',
     cycle: 'Tap [USE] to start the cycle',
     next: 'Tap for the next chamber',
     again: 'Tap to play again',
@@ -243,7 +287,7 @@ const TEXT: Record<InputDevice, Prompts> = {
     title: 'Tap to return to the title',
   },
   gamepad: {
-    void: 'Outside the cube · press [Y] to recover',
+    void: 'Outside the cube · press [Y] to be reprinted',
     cycle: 'Press [X] to start the cycle',
     next: 'Press [A] for the next chamber',
     again: 'Press [A] to play again',
@@ -275,6 +319,10 @@ function startLevel(index: number): void {
   if (cube !== undefined) hud.log(dutyLine(cube));
   levelTime = 0;
   shifts = 0;
+  arrival = 0;
+  reclaimHold = 0;
+  // Behind the title the view is outside the cube; the print-in plays when the title lifts.
+  if (game.kind !== 'title') printIn();
 }
 
 /** Swaps the skin in place: the chamber is rebuilt, but the player keeps their spot and gravity. */
@@ -285,8 +333,14 @@ function setSkin(index: number): void {
   store.set('skin', skinIndex);
   skin = createSkin(SKIN_IDS[skinIndex], scene, glow);
   level = LEVELS[levelIndex](scene, skin);
+  syncPrinter();
   hud.setSkin(SKIN_LABELS[skin.id]);
   hud.setGravityAxis(gravity.axis, skin.hudColor(gravity.axis));
+}
+
+/** In an ending chamber the printer goes offline once the cube is out of trim: nobody will be printed back here. */
+function syncPrinter(): void {
+  level.printer.setOnline(!(level.ending && shifts >= DESCENT_OUT_OF_TRIM));
 }
 
 /** The player has left an ending chamber: the clear is saved now, and the final fall begins. */
@@ -397,7 +451,15 @@ game.onChange = (prev: State, next: State) => {
     keyboardMouse.pointerLockSuspended = touch.active;
   }
   if (was.win && !now.win) hud.hideWin();
-  if (was.title && !now.title) hud.hideStartOverlay();
+  if (was.title && !now.title) {
+    hud.hideStartOverlay();
+    // Play begins: the attendant is printed, and the facility logs it.
+    if (next.kind === 'playing' && atPrintBed()) {
+      const cube = cubeOf(levelIndex);
+      if (cube !== undefined) hud.log(dutyLine(cube));
+      printIn();
+    }
+  }
   if (!was.title && now.title) hud.showStartOverlay();
   if (!was.select && now.select) {
     keyboardMouse.pointerLockSuspended = true;
@@ -412,7 +474,8 @@ game.onChange = (prev: State, next: State) => {
   if (!was.win && now.win) hud.showWin(winMessage.title, winMessage.body);
   if (!was.ending && now.ending) {
     hud.setPrompt(false);
-    hud.showEnding(NOT_RECOVERED, `SHIFTBOUND\n\n${endCard(recoveries)}\n\n${TEXT[input.lastDevice].title}`);
+    const body = endCard(recoveries, cubeOf(levelIndex));
+    hud.showEnding(NOT_RECOVERED, `${body}\n\nSHIFTBOUND\n\n${TEXT[input.lastDevice].title}`);
   }
   if (was.ending && !now.ending) hud.hideEnding();
 };
@@ -515,31 +578,17 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'Enter') advance();
 });
 
-// --- Tiny synthesized sound effects (no assets) ------------------------------------------------
-let audio: AudioContext | undefined;
+// --- Sound ---------------------------------------------------------------------------------------
+/** A short synthesized tone, for the interface's own small sounds; the recorded ones are `sound.play`. */
 function beep(from: number, to: number, duration: number, type: OscillatorType = 'sine', volume = 0.12): void {
-  volume *= masterGain(settings);
-  if (volume <= 0) return;
-  try {
-    audio ??= new AudioContext();
-    const osc = audio.createOscillator();
-    const gain = audio.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(from, audio.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(to, audio.currentTime + duration);
-    gain.gain.setValueAtTime(volume, audio.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + duration);
-    osc.connect(gain).connect(audio.destination);
-    osc.start();
-    osc.stop(audio.currentTime + duration);
-  } catch {
-    /* audio is optional */
-  }
+  sound.beep(from, to, duration, type, volume);
 }
 
 function shiftSound(axis: GravityAxis): void {
   const t = shiftTone(axis);
-  beep(t.from, t.to, t.duration, t.type, 0.08);
+  beep(t.from, t.to, t.duration, t.type, 0.05);
+  // The cube turns: its hull takes the strain.
+  sound.play('creak');
 }
 
 engine.runRenderLoop(() => {
@@ -596,7 +645,7 @@ engine.runRenderLoop(() => {
     levelTime += dt;
     const wasGrounded = player.isGrounded;
     player.update(dt, frame);
-    if (!wasGrounded && player.isGrounded) beep(110, 60, 0.12, 'triangle', 0.15);
+    if (!wasGrounded && player.isGrounded) sound.play('land');
 
     const interactPressed = player.consumeInteract();
     // Only the nearest usable lever responds, so two levers within reach never both fire.
@@ -612,7 +661,13 @@ engine.runRenderLoop(() => {
         shifts++;
         shiftSound(gravity.axis);
         // In the Descent, the facility objects to every throw.
-        if (level.ending) hud.log(descentAlarm(shifts - 1, cubeOf(levelIndex) ?? ''));
+        if (level.ending) {
+          hud.log(descentAlarm(shifts - 1, cubeOf(levelIndex) ?? ''), 9);
+          const wasOnline = level.printer.online;
+          syncPrinter();
+          // The printer winds down: this cube is off the schedule.
+          if (wasOnline && !level.printer.online) beep(520, 40, 1.6, 'sawtooth', 0.05);
+        }
       }
     }
     const anyInRange = target !== undefined;
@@ -640,7 +695,8 @@ engine.runRenderLoop(() => {
     }
 
     const dyn = level.update(dt, gravity.vector, player.position);
-    if (dyn.impact > 4) beep(90, 45, 0.18, 'square', Math.min(0.2, dyn.impact / 150));
+    // A ballast mass stopping against a wall: louder the faster it came in.
+    sound.play('impact', impactGain(dyn.impact));
     if (dyn.plateChanged) beep(520, 520, 0.08, 'square', 0.06);
     if (dyn.doorChanged) beep(180, 360, 0.3, 'triangle', 0.12);
     if (dyn.crateLost) {
@@ -660,9 +716,29 @@ engine.runRenderLoop(() => {
       beginDescent();
     } else game.send({ type: fall.falling ? 'fell' : 'recovered' });
 
-    if (!level.ending && Vector3.Distance(player.position, level.exitCenter) <= level.exitRadius) {
+    // A chamber is won on the reclaimer's plate: stand on it (touching it counts, under any gravity) and after a
+    // moment it takes the attendant. A level without a reclaimer falls back to reaching its exit point.
+    let reclaimed = false;
+    const reclaimer = level.reclaimer;
+    if (level.ending) {
+      // No reclaimer: the way out is the fall.
+    } else if (reclaimer) {
+      const p = player.position;
+      const t = reclaimer.trigger;
+      const on =
+        p.x + 0.5 > t.min[0] && p.x - 0.5 < t.max[0] && p.y + 0.5 > t.min[1] && p.y - 0.5 < t.max[1] &&
+        p.z + 0.5 > t.min[2] && p.z - 0.5 < t.max[2];
+      if (reclaimer.setPressed(on)) beep(on ? 520 : 390, on ? 520 : 390, 0.08, 'square', 0.06);
+      reclaimHold = on ? reclaimHold + dt : 0;
+      reclaimed = reclaimHold >= RECLAIM_HOLD;
+    } else {
+      reclaimed = Vector3.Distance(player.position, level.exitCenter) <= level.exitRadius;
+    }
+    if (reclaimed) {
       hud.setPrompt(false);
-      beep(440, 880, 0.6, 'sine', 0.15);
+      // The exit is a reclaimer: the view is taken apart from the top down, to the printer's sound run backwards.
+      hud.printOut(reducedMotionActive());
+      sound.play('reclaim');
       const chamberId = CHAMBERS[levelIndex]?.id;
       const best = chamberId === undefined ? undefined : progress.best[chamberId];
       if (progressWritable && chamberId !== undefined) {
@@ -683,20 +759,81 @@ engine.runRenderLoop(() => {
     }
   }
 
-  // The backdrop keeps animating on the win screen, but only ever shows after an escape.
+  // The backdrop keeps animating on the win screen. It shows after an escape, through a chamber's window (`vista`),
+  // and behind the title, where the camera stands outside the cube.
   const down = gravity.direction.asArray() as Vec3;
-  planetDir = fall.visibility > 0 ? chaseDirection(planetDir, down, dt, 3) : down;
-  backdrop.update({
-    cameraPosition: player.camera.position,
-    visibility: fall.visibility,
+  const wasTitleShot = titleShot;
+  titleShot = game.kind === 'title' && !sandbox && atPrintBed();
+  if (titleShot !== wasTitleShot) {
+    backdrop.resetField(); // the field is laid out around the cube for the title, around the view otherwise
+    scene.activeCamera = titleShot ? titleCamera : player.camera;
+  }
+  // Where a window shows the sky, the planet and the Crown swing round as the cube turns; elsewhere a hole in the
+  // floor shows the planet at once.
+  planetDir = fall.visibility > 0 || level.vista ? chaseDirection(planetDir, down, dt, 3) : down;
+  const shared = {
     planetDirection: Vector3.FromArray(planetDir),
-    planetDistance: planetDistance(fall.time, fall.duration, level.ending ? PLANET_LAST : PLANET_NEAR),
-    speed: dt > 0 ? Vector3.Distance(player.position, lastPosition) / dt : 0,
-    dt: frozen ? 0 : dt,
     darkFraction: darkFraction(levelIndex, LEVELS.length),
     planetLights: planetLights(levelIndex, sandbox ? -1 : LIGHTS_FROM, LEVELS.length),
-  });
+  };
+  if (titleShot) {
+    // Stand off to one side of the cube, a little above its middle, and drift slowly around it.
+    titleTime += reducedMotionActive() ? 0 : dt;
+    const hull = chamberHull(level.bounds);
+    titleAnchor.fromArray(hull.center);
+    const axes = fieldBasis(planetDir);
+    const a = 0.6 + 0.16 * Math.sin(titleTime * 0.08);
+    const at = (k: number) =>
+      hull.center[k] + (axes.x[k] * Math.cos(a) + axes.z[k] * Math.sin(a)) * TITLE_STANDOFF + axes.y[k] * 12;
+    titleCamera.position.set(at(0), at(1), at(2));
+    titleCamera.upVector.fromArray(axes.y);
+    const up = Vector3.FromArray(axes.y);
+    titleCamera.setTarget(titleAnchor.add(up.scale(47)));
+    // From the side the star cannot be both straight above the Crown and in the picture, so here it is drawn where
+    // the eye expects it: beyond the Crown, on the line up from the planet through the cube.
+    titleSun.copyFrom(titleAnchor).addInPlace(up.scale(TITLE_CROWN + 70)).subtractInPlace(titleCamera.position);
+    titleSun.normalize();
+    backdrop.update({
+      ...shared,
+      cameraPosition: titleCamera.position,
+      anchor: titleAnchor,
+      visibility: 1,
+      planetDistance: TITLE_PLANET,
+      crownDistance: TITLE_CROWN,
+      sunDirection: titleSun,
+      speed: 0,
+      dt,
+    });
+  } else {
+    // The last fall has ended: one more light comes up on the planet, under the end card.
+    // The view settles on the ground below, where it is.
+    if (game.kind === 'ended') {
+      arrival = Math.min(1, arrival + dt / 2.5);
+      player.lookDown(reducedMotionActive() ? 1 : Math.min(1, dt * 2.5));
+    }
+    backdrop.update({
+      ...shared,
+      cameraPosition: player.camera.position,
+      visibility: fall.visibility,
+      vista: level.vista,
+      planetDistance: planetDistance(fall.time, fall.duration, level.ending ? PLANET_LAST : PLANET_NEAR),
+      speed: dt > 0 ? Vector3.Distance(player.position, lastPosition) / dt : 0,
+      dt: frozen ? 0 : dt,
+      hullDark: level.ending && !level.printer.online,
+      arrival,
+    });
+  }
   lastPosition.copyFrom(player.position);
+  // The air of the fall: silence beside the cube, a roar by the end. It stops dead when the fall does.
+  const inFall = fall.falling && !frozen && game.kind !== 'ended' && game.kind !== 'won';
+  sound.setFall(inFall ? fall.time / fall.duration : 0);
+  // A storm breaking where the Crown can be seen (a window, or out in a fall) is logged: it is what the Crown is for.
+  const storming = backdrop.storm > 0;
+  if (storming && !wasStorming && !sandbox && !titleShot && game.kind !== 'ended' && (level.vista || fall.falling)) {
+    hud.log(stormLine(1 - shared.darkFraction), 8);
+    beep(60, 38, 2.4, 'sawtooth', 0.04);
+  }
+  wasStorming = storming;
 
   scene.render();
 });
@@ -737,6 +874,12 @@ if (import.meta.env.DEV) {
     gravityAxis: () => gravity.axis,
     setPosition: (x: number, y: number, z: number) => player.collider.position.set(x, y, z),
     state: () => game.kind,
+    /** The audio engine's state: context, files decoded, whether the music and the wind are sounding. */
+    audio: () => sound.status(),
+    /** Starts a stellar storm now (they otherwise come once a minute). */
+    storm: () => backdrop.seek(STORM_FIRST),
+    /** Leaves the title as a tap or gamepad press would, without pointer lock. */
+    begin: () => game.send({ type: 'begin' }),
     hasWon: () => game.kind === 'won',
     /** Skips to the end of the current fall (the Descent's is 25 s). */
     endFall: () => {
@@ -773,6 +916,7 @@ if (import.meta.env.DEV) {
     setGravity: (axis: GravityAxis) => gravity.setAxis(axis),
     grounded: () => player.isGrounded,
     levelCount: () => LEVELS.length,
-    exit: () => ({ center: level.exitCenter.asArray(), radius: level.exitRadius }),
+    /** `button` is where to stand on the reclaimer's plate, which is what wins the chamber. */
+    exit: () => ({ center: level.exitCenter.asArray(), radius: level.exitRadius, button: level.reclaimer?.stand }),
   };
 }

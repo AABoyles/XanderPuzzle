@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  clampSettings, DEFAULT_SETTINGS, fovToRadians, LIMITS, loadSettings, masterGain, parseSettings, saveSettings,
+  clampSettings, DEFAULT_SETTINGS, fovToRadians, LIMITS, loadSettings, masterGain, musicGain, parseSettings, saveSettings,
   SETTINGS_KEY, stepSetting,
 } from '../src/settings.ts';
 import type { SettingsStorage } from '../src/settings.ts';
@@ -71,4 +71,13 @@ test('masterGain follows volume and mute', () => {
   assert.equal(masterGain(DEFAULT_SETTINGS), 1);
   assert.equal(masterGain({ ...DEFAULT_SETTINGS, volume: 50 }), 0.5);
   assert.equal(masterGain({ ...DEFAULT_SETTINGS, muted: true }), 0);
+});
+
+test('music volume sits under the master volume and the mute', () => {
+  assert.equal(DEFAULT_SETTINGS.musicVolume, 60);
+  assert.ok(Math.abs(musicGain(DEFAULT_SETTINGS) - 0.6) < 1e-12);
+  assert.ok(Math.abs(musicGain({ ...DEFAULT_SETTINGS, volume: 50, musicVolume: 50 }) - 0.25) < 1e-12);
+  assert.equal(musicGain({ ...DEFAULT_SETTINGS, muted: true }), 0);
+  assert.equal(clampSettings({ musicVolume: 500 }).musicVolume, 100);
+  assert.equal(stepSetting(DEFAULT_SETTINGS, 'musicVolume', -1).musicVolume, 55);
 });
