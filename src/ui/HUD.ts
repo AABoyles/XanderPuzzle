@@ -9,6 +9,7 @@ import { TextBlock } from '@babylonjs/gui/2D/controls/textBlock';
 import { GravityAxis } from '../gravity/GravitySystem';
 import type { InputDevice } from '../input/InputSource';
 import { cubeLabel } from '../narrative';
+import { printInDuration } from './printTiming';
 
 const AXIS_LABEL: Record<GravityAxis, string> = {
   '+X': 'EAST WALL',
@@ -613,11 +614,12 @@ export class HUD {
   /**
    * The attendant is printed (NARRATIVE.md): the view starts as a pale blank and the print head's line sweeps up it,
    * leaving the chamber behind, as if the eyes were the last thing made. Under a second. With `reduced` motion it is a
-   * plain fade.
+   * plain fade. `repeats` counts the starts of the same chamber in a row before this one; a repeat is quicker (see
+   * `printInDuration`).
    */
-  public printIn(reduced = false): void {
+  public printIn(reduced = false, repeats = 0): void {
     clearInterval(this.printTimer);
-    const duration = reduced ? 0.45 : 0.85;
+    const duration = printInDuration(reduced, repeats);
     const start = performance.now();
     this.printFog.isVisible = true;
     this.printBar.isVisible = !reduced;

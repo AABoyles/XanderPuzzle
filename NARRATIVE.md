@@ -334,7 +334,7 @@ The cubes show their age. The Margin turns personal and frightened.
 - **The storm:** check that a storm reads as cause and effect (star flares, ring flares, aurora on the planet) from the title view and through a skylight, and that the log line once a minute in the two skylight chambers is not a nuisance. `__debug.storm()` starts one.
 - **The reclaimer:** check the plate can be walked onto at every exit under the gravity you arrive with, that the half-second on the plate feels like pressing a button and not a delay, especially where the exit is a drop (the Vault, the Atrium, the Lockout, the Orrery), and that the de-print wipe under the win screen leaves the log legible.
 - **The Crown through each skylight:** check it is legible, whole, and plainly a structure from the floor of the Vault and of the Counterweight, in every skin (the glass tints the sky).
-- **The print-in** plays at every start and restart. Check that it is not tiresome after many restarts of one chamber.
+- **The print-in** plays at every start and restart. Check that it is not tiresome after many restarts of one chamber. Repeat starts of the same chamber now use a 0.3 s wipe (the first start keeps the full 0.85 s, or 0.45 s under reduced motion).
 - **The Orrery's model** should read from the doorway: ring above, cubes between, plinth below, lit against dark. Check the lit cubes read as lit in every skin, and that the `CROWN` label, high overhead, is legible.
 - **The Descent's notice** must be read before the first throw, and the second alarm line is long: check it fits a phone.
 - **The new light** has to be visible under the end card, wherever the player was looking when the fall ended.

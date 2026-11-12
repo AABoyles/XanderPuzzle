@@ -257,6 +257,12 @@ const LIGHTS_FROM = CHAMBERS.findIndex((c) => c.id === 'turnstile');
 /** The facility's serial for chamber `index`; the sandbox has none. */
 const cubeOf = (index: number): string | undefined => (sandbox ? undefined : CHAMBERS[index]?.cube);
 
+/**
+ * How many times in a row the current chamber has been started again (restart, play again, the same chamber picked):
+ * 0 for the first start of a chamber. Only `startLevel` changes it. Repeats get a quicker print-in.
+ */
+let repeatStarts = 0;
+
 /** Restarts the chamber; if the player was falling, the facility logs the lost attendant's replacement. */
 function restartLevel(): void {
   const lost = fall.falling;
@@ -264,9 +270,12 @@ function restartLevel(): void {
   if (lost) hud.log(recoveryLine(++recoveries));
 }
 
-/** The view opens as the attendant is printed (see `HUD.printIn`), with the printer's hum. */
-function printIn(): void {
-  hud.printIn(reducedMotionActive());
+/**
+ * The view opens as the attendant is printed (see `HUD.printIn`), with the printer's hum. `repeats` is how many times in
+ * a row the chamber has just been started (0 for the full-length print).
+ */
+function printIn(repeats = 0): void {
+  hud.printIn(reducedMotionActive(), repeats);
   sound.play('print');
 }
 
@@ -300,6 +309,7 @@ const TEXT: Record<InputDevice, Prompts> = {
 
 function startLevel(index: number): void {
   level.dispose();
+  repeatStarts = index === levelIndex ? repeatStarts + 1 : 0;
   levelIndex = index;
   if (progressWritable) {
     setResume(progress, CHAMBERS[index].id);
@@ -324,7 +334,7 @@ function startLevel(index: number): void {
   arrival = 0;
   reclaimHold = 0;
   // Behind the title the view is outside the cube; the print-in plays when the title lifts.
-  if (game.kind !== 'title') printIn();
+  if (game.kind !== 'title') printIn(repeatStarts);
 }
 
 /** Swaps the skin in place: the chamber is rebuilt, but the player keeps their spot and gravity. */
