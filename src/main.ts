@@ -4,10 +4,7 @@ import { Engine } from '@babylonjs/core/Engines/engine';
 import { GlowLayer } from '@babylonjs/core/Layers/glowLayer';
 import { Scene } from '@babylonjs/core/scene';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
-import {
-  chaseDirection, DESCENT_DURATION, STORM_FIRST, distanceOutside, FALL_DURATION, FallTracker, PLANET_LAST, PLANET_NEAR,
-  planetDistance, Vec3,
-} from './environment/fall';
+import { DESCENT_DURATION, STORM_FIRST, distanceOutside, FALL_DURATION, FallTracker, Vec3 } from './environment/fall';
 import { SpaceBackdrop } from './environment/SpaceBackdrop';
 import { TitleView } from './title/TitleView';
 import { GameState, escapePauses, isFrozen, showsTouchControls, simulates, transition, viewOf } from './game/GameState';
@@ -15,33 +12,32 @@ import type { State } from './game/GameState';
 import { AudioEngine } from './audio/AudioEngine';
 import { impactGain } from './audio/sounds';
 import { GravityAxis, GravitySystem } from './gravity/GravitySystem';
-import { buildSandbox, CHAMBERS, LEVELS as CHAMBER_LEVELS } from './level/chambers';
+import { CHAMBERS, ChamberLoader, SANDBOX } from './level/chambers';
+import type { LevelFactory } from './level/Builder';
+import { CratePreview } from './level/CratePreview';
 import { GamepadInput } from './input/GamepadInput';
 import { InputManager } from './input/InputManager';
-import type { InputDevice } from './input/InputSource';
 import { KeyboardMouseInput } from './input/KeyboardMouseInput';
 import { TouchInput } from './input/TouchInput';
 import { PlayerController } from './player/PlayerController';
 import { canFullscreen, isFullscreen, isIOS, isStandalone, onFullscreenChange, toggleFullscreen } from './pwa/fullscreen';
 import { loadFonts } from './level/fonts';
 import {
-  darkFraction, DESCENT_OUT_OF_TRIM, descentAlarm, dutyLine, endCard, MASS_RELEASED, NO_TRIM, NOT_RECOVERED,
-  planetLights, recoveryLine, SHIFT_REVERTED, stormLine, winTitle, workLog,
+  cubeUnreachable, DESCENT_OUT_OF_TRIM, descentAlarm, dutyLine, endCard, MASS_RELEASED, NO_TRIM, NOT_RECOVERED,
+  recoveryLine, SHIFT_REVERTED, stormLine, winTitle, workLog,
 } from './narrative';
 import { registerServiceWorker } from './pwa/register';
 import { shiftTone } from './gravity/shiftSound';
 import { simDelta } from './time';
 import { UndoStack } from './game/undo';
 import { leversExhausted } from './game/stuck';
-import type { DynamicsSnapshot } from './level/Dynamics';
+import { restoreSnapshot, takeSnapshot } from './game/chamberSnapshot';
+import type { ChamberSnapshot } from './game/chamberSnapshot';
+import { RECLAIM_HOLD, touchesPlate } from './game/reclaim';
 import { fovToRadians, loadSettings, masterGain, musicGain, saveSettings } from './settings';
 import type { Settings, SettingsStorage } from './settings';
 import { createSkin, DEFAULT_SKIN, SKIN_IDS, SKIN_LABELS, SkinId } from './skins/Skin';
 import {
-  formatBest,
-  formatShifts,
-  furthestCleared,
-  isUnlocked,
   loadProgress,
   recordWin,
   resetProgress,
@@ -50,11 +46,15 @@ import {
   setResume,
   type ProgressStorage,
 } from './progress';
-import { hintFor, hintTier } from './hints';
+import { hintFor, HintLadder } from './hints';
 import { HUD } from './ui/HUD';
 import { PauseMenu } from './ui/PauseMenu';
 import { PlaytestRecorder, loadPlaytest, playtestFileName, savePlaytest } from './playtest';
 import { downloadText } from './ui/download';
+import { PROMPTS } from './ui/prompts';
+import { ChamberSelect } from './app/ChamberSelect';
+import { params, playtesting, sandbox, storageAvailable, store, unlockAll } from './app/flags';
+import { Sky } from './app/Sky';
 
 const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement;
 const engine = new Engine(canvas, true, { stencil: true, preserveDrawingBuffer: true }, true);
@@ -67,42 +67,11 @@ const glow = new GlowLayer('glow', scene);
 glow.intensity = 0.7;
 
 const gravity = new GravitySystem('-Y', 22);
-// `?sandbox` loads the physics test room instead of the chambers.
-const params = new URLSearchParams(location.search);
-const sandbox = params.has('sandbox');
-const LEVELS = sandbox ? [buildSandbox] : CHAMBER_LEVELS;
-
-const store = {
-  get(key: string): number | undefined {
-    try {
-      const v = localStorage.getItem(`shiftbound.${key}`);
-      const n = v === null || v.trim() === '' ? NaN : Number(v);
-      return Number.isFinite(n) ? n : undefined;
-    } catch {
-      return undefined;
-    }
-  },
-  set(key: string, value: number): void {
-    try {
-      localStorage.setItem(`shiftbound.${key}`, String(value));
-    } catch {
-      /* storage is optional */
-    }
-  },
-};
-// Without storage there is no progress to gate on, so every chamber is open; `?unlockall` does the same for playtests.
-const storageAvailable = (() => {
-  try {
-    localStorage.setItem('shiftbound.probe', '1');
-    localStorage.removeItem('shiftbound.probe');
-    return true;
-  } catch {
-    return false;
-  }
-})();
-const unlockAll = params.has('unlockall') || !storageAvailable;
+/** The chambers' code, fetched as each is needed (`?sandbox` makes it a list of one: the physics test room). */
+const chambers = new ChamberLoader(sandbox ? [SANDBOX] : CHAMBERS);
+const LEVEL_COUNT = chambers.count;
 // `?playtest` records each chamber visit for the designer (src/playtest.ts). Kept in this browser; not in the sandbox.
-const playtest = params.has('playtest') && !sandbox ? new PlaytestRecorder(() => new Date().toISOString()) : undefined;
+const playtest = playtesting ? new PlaytestRecorder(() => new Date().toISOString()) : undefined;
 const persistPlaytest = () => {
   if (playtest) savePlaytest(playtest.toJSON());
 };
@@ -115,7 +84,7 @@ const persistProgress = () => {
   if (progressWritable) saveProgress(progressStorage(), progress);
 };
 // Resume at the last chamber reached.
-let levelIndex = sandbox ? 0 : Math.min(resumeIndex(progress, CHAMBER_IDS), LEVELS.length - 1);
+let levelIndex = sandbox ? 0 : Math.min(resumeIndex(progress, CHAMBER_IDS), LEVEL_COUNT - 1);
 // Skin: `?skin=station|axis|monolith|draft|neon`, else the last one picked with K, else Station.
 const skinParam = params.get('skin') as SkinId | null;
 const storedSkin = Math.floor(store.get('skin') ?? SKIN_IDS.indexOf(DEFAULT_SKIN));
@@ -125,7 +94,8 @@ let skinColorAssist = loadSettings(storageAvailable ? localStorage : null).color
 let skin = createSkin(SKIN_IDS[skinIndex], scene, glow, skinColorAssist);
 // Placards draw at once in fallback fonts and redraw when the bundled ones arrive.
 void loadFonts();
-let level = LEVELS[levelIndex](scene, skin);
+// The first chamber's code is fetched before anything is built; the rest arrive as they are needed.
+let level = (await chambers.load(levelIndex))(scene, skin);
 const keyboardMouse = new KeyboardMouseInput(canvas);
 const touch = new TouchInput();
 const gamepad = new GamepadInput();
@@ -253,18 +223,11 @@ const fall = new FallTracker();
 /** The title's outside view (`src/title/TitleView.ts`), on screen only while `titleShot` holds. */
 const titleView = new TitleView(scene);
 scene.activeCamera = player.camera;
-/** Whether the title's view is up: the title is showing and the player has not left the print bed. */
-let titleShot = false;
-let wasStorming = false;
+/** The camera in use and the space outside the chamber, once a frame (`src/app/Sky.ts`). */
+const sky = new Sky(scene, backdrop, titleView, player, gravity, fall);
 /** Seconds the player has stood on the reclaimer's plate; it takes them after `RECLAIM_HOLD`. */
 let reclaimHold = 0;
-const RECLAIM_HOLD = 0.4;
-/** 0-1: the new light on the planet, coming up once the last fall has ended. */
-let arrival = 0;
 const atPrintBed = () => Vector3.DistanceSquared(player.position, level.spawnPosition) < 1;
-/** Where the planet is: it chases the gravity direction, so "down" always leads to it. */
-let planetDir = gravity.direction.asArray() as Vec3;
-const lastPosition = player.position.clone();
 
 /** Simulated seconds in this chamber: accumulates the clamped `dt`, so a hitch or hidden tab can't change a best time. */
 let levelTime = 0;
@@ -273,7 +236,10 @@ let simClock = 0;
 let shifts = 0;
 /** Attendants lost to the void this session (NARRATIVE.md). Never saved. */
 let recoveries = 0;
-const finishedAll = () => levelIndex >= LEVELS.length - 1;
+const finishedAll = () => levelIndex >= LEVEL_COUNT - 1;
+/** The chamber after this one; after the last, the first again. */
+const nextIndex = () => (finishedAll() ? 0 : levelIndex + 1);
+chambers.preload(nextIndex());
 /** Lights appear on the planet from the first chamber of Act III (NARRATIVE.md). */
 const LIGHTS_FROM = CHAMBERS.findIndex((c) => c.id === 'turnstile');
 /** The facility's serial for chamber `index`; the sandbox has none. */
@@ -284,57 +250,14 @@ const cubeOf = (index: number): string | undefined => (sandbox ? undefined : CHA
  * 0 for the first start of a chamber. Only `startLevel` changes it. Repeats get a quicker print-in.
  */
 let repeatStarts = 0;
-/**
- * Simulated seconds in this chamber across its restarts (`repeatStarts`): reset only when the chamber changes. Feeds
- * the hint ladder (`src/hints.ts`), which asks for more help the longer a player is stuck.
- */
-let chamberSeconds = 0;
-/** The hint tier now on the HUD for this chamber (0 is the chamber's own hint). Reset when the chamber changes. */
-let shownHintTier = 0;
-
-/** The chamber just before a lever the player threw by hand, enough to put it back (see `undoLastShift`). */
-interface ChamberSnapshot {
-  position: Vector3;
-  look: { yaw: number; pitch: number };
-  gravity: GravityAxis;
-  dynamics: DynamicsSnapshot;
-  /** Whether each lever in `level.switches` was spent. */
-  spent: boolean[];
-  sequencer?: { active: boolean; remaining: number; index: number };
-  shifts: number;
-}
+/** This chamber visit's place on the hint ladder (`src/hints.ts`), which says more the longer a player is stuck. */
+const hints = new HintLadder();
 
 /** The chambers to step back through, newest last. Cleared whenever a chamber starts. */
 const undoStack = new UndoStack<ChamberSnapshot>();
 
-function takeSnapshot(): ChamberSnapshot {
-  return {
-    position: player.position.clone(),
-    look: player.getLook(),
-    gravity: gravity.axis,
-    dynamics: level.dynamics.snapshot(),
-    spent: level.switches.map((sw) => sw.spent),
-    sequencer: level.sequencer?.snapshot(),
-    shifts,
-  };
-}
-
-function restoreSnapshot(s: ChamberSnapshot): void {
-  // Gravity first: the player's orientation follows it when they are reset.
-  gravity.setAxis(s.gravity);
-  player.reset(s.position);
-  player.setLook(s.look.yaw, s.look.pitch);
-  level.dynamics.restore(s.dynamics);
-  level.switches.forEach((sw, i) => {
-    if (sw.spent && !s.spent[i]) sw.revive();
-    else if (!sw.spent && s.spent[i]) sw.burnOut();
-  });
-  if (s.sequencer) level.sequencer?.restore(s.sequencer);
-  shifts = s.shifts;
-  lastPosition.copyFrom(player.position);
-  // The fall, if there was one, is over: the player is back in the chamber.
-  fall.reset();
-}
+/** What a snapshot is taken from and put back into: `level` is read each time, since every start rebuilds it. */
+const snapshotTargets = () => ({ player, gravity, level });
 
 /**
  * Steps back to the moment before the last hand-thrown lever. Refused in an ending chamber, whose levers are the story,
@@ -344,7 +267,11 @@ function undoLastShift(): boolean {
   if (level.ending) return false;
   const s = undoStack.pop();
   if (!s) return false;
-  restoreSnapshot(s);
+  restoreSnapshot(snapshotTargets(), s);
+  shifts = s.shifts;
+  sky.playerPlaced();
+  // The fall, if there was one, is over: the player is back in the chamber.
+  fall.reset();
   hud.log(SHIFT_REVERTED);
   playtest?.undo();
   beep(300, 220, 0.12, 'triangle', 0.06);
@@ -374,7 +301,7 @@ function checkTrim(): void {
       })),
     );
   if (exhausted && !outOfTrim) {
-    hud.log(`${NO_TRIM}\n${TEXT[input.lastDevice].stuck}`, 12);
+    hud.log(`${NO_TRIM}\n${PROMPTS[input.lastDevice].stuck}`, 12);
     playtest?.stuck();
     beep(140, 90, 0.15, 'square', 0.08);
   }
@@ -399,65 +326,35 @@ function printIn(repeats = 0): void {
   sound.play('print');
 }
 
-type Prompts = {
-  void: string;
-  cycle: string;
-  next: string;
-  again: string;
-  select: string;
-  title: string;
-  stuck: string;
-};
-const TEXT: Record<InputDevice, Prompts> = {
-  keyboard: {
-    void: 'Outside the cube · press [R] to be reprinted',
-    cycle: 'Press [E] to start the cycle',
-    next: 'Click or press Enter for the next chamber',
-    again: 'Click or press Enter to play again',
-    select: '\nL for chamber select',
-    title: 'Click or press Enter to return to the title',
-    stuck: '[Z] takes back the last lever · [R] reprints you at the entrance',
-  },
-  touch: {
-    void: 'Outside the cube · tap \u21BB to be reprinted',
-    cycle: 'Tap [USE] to start the cycle',
-    next: 'Tap for the next chamber',
-    again: 'Tap to play again',
-    select: '\nTap \u2630 for chamber select',
-    title: 'Tap to return to the title',
-    stuck: '↶ takes back the last lever · ↻ reprints you at the entrance',
-  },
-  gamepad: {
-    void: 'Outside the cube · press [Y] to be reprinted',
-    cycle: 'Press [X] to start the cycle',
-    next: 'Press [A] for the next chamber',
-    again: 'Press [A] to play again',
-    select: '\nBack for chamber select',
-    title: 'Press [A] to return to the title',
-    stuck: 'Press [B] to take back the last lever · [Y] reprints you at the entrance',
-  },
-};
+/** Shows where crates would rest if the lever in reach were thrown now (`src/level/CratePreview.ts`). */
+const cratePreview = new CratePreview();
 
-/** The crate preview last worked out, so it is not recomputed every frame (see `refreshCratePreview`). */
-let previewCache: { lever: (typeof level.switches)[number]; axis: GravityAxis; time: number } | undefined;
-const PREVIEW_INTERVAL = 0.25;
-
-/** Shows where crates would rest if the lever in reach were thrown now. Not for a sequence lever, which cycles. */
-function refreshCratePreview(target: (typeof level.switches)[number] | undefined): void {
-  const next = target && target.spec.kind !== 'sequence' ? target.targetFor(gravity.axis) : null;
-  if (!target || !next || !level.dynamics.crates.length || fall.falling) {
-    level.dynamics.showPreview(null);
-    previewCache = undefined;
-    return;
-  }
-  const c = previewCache;
-  if (c && c.lever === target && c.axis === gravity.axis && simClock - c.time < PREVIEW_INTERVAL) return;
-  const vector = GravitySystem.axisVector(next).scale(gravity.magnitude);
-  level.dynamics.showPreview(level.dynamics.predict(vector, player.position));
-  previewCache = { lever: target, axis: gravity.axis, time: simClock };
+/** The factory of a chamber whose code is already here; `whenLoaded` is how a caller makes sure of that. */
+function factory(index: number): LevelFactory {
+  const build = chambers.get(index);
+  if (!build) throw new Error(`Chamber ${index} was started before its code was loaded`);
+  return build;
 }
 
+/**
+ * Runs `then` once chamber `index`'s code is here: at once if it already is (the usual case, since the next chamber is
+ * fetched while the current one is played), otherwise when it arrives. If it cannot be fetched the facility says so
+ * and nothing else changes, so the player can try again.
+ */
+function whenLoaded(index: number, then: () => void): void {
+  if (chambers.get(index)) {
+    then();
+    return;
+  }
+  chambers.load(index).then(then, () => {
+    hud.log(`${cubeUnreachable(cubeOf(index))}\nCould not load the chamber. Check the connection and try again.`, 8);
+    beep(140, 90, 0.15, 'square', 0.08);
+  });
+}
+
+/** Starts chamber `index`, whose code must already be loaded (see `whenLoaded`). */
 function startLevel(index: number): void {
+  const build = factory(index);
   level.dispose();
   repeatStarts = index === levelIndex ? repeatStarts + 1 : 0;
   levelIndex = index;
@@ -467,35 +364,33 @@ function startLevel(index: number): void {
     setResume(progress, CHAMBERS[index].id);
     persistProgress();
   }
-  level = LEVELS[levelIndex](scene, skin);
+  level = build(scene, skin);
   if (import.meta.env.DEV && !sandbox && level.name !== CHAMBERS[index].name) {
     console.warn(`CHAMBERS[${index}].name is '${CHAMBERS[index].name}' but the chamber is named '${level.name}'`);
   }
   gravity.setAxis(level.entranceAxis);
   player.reset(level.spawnPosition);
-  lastPosition.copyFrom(player.position);
+  sky.chamberStarted();
   fall.reset();
   backdrop.setChamber(level.bounds);
   // Leaving an ending chamber is the final fall, and a long one.
   fall.duration = level.ending ? DESCENT_DURATION : FALL_DURATION;
   hud.setLevel(level.name, level.hint);
-  if (repeatStarts === 0) {
-    chamberSeconds = 0;
-    shownHintTier = 0;
-  }
+  if (repeatStarts === 0) hints.reset();
   // A restart of the same chamber keeps the hint it had reached.
-  if (shownHintTier > 0) hud.setHint(hintFor(sandbox ? undefined : CHAMBERS[index]?.id, level.hint, shownHintTier));
+  if (hints.shown > 0) hud.setHint(hintFor(sandbox ? undefined : CHAMBERS[index]?.id, level.hint, hints.shown));
   const cube = cubeOf(index);
   if (cube !== undefined) hud.log(dutyLine(cube));
   levelTime = 0;
   shifts = 0;
   undoStack.clear();
-  previewCache = undefined;
+  cratePreview.invalidate();
   outOfTrim = false;
-  arrival = 0;
   reclaimHold = 0;
   // Behind the title the view is outside the cube; the print-in plays when the title lifts.
   if (game.kind !== 'title') printIn(repeatStarts);
+  // The chamber after this one is fetched while this one is played, so moving on does not wait.
+  chambers.preload(nextIndex());
 }
 
 /** Swaps the skin in place: the chamber is rebuilt, but the player keeps their spot and gravity. */
@@ -506,7 +401,7 @@ function setSkin(index: number): void {
   store.set('skin', skinIndex);
   skinColorAssist = settings.colorAssist;
   skin = createSkin(SKIN_IDS[skinIndex], scene, glow, skinColorAssist);
-  level = LEVELS[levelIndex](scene, skin);
+  level = factory(levelIndex)(scene, skin);
   syncPrinter();
   hud.setSkin(SKIN_LABELS[skin.id]);
   hud.setGravityAxis(gravity.axis, skin.hudColor(gravity.axis));
@@ -531,37 +426,25 @@ function beginDescent(): void {
 }
 
 function advance(): void {
-  if (!game.send({ type: 'advance' })) return;
-  startLevel(finishedAll() ? 0 : levelIndex + 1);
+  if (!transition(game.state, { type: 'advance' })) return;
+  const next = nextIndex();
+  if (!chambers.get(next)) {
+    // Its code is still on the way: the win screen stays up until it lands, then this runs again.
+    whenLoaded(next, advance);
+    return;
+  }
+  game.send({ type: 'advance' });
+  startLevel(next);
   // Between chambers is a safe moment to install a waiting update: the next chamber is already saved as the resume point.
   applyUpdate?.();
 }
 
 // --- Chamber select ------------------------------------------------------------------------------
-let selectIndex = 0;
-const chamberUnlocked = (index: number) => isUnlocked(index, furthestCleared(progress, CHAMBER_IDS), unlockAll);
+const chamberSelect = new ChamberSelect(hud, () => progress, (index) => chambers.preload(index));
 
 function openLevelSelect(): void {
   if (sandbox) return;
   game.send({ type: 'openChambers' });
-}
-
-/** Fills and shows the chamber list; runs when the state machine enters `chamberSelect`. */
-function showChamberSelect(): void {
-  selectIndex = levelIndex;
-  const furthest = furthestCleared(progress, CHAMBER_IDS);
-  const entries = CHAMBERS.map((c, i) => {
-    return {
-      name: c.name,
-      cube: c.cube,
-      best: formatBest(progress.best[c.id]),
-      shifts: formatShifts(progress.shifts[c.id], c.par),
-      completed: i <= furthest,
-      unlocked: isUnlocked(i, furthest, unlockAll),
-    };
-  });
-  const devices = input.lastDevice === 'touch' ? 'Tap a chamber to play' : 'Arrows/D-pad choose · Enter/A play · Esc/B back';
-  hud.showLevelSelect(entries, selectIndex, unlockAll && storageAvailable ? `${devices} · all unlocked` : devices);
 }
 
 function closeLevelSelect(): void {
@@ -644,7 +527,7 @@ game.onChange = (prev: State, next: State) => {
   if (!was.select && now.select) {
     keyboardMouse.pointerLockSuspended = true;
     if (document.pointerLockElement) document.exitPointerLock();
-    showChamberSelect();
+    chamberSelect.show(levelIndex, input.lastDevice);
   }
   if (!was.pause && now.pause) {
     keyboardMouse.pointerLockSuspended = true;
@@ -655,20 +538,22 @@ game.onChange = (prev: State, next: State) => {
   if (!was.ending && now.ending) {
     hud.setPrompt(false);
     const body = endCard(recoveries, cubeOf(levelIndex));
-    hud.showEnding(NOT_RECOVERED, `${body}\n\nSHIFTBOUND\n\n${TEXT[input.lastDevice].title}`);
+    hud.showEnding(NOT_RECOVERED, `${body}\n\nSHIFTBOUND\n\n${PROMPTS[input.lastDevice].title}`);
   }
   if (was.ending && !now.ending) hud.hideEnding();
 };
 
-function moveSelection(delta: number): void {
-  selectIndex = Math.min(Math.max(selectIndex + delta, 0), CHAMBERS.length - 1);
-  hud.highlightLevel(selectIndex);
-}
-
 /** Starts chamber `index` if it's unlocked. `grabPointer` is false where the browser won't allow it (gamepad). */
 function pickLevel(index: number, grabPointer = true): void {
-  if (!chamberUnlocked(index)) {
+  if (!chamberSelect.unlocked(index)) {
     beep(140, 90, 0.15, 'square', 0.08);
+    return;
+  }
+  if (!chambers.get(index)) {
+    // Its code is still on the way: start it when it lands, if the list is still up.
+    whenLoaded(index, () => {
+      if (game.kind === 'chamberSelect') pickLevel(index, grabPointer);
+    });
     return;
   }
   const immediate = touch.active || !grabPointer;
@@ -694,10 +579,7 @@ hud.onToggleFullscreen = () => {
   void toggleFullscreen();
 };
 hud.onPickLevel = (i) => pickLevel(i);
-hud.onHoverLevel = (i) => {
-  selectIndex = i;
-  hud.highlightLevel(i);
-};
+hud.onHoverLevel = (i) => chamberSelect.highlight(i);
 
 document.addEventListener('pointerlockchange', () => {
   if (touch.active) return;
@@ -741,11 +623,11 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (game.kind === 'chamberSelect') {
-    if (e.code === 'ArrowUp' || e.code === 'KeyW') moveSelection(-1);
-    else if (e.code === 'ArrowDown' || e.code === 'KeyS') moveSelection(1);
-    else if (e.code === 'Home') moveSelection(-CHAMBERS.length);
-    else if (e.code === 'End') moveSelection(CHAMBERS.length);
-    else if (e.code === 'Enter' || e.code === 'NumpadEnter') pickLevel(selectIndex);
+    if (e.code === 'ArrowUp' || e.code === 'KeyW') chamberSelect.move(-1);
+    else if (e.code === 'ArrowDown' || e.code === 'KeyS') chamberSelect.move(1);
+    else if (e.code === 'Home') chamberSelect.move(-CHAMBERS.length);
+    else if (e.code === 'End') chamberSelect.move(CHAMBERS.length);
+    else if (e.code === 'Enter' || e.code === 'NumpadEnter') pickLevel(chamberSelect.index);
     else if (e.code === 'Escape' || e.code === 'KeyL' || e.code === 'Backspace') closeLevelSelect();
     else if (e.code === 'KeyK') setSkin(skinIndex + (e.shiftKey ? -1 : 1));
     e.preventDefault();
@@ -779,9 +661,9 @@ engine.runRenderLoop(() => {
   // Actions below use up this frame's presses, so the player doesn't also act on them.
   let consumed = game.kind === 'chamberSelect';
   if (game.kind === 'chamberSelect') {
-    if (pad.up) moveSelection(-1);
-    if (pad.down) moveSelection(1);
-    if (pad.confirm) pickLevel(selectIndex, false);
+    if (pad.up) chamberSelect.move(-1);
+    if (pad.down) chamberSelect.move(1);
+    if (pad.confirm) pickLevel(chamberSelect.index, false);
     else if (pad.back || pad.select) closeLevelSelect();
   } else if (game.kind === 'paused') {
     // Gamepad drives the menu; keyboard and pointer are handled by events.
@@ -828,12 +710,11 @@ engine.runRenderLoop(() => {
     levelTime += dt;
     playtest?.tick(dt);
     // Time on the title screen does not count towards the hint ladder; neither does a menu or the win.
-    if (game.kind === 'playing' || game.kind === 'falling') chamberSeconds += dt;
+    if (game.kind === 'playing' || game.kind === 'falling') hints.tick(dt);
     simClock += dt;
     // The hint line only changes while the player is playing.
-    const tier = hintTier(chamberSeconds, repeatStarts);
-    if (!sandbox && game.kind === 'playing' && tier > shownHintTier) {
-      shownHintTier = tier;
+    const tier = !sandbox && game.kind === 'playing' ? hints.rise(repeatStarts) : undefined;
+    if (tier) {
       playtest?.hint(tier);
       hud.setHint(hintFor(CHAMBERS[levelIndex]?.id, level.hint, tier));
       beep(440, 440, 0.12, 'sine', 0.04);
@@ -849,14 +730,16 @@ engine.runRenderLoop(() => {
       if (!sw.isInRange(player.position) || !sw.canUse(gravity.axis)) continue;
       if (!target || sw.distanceTo(player.position) < target.distanceTo(player.position)) target = sw;
     }
-    refreshCratePreview(target);
+    cratePreview.refresh(level, target, gravity, player.position, fall.falling, simClock);
     // Saved before the throw, so undo can take it back. Only a throw that fires is kept: `canFire` mirrors `update`.
     const saved =
-      interactPressed && target?.canFire(gravity.axis, player.position) && !level.ending ? takeSnapshot() : undefined;
+      interactPressed && target?.canFire(gravity.axis, player.position) && !level.ending
+        ? takeSnapshot(snapshotTargets(), shifts)
+        : undefined;
     for (const sw of level.switches) {
       if (sw.update(dt, gravity, player.position, interactPressed && sw === target)) {
         if (saved) undoStack.push(saved);
-        previewCache = undefined;
+        cratePreview.invalidate();
         // Taking gravity back by hand stops a running sequence.
         if (sw.spec.kind !== 'sequence') level.sequencer?.stop();
         shifts++;
@@ -875,7 +758,7 @@ engine.runRenderLoop(() => {
     }
     const anyInRange = target !== undefined;
     touch.setInteractAvailable(anyInRange);
-    const text = TEXT[input.lastDevice];
+    const text = PROMPTS[input.lastDevice];
     if (game.kind === 'descending') hud.setPrompt(false);
     else if (fall.falling) hud.setPrompt(true, text.void);
     else if (target?.spec.kind === 'sequence') hud.setPrompt(anyInRange, text.cycle);
@@ -927,11 +810,7 @@ engine.runRenderLoop(() => {
     if (level.ending) {
       // No reclaimer: the way out is the fall.
     } else if (reclaimer) {
-      const p = player.position;
-      const t = reclaimer.trigger;
-      const on =
-        p.x + 0.5 > t.min[0] && p.x - 0.5 < t.max[0] && p.y + 0.5 > t.min[1] && p.y - 0.5 < t.max[1] &&
-        p.z + 0.5 > t.min[2] && p.z - 0.5 < t.max[2];
+      const on = touchesPlate(player.position, reclaimer.trigger);
       if (reclaimer.setPressed(on)) beep(on ? 520 : 390, on ? 520 : 390, 0.08, 'square', 0.06);
       reclaimHold = on ? reclaimHold + dt : 0;
       reclaimed = reclaimHold >= RECLAIM_HOLD;
@@ -955,7 +834,7 @@ engine.runRenderLoop(() => {
       const cube = cubeOf(levelIndex);
       const par = CHAMBERS[levelIndex]?.par;
       const log = workLog({ time: levelTime, best, shifts, par, next: last ? undefined : cubeOf(levelIndex + 1) });
-      const text = TEXT[input.lastDevice];
+      const text = PROMPTS[input.lastDevice];
       const select = sandbox ? '' : text.select;
       const update = applyUpdate ? '\nUpdate ready: it installs when you continue' : '';
       winMessage = {
@@ -966,55 +845,27 @@ engine.runRenderLoop(() => {
     }
   }
 
-  // The backdrop keeps animating on the win screen. It shows after an escape, through a chamber's window (`vista`),
-  // and behind the title, where the camera stands outside the cube.
-  const down = gravity.direction.asArray() as Vec3;
-  const wasTitleShot = titleShot;
-  titleShot = game.kind === 'title' && !sandbox && atPrintBed();
-  if (titleShot !== wasTitleShot) {
-    backdrop.resetField(); // the field is laid out around the cube for the title, around the view otherwise
-    scene.activeCamera = titleShot ? titleView.camera : player.camera;
-  }
-  // Where a window shows the sky, the planet and the Crown swing round as the cube turns; elsewhere a hole in the
-  // floor shows the planet at once.
-  planetDir = fall.visibility > 0 || level.vista ? chaseDirection(planetDir, down, dt, 3) : down;
-  const shared = {
-    planetDirection: Vector3.FromArray(planetDir),
-    darkFraction: darkFraction(levelIndex, LEVELS.length),
-    planetLights: planetLights(levelIndex, sandbox ? -1 : LIGHTS_FROM, LEVELS.length),
-  };
-  if (titleShot) {
-    backdrop.update({ ...shared, ...titleView.update(level.bounds, planetDir, dt, reducedMotionActive()), dt });
-  } else {
-    // The last fall has ended: one more light comes up on the planet, under the end card.
-    // The view settles on the ground below, where it is.
-    if (game.kind === 'ended') {
-      arrival = Math.min(1, arrival + dt / 2.5);
-      player.lookDown(reducedMotionActive() ? 1 : Math.min(1, dt * 2.5));
-    }
-    backdrop.update({
-      ...shared,
-      cameraPosition: player.camera.position,
-      visibility: fall.visibility,
-      vista: level.vista,
-      planetDistance: planetDistance(fall.time, fall.duration, level.ending ? PLANET_LAST : PLANET_NEAR),
-      speed: dt > 0 ? Vector3.Distance(player.position, lastPosition) / dt : 0,
-      dt: frozen ? 0 : dt,
-      hullDark: level.ending && !level.printer.online,
-      arrival,
-    });
-  }
-  lastPosition.copyFrom(player.position);
+  // The camera in use and everything outside the chamber: the title's view from outside, the planet, the backdrop.
+  const view = sky.update({
+    dt,
+    frozen,
+    kind: game.kind,
+    titleShot: game.kind === 'title' && !sandbox && atPrintBed(),
+    level,
+    levelIndex,
+    levelCount: LEVEL_COUNT,
+    lightsFrom: sandbox ? -1 : LIGHTS_FROM,
+    reducedMotion: reducedMotionActive(),
+  });
   // The air of the fall: silence beside the cube, a roar by the end. It stops dead when the fall does.
   const inFall = fall.falling && !frozen && game.kind !== 'ended' && game.kind !== 'won';
   sound.setFall(inFall ? fall.time / fall.duration : 0);
   // A storm breaking where the Crown can be seen (a window, or out in a fall) is logged: it is what the Crown is for.
-  const storming = backdrop.storm > 0;
-  if (storming && !wasStorming && !sandbox && !titleShot && game.kind !== 'ended' && (level.vista || fall.falling)) {
-    hud.log(stormLine(1 - shared.darkFraction), 8);
+  const seen = !sandbox && !sky.titleShot && game.kind !== 'ended' && (level.vista || fall.falling);
+  if (view.stormBroke && seen) {
+    hud.log(stormLine(1 - view.darkFraction), 8);
     beep(60, 38, 2.4, 'sawtooth', 0.04);
   }
-  wasStorming = storming;
 
   scene.render();
 });
@@ -1075,8 +926,10 @@ if (import.meta.env.DEV) {
     },
     level: () => levelIndex,
     /** The hint tier shown for this chamber visit: 0 (its own hint), 1 or 2 (the ladder in `src/hints.ts`). */
-    hintTier: () => shownHintTier,
-    startLevel: (index: number) => {
+    hintTier: () => hints.shown,
+    /** Resolves once the chamber has started: its code may have to be fetched first. */
+    startLevel: async (index: number) => {
+      await chambers.load(index);
       game.send({ type: 'advance' }); // leaves the win screen if it is up
       startLevel(index);
       game.send({ type: 'restart' });
@@ -1110,7 +963,7 @@ if (import.meta.env.DEV) {
     interact: () => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE' })),
     setGravity: (axis: GravityAxis) => gravity.setAxis(axis),
     grounded: () => player.isGrounded,
-    levelCount: () => LEVELS.length,
+    levelCount: () => LEVEL_COUNT,
     /** `button` is where to stand on the reclaimer's plate, which is what wins the chamber. */
     exit: () => ({ center: level.exitCenter.asArray(), radius: level.exitRadius, button: level.reclaimer?.stand }),
     /** The playtest log, when the page was opened with `?playtest` (undefined otherwise). */

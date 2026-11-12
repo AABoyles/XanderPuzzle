@@ -77,3 +77,5 @@ export function buildTide(scene: Scene, skin: SkinRuntime): BuiltLevel {
     exitRadius: 2.5,
   });
 }
+
+export default buildTide;

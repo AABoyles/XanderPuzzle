@@ -82,6 +82,13 @@ export const SHIFT_REVERTED = 'TRIM RESTORED TO LAST SETTING.';
  */
 export const NO_TRIM = 'NO SETTING FROM HERE RETURNS THIS CUBE TO TRIM.';
 
+/**
+ * Logged when a chamber's code could not be fetched (the player went offline before reaching it). The facility's half
+ * of the notice; main.ts adds a plain second line saying what to do.
+ */
+export const cubeUnreachable = (cube: string | undefined): string =>
+  cube === undefined ? 'CUBE OUT OF RANGE. NO LINK.' : `CUBE ${cube} OUT OF RANGE. NO LINK.`;
+
 /** The share of the ballast field gone dark, seen when falling from chamber `index` of `count`: it grows each chamber. */
 export const darkFraction = (index: number, count: number): number =>
   0.15 + 0.5 * Math.min(Math.max(index / Math.max(count - 1, 1), 0), 1);

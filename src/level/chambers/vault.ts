@@ -85,3 +85,5 @@ export function buildVault(scene: Scene, skin: SkinRuntime): BuiltLevel {
     vista: true,
   });
 }
+
+export default buildVault;

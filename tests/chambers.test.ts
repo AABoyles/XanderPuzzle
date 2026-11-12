@@ -22,7 +22,9 @@ const { Scene } = await import('@babylonjs/core/scene');
 const { GlowLayer } = await import('@babylonjs/core/Layers/glowLayer');
 await import('../src/babylonSideEffects.ts');
 const { createSkin } = await import('../src/skins/Skin.ts');
-const { CHAMBERS } = await import('../src/level/chambers/index.ts');
+const { CHAMBERS: CATALOG } = await import('../src/level/chambers/index.ts');
+// Chambers load lazily in the game; the tests fetch every module up front and build from them directly.
+const CHAMBERS = await Promise.all(CATALOG.map(async (c) => ({ ...c, build: (await c.load()).default })));
 const { buildLockout } = await import('../src/level/chambers/lockout.ts');
 
 /** Matches PlayerController's collider radius. */

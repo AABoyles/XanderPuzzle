@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   ATTENDANT, CUBE_SERIAL, cubeLabel, darkFraction, descentAlarm, dutyLine, endCard, MASS_RELEASED, NOT_RECOVERED,
   planetLights, PREDECESSOR, SHIFT_REVERTED, stormLine, MARGIN_SIGN, recoveryLine, winTitle, workLog, NO_TRIM,
+  cubeUnreachable,
 } from '../src/narrative.ts';
 
 test('the attendant serial stays AT-0417, one above the reveal crate', () => {
@@ -88,4 +89,9 @@ test('the Descent: alarms escalate with each lever, then the attendant is not re
 test('the storm log says what the Crown is for, and how much of it is left', () => {
   assert.equal(stormLine(0.85), 'STELLAR STORM. CROWN SHIELD HOLDING AT 85%.');
   assert.equal(stormLine(1 - darkFraction(19, 21)), 'STELLAR STORM. CROWN SHIELD HOLDING AT 38%.');
+});
+
+test('a chamber that could not be fetched is logged by its serial', () => {
+  assert.equal(cubeUnreachable('0113'), 'CUBE 0113 OUT OF RANGE. NO LINK.');
+  assert.equal(cubeUnreachable(undefined), 'CUBE OUT OF RANGE. NO LINK.');
 });

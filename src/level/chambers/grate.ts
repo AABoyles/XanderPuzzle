@@ -68,3 +68,5 @@ export function buildGrate(scene: Scene, skin: SkinRuntime): BuiltLevel {
     exitRadius: 2,
   });
 }
+
+export default buildGrate;

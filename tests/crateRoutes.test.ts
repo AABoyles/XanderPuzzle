@@ -14,7 +14,9 @@ const { Vector3 } = await import('@babylonjs/core/Maths/math.vector');
 await import('../src/babylonSideEffects.ts');
 const { createSkin } = await import('../src/skins/Skin.ts');
 const { GravitySystem } = await import('../src/gravity/GravitySystem.ts');
-const { CHAMBERS } = await import('../src/level/chambers/index.ts');
+const { CHAMBERS: CATALOG } = await import('../src/level/chambers/index.ts');
+// Chambers load lazily in the game; the tests fetch every module up front and build from them directly.
+const CHAMBERS = await Promise.all(CATALOG.map(async (c) => ({ ...c, build: (await c.load()).default })));
 
 type P = [number, number, number];
 /** One gravity shift, and where the player stands while the crates settle (default: where they last stood). */

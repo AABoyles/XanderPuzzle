@@ -113,3 +113,32 @@ export function hintFor(id: string | undefined, base: string, tier: number): str
   if (!more) return base;
   return more[Math.min(tier, more.length) - 1];
 }
+
+/**
+ * One chamber visit's place on the ladder: the time played, and the tier now on the HUD. The caller says when a visit
+ * begins (`reset`), feeds it play time (`tick`) and asks whether the hint should change (`rise`).
+ */
+export class HintLadder {
+  /** Simulated seconds played in this chamber across its restarts. */
+  public seconds = 0;
+  /** The tier now shown: 0 is the chamber's own hint. */
+  public shown: 0 | 1 | 2 = 0;
+
+  /** A different chamber has started. A restart of the same one keeps its place. */
+  public reset(): void {
+    this.seconds = 0;
+    this.shown = 0;
+  }
+
+  public tick(dt: number): void {
+    this.seconds += dt;
+  }
+
+  /** The tier to show now if it is higher than the one showing (which it then becomes), else undefined. */
+  public rise(restarts: number): 1 | 2 | undefined {
+    const tier = hintTier(this.seconds, restarts);
+    if (tier <= this.shown) return undefined;
+    this.shown = tier;
+    return tier as 1 | 2;
+  }
+}

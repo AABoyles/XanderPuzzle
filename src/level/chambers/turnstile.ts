@@ -64,3 +64,5 @@ export function buildTurnstile(scene: Scene, skin: SkinRuntime): BuiltLevel {
     exitRadius: 2.5,
   });
 }
+
+export default buildTurnstile;

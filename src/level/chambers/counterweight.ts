@@ -87,3 +87,5 @@ export function buildCounterweight(scene: Scene, skin: SkinRuntime): BuiltLevel 
     vista: true,
   });
 }
+
+export default buildCounterweight;

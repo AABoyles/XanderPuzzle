@@ -69,3 +69,5 @@ export function buildDescent(scene: Scene, skin: SkinRuntime): BuiltLevel {
     vista: true,
   });
 }
+
+export default buildDescent;

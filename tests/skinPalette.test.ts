@@ -12,7 +12,9 @@ const { GlowLayer } = await import('@babylonjs/core/Layers/glowLayer');
 await import('../src/babylonSideEffects.ts');
 const { createSkin, SKIN_IDS } = await import('../src/skins/Skin.ts');
 const { COLOR_ASSIST_AXIS } = await import('../src/skins/axisPalette.ts');
-const { CHAMBERS } = await import('../src/level/chambers/index.ts');
+const { CHAMBERS: CATALOG } = await import('../src/level/chambers/index.ts');
+// Chambers load lazily in the game; the tests fetch every module up front and build from them directly.
+const CHAMBERS = await Promise.all(CATALOG.map(async (c) => ({ ...c, build: (await c.load()).default })));
 const { AXES } = await import('../src/gravity/axes.ts');
 
 const engine = new NullEngine();

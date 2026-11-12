@@ -145,3 +145,5 @@ export function buildOrrery(scene: Scene, skin: SkinRuntime): BuiltLevel {
     exitRadius: 2,
   });
 }
+
+export default buildOrrery;
