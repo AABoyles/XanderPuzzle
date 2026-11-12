@@ -605,10 +605,13 @@ export class Builder {
     return plate;
   }
 
-  /** A solid slab filling [min, max] that opens while all of `plates` are satisfied (pressed; clear if inverted). */
-  public addDoor(min: Vector3, max: Vector3, plates: PressurePlate[]): Door {
-    const door = new Door(this.scene, min, max, plates);
-    this.skin.decorateProp(door.mesh);
+  /**
+   * A pane of glass filling [min, max] that slides into the adjoining wall while all of `plates` are satisfied
+   * (pressed; clear if inverted). `slide` overrides the direction it retracts in (see `Door`). It is not given the
+   * skin's prop treatment: glass casts no shadow.
+   */
+  public addDoor(min: Vector3, max: Vector3, plates: PressurePlate[], slide?: { axis: 0 | 1 | 2; sign: 1 | -1 }): Door {
+    const door = new Door(this.scene, min, max, plates, slide);
     this.dynamics.doors.push(door);
     return door;
   }

@@ -128,39 +128,95 @@ export class PressurePlate {
   }
 }
 
-/** A solid slab that opens while every linked plate is satisfied (pressed, or clear if the plate is inverted). */
+/** How long the pane takes to slide into the wall, and back. */
+const DOOR_SLIDE_SECONDS = 0.7;
+
+/**
+ * A pane of glass that blocks a doorway until every linked plate is satisfied (pressed, or clear if the plate is
+ * inverted), then slides sideways into the wall beside it. It opens or closes for the rules at once; the slide is
+ * only the picture, but the player can walk through only once the pane has cleared most of the doorway.
+ */
 export class Door {
   public isOpen = false;
   public readonly aabb: Aabb;
   public readonly mesh: Mesh;
+  /** 0 closed ... 1 fully in the wall. */
+  private progress = 0;
+  private readonly home: Vector3;
+  private readonly travel: Vector3;
 
+  /**
+   * `slide` picks the in-plane direction the pane retracts in (an axis index 0..2 and a sign). By default it is the
+   * shorter of the two in-plane sides, away from the chamber's centre, which is into the wall for a doorway.
+   */
   constructor(
     scene: Scene,
     min: Vector3,
     max: Vector3,
     public readonly plates: PressurePlate[],
+    slide?: { axis: 0 | 1 | 2; sign: 1 | -1 },
   ) {
     this.aabb = { min: arr(min), max: arr(max) };
     const size = max.subtract(min);
+    const dims = arr(size);
     this.mesh = CreateBox('door', { width: size.x, height: size.y, depth: size.z }, scene);
-    this.mesh.position = min.add(max).scale(0.5);
+    this.home = min.add(max).scale(0.5);
+    this.mesh.position = this.home.clone();
+
+    let axis = slide?.axis;
+    if (axis === undefined) {
+      const thin = dims.indexOf(Math.min(...dims));
+      const inPlane = [0, 1, 2].filter((i) => i !== thin);
+      axis = (dims[inPlane[0]] <= dims[inPlane[1]] ? inPlane[0] : inPlane[1]) as 0 | 1 | 2;
+    }
+    const sign = slide?.sign ?? (arr(this.home)[axis] < 0 ? -1 : 1);
+    const t: Vec3 = [0, 0, 0];
+    t[axis] = sign * dims[axis];
+    this.travel = new Vector3(t[0], t[1], t[2]);
+
     const mat = new StandardMaterial('doorMat', scene);
-    mat.diffuseColor = new Color3(0.25, 0.08, 0.06);
-    mat.emissiveColor = new Color3(0.5, 0.12, 0.08);
+    mat.diffuseColor = new Color3(0.6, 0.85, 1);
+    mat.emissiveColor = new Color3(0.08, 0.14, 0.2);
+    mat.specularColor = new Color3(0.9, 0.9, 0.9);
+    mat.alpha = 0.22;
+    mat.backFaceCulling = false;
     this.mesh.material = mat;
     this.mesh.checkCollisions = true;
+    this.mesh.enableEdgesRendering();
+    this.mesh.edgesWidth = 2;
+    this.mesh.edgesColor.set(0.6, 0.85, 1, 0.8);
   }
 
-  public setOpen(open: boolean): boolean {
-    if (open === this.isOpen) return false;
+  /** Opens or closes the door. With `instant` the pane jumps to its place instead of sliding. */
+  public setOpen(open: boolean, instant = false): boolean {
+    const changed = open !== this.isOpen;
     this.isOpen = open;
-    this.mesh.checkCollisions = !open;
-    this.mesh.visibility = open ? 0.15 : 1;
-    // Dim the glow too, or the glow layer makes an open door look as solid as a closed one.
-    (this.mesh.material as StandardMaterial).emissiveColor = open
-      ? new Color3(0.04, 0.01, 0.01)
-      : new Color3(0.5, 0.12, 0.08);
-    return true;
+    if (instant) {
+      this.progress = open ? 1 : 0;
+      this.place();
+    }
+    this.syncCollision();
+    return changed;
+  }
+
+  /** Slides the pane towards where the rules want it. */
+  public animate(dt: number): void {
+    const goal = this.isOpen ? 1 : 0;
+    if (this.progress === goal) return;
+    const step = dt / DOOR_SLIDE_SECONDS;
+    this.progress = goal > this.progress ? Math.min(goal, this.progress + step) : Math.max(goal, this.progress - step);
+    this.place();
+    this.syncCollision();
+  }
+
+  private place(): void {
+    const e = this.progress * this.progress * (3 - 2 * this.progress);
+    this.mesh.position.copyFrom(this.home).addInPlace(this.travel.scale(e));
+  }
+
+  /** Solid while closed, and while closing; passable once an opening pane has cleared half the doorway. */
+  private syncCollision(): void {
+    this.mesh.checkCollisions = this.isOpen ? this.progress < 0.5 : true;
   }
 }
 
@@ -315,6 +371,7 @@ export class LevelDynamics {
     }
 
     for (const door of this.doors) {
+      door.animate(dt);
       const want = door.plates.every((pl) => pl.satisfied);
       // Never close on top of something standing in the doorway.
       const blocked = overlaps(player, door.aabb) || live.some((c) => overlaps(c.aabb, door.aabb));
@@ -345,7 +402,7 @@ export class LevelDynamics {
       c.sync();
     });
     this.plates.forEach((p, i) => p.setPressed(s.plates[i] ?? p.pressed));
-    this.doors.forEach((d, i) => d.setOpen(s.doors[i] ?? d.isOpen));
+    this.doors.forEach((d, i) => d.setOpen(s.doors[i] ?? d.isOpen, true));
   }
 
   public dispose(): void {
