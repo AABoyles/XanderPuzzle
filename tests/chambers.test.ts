@@ -9,6 +9,7 @@ import type { Aabb } from '../src/physics/boxPhysics.ts';
 import { AXES, axisVec } from '../src/gravity/axes.ts';
 import { placardCorners } from '../src/level/placardText.ts';
 import { darkFraction } from '../src/narrative.ts';
+import { MORE_HINTS } from '../src/hints.ts';
 import type { GravityAxis } from '../src/gravity/axes.ts';
 import { leversExhausted, reachableAxes } from '../src/game/stuck.ts';
 import type { LeverMoves } from '../src/game/stuck.ts';
@@ -62,6 +63,10 @@ before(() => {
 test('chamber ids and names are unique', () => {
   assert.equal(new Set(CHAMBERS.map((c) => c.id)).size, CHAMBERS.length);
   assert.equal(new Set(CHAMBERS.map((c) => c.name)).size, CHAMBERS.length);
+});
+
+test('every chamber has its two extra hints in MORE_HINTS, and there are no others', () => {
+  assert.deepEqual(Object.keys(MORE_HINTS).sort(), CHAMBERS.map((c) => c.id).sort());
 });
 
 test('par: every non-timed chamber has an integer par of at least 1, and timed chambers have none', () => {

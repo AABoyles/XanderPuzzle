@@ -44,6 +44,7 @@ There is no linter or formatter. Match the existing style: 2-space indent, singl
 - `src/ui/HUD.ts`: Babylon GUI overlay. `printIn` is the wipe that opens the view each time the attendant is printed (a plain fade under reduced motion); `printOut` is the same wipe run backwards, played when the attendant is reclaimed at an exit. The wipe's length comes from `src/ui/printTiming.ts` (Babylon-free, tested by Node) and is shorter on a repeat start of the same chamber.
 - `src/ui/PauseMenu.ts`: the pause menu (resume, restart, chamber select, fullscreen, update, settings, controls reference); added on top of the HUD's GUI texture. Keep its controls reference in sync with the real bindings.
 - `src/narrative.ts`: Babylon-free story text in the facility's voice (the attendant serial and the predecessor's, `PREDECESSOR` and `MARGIN_SIGN`; cube labels; duty, recovery and win log lines, `CROWN_BALANCED`; the Descent's alarms, `DESCENT_OUT_OF_TRIM` and the end card) and the per-chamber story state of the fall view (`darkFraction`, `planetLights`); tested by Node. Each chamber's cube serial is the `cube` field in `CHAMBERS`. The design, voices and writing rules are in `NARRATIVE.md`.
+- `src/hints.ts`: the hint ladder, Babylon-free: `hintTier` (time in the chamber and restarts of it) and `hintFor`, and `MORE_HINTS`, each chamber's second and third hint keyed by `id`; tested by Node (`tests/hints.test.ts`). The lines are in NARRATIVE.md's "The ladder".
 - `src/random.ts`: Babylon-free seeded random (`random`) and string hash (`hashString`), so layouts and handwriting repeat exactly.
 - `src/time.ts`: Babylon-free `simDelta`, the one clamped frame delta (`MAX_SIM_DELTA` = 1/20 s) that `main.ts` feeds every system; tested by Node.
 - `src/gravity/shiftSound.ts`: Babylon-free axis -> shift-sound mapping (`shiftTone`); tested by Node.
@@ -62,6 +63,7 @@ There is no linter or formatter. Match the existing style: 2-space indent, singl
 1. Create `src/level/chambers/<name>.ts` exporting `build<Name>(scene, skin): BuiltLevel`. Start by copying a similar chamber; `chimney.ts` is a good, recent example.
 2. Construct a `Builder` with an accent `Color3`, lay out geometry with `slab`/`tube`/`box`, place levers with `addSwitch(position, wallNormal, targetAxis)`, and return `b.finish({ name, hint, spawnPosition, entranceAxis, exitAxis, exitCenter, exitRadius })`.
 3. Add it to `CHAMBERS` in `chambers/index.ts` with a new unique, permanent `id`, the same `name` it passes to `finish()` and, unless it is on a timer, a `par` (the shortest lever route's shift count, which `npm test` checks is a lower bound), then update the chamber list in `README.md` and its status in `ROADMAP.md`.
+4. Give it its two extra hints in `MORE_HINTS` (`src/hints.ts`), keyed by the same `id`: `tests/chambers.test.ts` fails until it has them. Changing a chamber's route means re-checking both lines against the new route, and the chamber's table in NARRATIVE.md.
 
 Conventions and pitfalls:
 

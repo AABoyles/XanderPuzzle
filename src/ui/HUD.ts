@@ -188,6 +188,8 @@ export class HUD {
     this.hintLabel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
     this.hintLabel.top = '50px';
     this.hintLabel.height = '24px';
+    // Grows to fit a line that wraps (a phone's narrow hint column), so a longer hint is never clipped.
+    this.hintLabel.resizeToFit = true;
     this.hintLabel.outlineColor = 'black';
     this.hintLabel.outlineWidth = 3;
     this.ui.addControl(this.hintLabel);
@@ -605,6 +607,11 @@ export class HUD {
   public setLevel(name: string, hint: string): void {
     this.levelLabel.text = name;
     this.hintLabel.text = hint;
+  }
+
+  /** Replaces the hint line under the chamber name with a longer one from the hint ladder (src/hints.ts). */
+  public setHint(text: string): void {
+    this.hintLabel.text = text;
   }
 
   /** Shows one log line for `seconds`, replacing any line still showing. */

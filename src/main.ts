@@ -51,6 +51,7 @@ import {
   setResume,
   type ProgressStorage,
 } from './progress';
+import { hintFor, hintTier } from './hints';
 import { HUD } from './ui/HUD';
 import { PauseMenu } from './ui/PauseMenu';
 import { PlaytestRecorder, loadPlaytest, playtestFileName, savePlaytest } from './playtest';
@@ -296,6 +297,13 @@ const cubeOf = (index: number): string | undefined => (sandbox ? undefined : CHA
  * 0 for the first start of a chamber. Only `startLevel` changes it. Repeats get a quicker print-in.
  */
 let repeatStarts = 0;
+/**
+ * Simulated seconds in this chamber across its restarts (`repeatStarts`): reset only when the chamber changes. Feeds
+ * the hint ladder (`src/hints.ts`), which asks for more help the longer a player is stuck.
+ */
+let chamberSeconds = 0;
+/** The hint tier now on the HUD for this chamber (0 is the chamber's own hint). Reset when the chamber changes. */
+let shownHintTier = 0;
 
 /** The chamber just before a lever the player threw by hand, enough to put it back (see `undoLastShift`). */
 interface ChamberSnapshot {
@@ -465,6 +473,12 @@ function startLevel(index: number): void {
   // Leaving an ending chamber is the final fall, and a long one.
   fall.duration = level.ending ? DESCENT_DURATION : FALL_DURATION;
   hud.setLevel(level.name, level.hint);
+  if (repeatStarts === 0) {
+    chamberSeconds = 0;
+    shownHintTier = 0;
+  }
+  // A restart of the same chamber keeps the hint it had reached.
+  if (shownHintTier > 0) hud.setHint(hintFor(sandbox ? undefined : CHAMBERS[index]?.id, level.hint, shownHintTier));
   const cube = cubeOf(index);
   if (cube !== undefined) hud.log(dutyLine(cube));
   levelTime = 0;
@@ -806,7 +820,16 @@ engine.runRenderLoop(() => {
   if (dt > 0 && !consumed && simulates(game.state, input.lastDevice)) {
     levelTime += dt;
     playtest?.tick(dt);
+    // Time on the title screen does not count towards the hint ladder; neither does a menu or the win.
+    if (game.kind === 'playing' || game.kind === 'falling') chamberSeconds += dt;
     simClock += dt;
+    // The hint line only changes while the player is playing.
+    const tier = hintTier(chamberSeconds, repeatStarts);
+    if (!sandbox && game.kind === 'playing' && tier > shownHintTier) {
+      shownHintTier = tier;
+      hud.setHint(hintFor(CHAMBERS[levelIndex]?.id, level.hint, tier));
+      beep(440, 440, 0.12, 'sine', 0.04);
+    }
     const wasGrounded = player.isGrounded;
     player.update(dt, frame);
     if (!wasGrounded && player.isGrounded) sound.play('land');
@@ -1067,6 +1090,8 @@ if (import.meta.env.DEV) {
       if (fall.falling) fall.time = fall.duration;
     },
     level: () => levelIndex,
+    /** The hint tier shown for this chamber visit: 0 (its own hint), 1 or 2 (the ladder in `src/hints.ts`). */
+    hintTier: () => shownHintTier,
     startLevel: (index: number) => {
       game.send({ type: 'advance' }); // leaves the win screen if it is up
       startLevel(index);
