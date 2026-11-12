@@ -31,5 +31,7 @@ jobs:
         run: npm ci
       - name: Typecheck
         run: npx tsc -b
+      - name: Typecheck tests and e2e
+        run: npx tsc -p tsconfig.tests.json
       - name: Unit tests
         run: npm test

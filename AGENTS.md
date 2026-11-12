@@ -13,13 +13,13 @@ npm install
 npm run dev       # Vite dev server on :5173 (host: true)
 npm run build     # tsc -b && vite build -> dist/
 npm test          # node --experimental-strip-types --test tests/*.test.ts (Node 22.6+)
-npx tsc -b        # typecheck only
+npm run typecheck # tsc -b (src) and tsc -p tsconfig.tests.json (tests/, e2e/)
 npm run lint      # ESLint (eslint.config.js)
 npm run format    # Prettier --write (.prettierrc.json); format:check is the read-only check
 npm run test:e2e  # Playwright chamber smoke tests (needs `npx playwright install chromium` once)
 ```
 
-Before you call a change done, run `npx tsc -b`, `npm test`, `npm run lint` and `npm run format:check`. CI (`.github/workflows/test.yml`) runs the first two on every PR and push to `main`, and the job name `Unit tests` is a required status check, so don't rename it. `lint.yml` (job `Lint and format`) runs the last two. `build.yml` deploys `dist/` to Pages on push to `main`.
+Before you call a change done, run `npm run typecheck`, `npm test`, `npm run lint` and `npm run format:check`. CI (`.github/workflows/test.yml`) runs them on every PR and push to `main`, and the job name `Unit tests` is a required status check, so don't rename it. `lint.yml` (job `Lint and format`) runs the last two. `build.yml` deploys `dist/` to Pages on push to `main`.
 
 ESLint (typescript-eslint recommended, with `eslint-config-prettier` turning off style rules) and Prettier are set up; run `npm run format` rather than hand-formatting. Prettier sets the style: 2-space indent, single quotes, semicolons, lines up to 120 characters. Keep `strict` TypeScript.
 

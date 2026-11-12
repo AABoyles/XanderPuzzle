@@ -65,6 +65,9 @@ type Debug = {
   exit(): { center: number[]; radius: number; button?: number[] };
   simTime(): number;
   setRenderScale(level: number): void;
+  begin(): void;
+  undo(): boolean;
+  undoDepth(): number;
 };
 
 const dbg = <T>(page: Page, fn: (d: Debug) => T) => page.evaluate(`(${fn.toString()})(window.__debug)`) as Promise<T>;

@@ -9,7 +9,7 @@ export function setupHeadless(): void {
   register('./hooks.mjs', import.meta.url);
   // Skins paint procedural textures on an OffscreenCanvas (via DynamicTexture). There is no DOM here, so give them a
   // canvas whose 2D context accepts every call and draws nothing. Textures stay blank; structure is all we test.
-  const noop = new Proxy(function () {}, {
+  const noop: any = new Proxy(function () {}, {
     get: (_t, prop) => (prop === 'canvas' ? undefined : prop === Symbol.toPrimitive ? () => 0 : noop),
     set: () => true,
     apply: () => noop,

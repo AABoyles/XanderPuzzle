@@ -124,11 +124,8 @@ The cubes are a field of counterweights, but you only ever see one from inside. 
 - **A check that each chamber's third hint agrees with its route**: its "first lever" should be the first lever in the smoke-test row.
 - **Cut first-load size**: Babylon is nearly all of the 1.6 MB. Load the space backdrop, the non-default skins and the pause menu on demand; measure before and after.
 - **Audio weight**: 2.6 MB of the build. Re-encode the drone and check bitrates.
-- **Split the large files**: `Skin.ts` (one file per skin), `SpaceBackdrop.ts` (planet, field, Crown, streaks) and `HUD.ts` (overlays apart from the play HUD).
 - **Group `App`'s per-attempt fields** (`levelTime`, `shifts`, `reclaimHold`, `outOfTrim`, `repeatStarts`) into one `attempt` object with a single reset, so `startLevel` cannot miss one.
 - **Chamber data over chamber code**: describe simple chambers as data that one builder reads, which would allow a level editor and checks that need no build.
-- **Typecheck the tests**: `tests/` and `e2e/` are outside `tsconfig.json`.
-- **Go back to branches and pull requests** for changes to `main`, so the required check runs before a merge.
 
 ## Further out
 
