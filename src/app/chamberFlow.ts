@@ -9,6 +9,7 @@ import { createSkin, SKIN_IDS, SKIN_LABELS } from '../skins/Skin';
 import {
   beep,
   cubeOf,
+  GUEST_INDEX,
   nextIndex,
   persistPlaytest,
   persistProgress,
@@ -16,7 +17,8 @@ import {
   reducedMotionActive,
 } from './App';
 import type { App } from './App';
-import { sandbox, store } from './flags';
+import { hashForChamber } from '../level/route';
+import { leaveShared, sandbox, store } from './flags';
 
 /**
  * Chamber flow: starting, restarting, leaving and picking chambers, and swapping the skin under one. Chamber code is
@@ -45,7 +47,7 @@ export function printIn(app: App, repeats = 0): void {
 
 /** The factory of a chamber whose code is already here; `whenLoaded` is how a caller makes sure of that. */
 export function factory(app: App, index: number): LevelFactory {
-  const build = app.chambers.get(index);
+  const build = index === GUEST_INDEX ? app.guest : app.chambers.get(index);
   if (!build) throw new Error(`Chamber ${index} was started before its code was loaded`);
   return build;
 }
@@ -56,7 +58,7 @@ export function factory(app: App, index: number): LevelFactory {
  * and nothing else changes, so the player can try again.
  */
 export function whenLoaded(app: App, index: number, then: () => void): void {
-  if (app.chambers.get(index)) {
+  if (index === GUEST_INDEX || app.chambers.get(index)) {
     then();
     return;
   }
@@ -75,9 +77,12 @@ export function startLevel(app: App, index: number): void {
   app.level.dispose();
   app.repeatStarts = index === app.levelIndex ? app.repeatStarts + 1 : 0;
   app.levelIndex = index;
+  // The address bar names the chamber, so copying it shares this chamber (`#<id>`); `replaceState` fires no event.
+  if (!sandbox)
+    history.replaceState(null, '', location.pathname + location.search + hashForChamber(CHAMBERS[index].id));
   app.playtest?.enter(CHAMBERS[index].id);
   persistPlaytest(app);
-  if (progressWritable) {
+  if (progressWritable()) {
     setResume(app.progress, CHAMBERS[index].id);
     persistProgress(app);
   }
@@ -133,7 +138,7 @@ export function syncPrinter(app: App): void {
 /** The player has left an ending chamber: the clear is saved now, and the final fall begins. */
 export function beginDescent(app: App): void {
   const chamberId = CHAMBERS[app.levelIndex]?.id;
-  if (progressWritable && chamberId !== undefined) {
+  if (progressWritable() && chamberId !== undefined) {
     recordWin(app.progress, chamberId, app.levelTime, app.shifts);
     persistProgress(app);
   }
@@ -146,7 +151,7 @@ export function beginDescent(app: App): void {
 export function advance(app: App): void {
   if (!transition(app.game.state, { type: 'advance' })) return;
   const next = nextIndex(app);
-  if (!app.chambers.get(next)) {
+  if (next !== GUEST_INDEX && !app.chambers.get(next)) {
     // Its code is still on the way: the win screen stays up until it lands, then this runs again.
     whenLoaded(app, next, () => advance(app));
     return;
@@ -171,6 +176,11 @@ export function pickLevel(app: App, index: number, grabPointer = true): void {
     return;
   }
   const immediate = app.touch.active || !grabPointer;
+  if (app.guest) {
+    // Leaving a shared chamber for the game: from here the page is an ordinary one, with progress and hints.
+    app.guest = undefined;
+    leaveShared();
+  }
   app.game.send({ type: 'pick', immediate });
   startLevel(app, index);
   if (!immediate) {

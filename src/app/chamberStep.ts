@@ -148,7 +148,7 @@ export function stepChamber(app: App, dt: number, frame: InputFrame): void {
     app.sound.play('reclaim');
     const chamberId = CHAMBERS[app.levelIndex]?.id;
     const best = chamberId === undefined ? undefined : app.progress.best[chamberId];
-    if (progressWritable && chamberId !== undefined) {
+    if (progressWritable() && chamberId !== undefined) {
       recordWin(app.progress, chamberId, app.levelTime, app.shifts);
       persistProgress(app);
     }

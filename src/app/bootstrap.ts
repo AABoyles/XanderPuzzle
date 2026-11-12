@@ -15,11 +15,13 @@ import { InputManager } from '../input/InputManager';
 import { KeyboardMouseInput } from '../input/KeyboardMouseInput';
 import { TouchInput } from '../input/TouchInput';
 import { CHAMBERS, ChamberLoader, SANDBOX } from '../level/chambers';
+import { sharedGuest } from './sharedChamber';
 import { CratePreview } from '../level/CratePreview';
 import { loadFonts } from '../level/fonts';
 import { PlayerController } from '../player/PlayerController';
 import { PlaytestRecorder, loadPlaytest, playtestFileName } from '../playtest';
-import { loadProgress, resetProgress, resumeIndex } from '../progress';
+import { furthestCleared, isUnlocked, loadProgress, resetProgress, resumeIndex } from '../progress';
+import { routeFromHash } from '../level/route';
 import { isFullscreen } from '../pwa/fullscreen';
 import { loadSettings, saveSettings } from '../settings';
 import { createSkin, DEFAULT_SKIN, SKIN_IDS, SKIN_LABELS, SkinId } from '../skins/Skin';
@@ -31,6 +33,7 @@ import {
   beep,
   CHAMBER_IDS,
   fullscreenMode,
+  GUEST_INDEX,
   persistPlaytest,
   progressStorage,
   settingsStorage,
@@ -39,7 +42,7 @@ import {
 import type { App } from './App';
 import { applySettings } from './applySettings';
 import { ChamberSelect } from './ChamberSelect';
-import { params, playtesting, sandbox, storageAvailable, store } from './flags';
+import { params, playtesting, sandbox, shared, storageAvailable, store, unlockAll } from './flags';
 import { Sky } from './Sky';
 
 /**
@@ -59,12 +62,24 @@ export async function createApp(): Promise<App> {
   glow.intensity = 0.7;
 
   const gravity = new GravitySystem('-Y', 22);
-  const chambers = new ChamberLoader(sandbox ? [SANDBOX] : CHAMBERS);
+  // A shared chamber is a guest in the game: it is built from its spec, and the chamber list is the real one.
+  const guest = await sharedGuest();
+  const chambers = new ChamberLoader(params.has('sandbox') ? [SANDBOX] : CHAMBERS);
   const playtest = playtesting ? new PlaytestRecorder(() => new Date().toISOString()) : undefined;
   // Progress is keyed by chamber id.
   const progress = loadProgress(progressStorage(), CHAMBER_IDS);
   // Resume at the last chamber reached.
-  const levelIndex = sandbox ? 0 : Math.min(resumeIndex(progress, CHAMBER_IDS), chambers.count - 1);
+  // `#<id>` names a chamber to start at; it must be open, like a pick from the chamber list.
+  const route = routeFromHash(location.hash);
+  const routed = route?.kind === 'chamber' ? CHAMBER_IDS.indexOf(route.id) : -1;
+  const routedOpen = routed >= 0 && isUnlocked(routed, furthestCleared(progress, CHAMBER_IDS), unlockAll);
+  const levelIndex = guest
+    ? GUEST_INDEX
+    : sandbox
+      ? 0
+      : routedOpen
+        ? routed
+        : Math.min(resumeIndex(progress, CHAMBER_IDS), chambers.count - 1);
   // Skin: `?skin=station|axis|monolith|draft|neon`, else the last one picked with K, else Station.
   const skinParam = params.get('skin') as SkinId | null;
   const storedSkin = Math.floor(store.get('skin') ?? SKIN_IDS.indexOf(DEFAULT_SKIN));
@@ -78,7 +93,7 @@ export async function createApp(): Promise<App> {
   // Placards draw at once in fallback fonts and redraw when the bundled ones arrive.
   void loadFonts();
   // The first chamber's code is fetched before anything is built; the rest arrive as they are needed.
-  const level = (await chambers.load(levelIndex))(scene, skin);
+  const level = (guest ?? (await chambers.load(levelIndex)))(scene, skin);
   const keyboardMouse = new KeyboardMouseInput(canvas);
   const touch = new TouchInput();
   const gamepad = new GamepadInput();
@@ -131,7 +146,7 @@ export async function createApp(): Promise<App> {
         }
       : undefined,
     fullscreen: () => ({ kind: fullscreenMode(), on: isFullscreen() }),
-    hasChamberSelect: !sandbox,
+    hasChamberSelect: !sandbox || shared,
   });
   pauseMenu.setDevice(input.lastDevice);
   input.onDeviceChange = (device) => {
@@ -178,6 +193,7 @@ export async function createApp(): Promise<App> {
     hints: new HintLadder(),
     undoStack: new UndoStack<ChamberSnapshot>(),
     cratePreview: new CratePreview(),
+    guest,
     chamberSelect: new ChamberSelect(
       hud,
       () => app.progress,

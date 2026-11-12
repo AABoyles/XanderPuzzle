@@ -45,7 +45,7 @@ Shiftbound is an installable web app that works offline after the first visit.
 Twenty-one chambers ship with the game, each teaching or testing one idea:
 
 1. **The Vault** (`-Y → +Z → +X`) — a hollow cube; drop through the hole in the final "floor".
-2. **The Shaft** (`-Y → +X → +Y`) — a 40-unit vertical shaft whose exit door is at the top, upside down. Partway up the climb a hole in the wall you are walking on opens onto space; walk round it.
+2. **The Shaft** (`-Y → +X → +Y`) — a 40-unit vertical shaft whose exit door is at the top, upside down. Partway up the climb a slot across the wall you are walking on opens onto space; jump it.
 3. **The Divide** (`-Y → +X → +Z`) — a partition too tall to jump, but not too tall to walk around. A hole in the far wall opens onto space.
 4. **The Spiral** (`-Y → -X → +Y → +X`) — three shifts, each lever reachable only from the surface the last one put you on. A fourth lever leads nowhere: it turns a wall with a hole in it into the floor beneath you.
 5. **The Chimney** (`-Y → +Z`) — a long tunnel one lever turns into a 60-unit pit with no bottom; steer mid-fall onto the ledge below the exit door, past a decoy ledge that catches anyone who drops straight down. Miss both and you fall out of the cube.

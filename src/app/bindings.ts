@@ -1,5 +1,6 @@
 import { escapePauses } from '../game/GameState';
 import { CHAMBERS } from '../level/chambers/catalog';
+import { routeFromHash } from '../level/route';
 import { isFullscreen, onFullscreenChange, toggleFullscreen } from '../pwa/fullscreen';
 import { registerServiceWorker } from '../pwa/register';
 import type { App } from './App';
@@ -87,6 +88,11 @@ export function bindEvents(app: App): void {
     app.pauseMenu.refresh();
   };
   window.addEventListener('resize', resize);
+  // Pasting a chamber link (`#shaft`, `#c=...`) into a tab that is already open changes only the fragment, which the
+  // browser does not reload for: load the page afresh so the link opens its chamber.
+  window.addEventListener('hashchange', () => {
+    if (routeFromHash(location.hash) !== undefined) location.reload();
+  });
   window.addEventListener('orientationchange', () => {
     resize();
     setTimeout(resize, 250); // some browsers report the old size until the rotation settles

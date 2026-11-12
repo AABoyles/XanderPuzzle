@@ -120,6 +120,6 @@ The cubes are a field of counterweights, but you only ever see one from inside. 
 ## Further out
 
 - **A level editor** in the browser, built on chamber-as-data, with the headless invariants run live.
-- **Shared chambers**: export a chamber as a URL fragment; no backend needed.
+- **Shared chambers**: a chamber spec travels in a URL fragment (`#c=`, compressed) and opens as a single room; `npm run share -- <id>` makes a link. Still to do: an in-game export, which waits on the level editor, and specs that can carry crates, doors and plates.
 - **A daily chamber**: one seeded arrangement of an existing room per day, with a local best.
 - **Localisation**: the strings are already gathered in `narrative.ts`, `hints.ts` and `prompts.ts`; placards would need per-language fitting.
