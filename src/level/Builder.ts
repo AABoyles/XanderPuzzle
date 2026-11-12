@@ -1,4 +1,4 @@
-import { Color3 } from '@babylonjs/core/Maths/math.color';
+import { Color3, Color4 } from '@babylonjs/core/Maths/math.color';
 import { Material } from '@babylonjs/core/Materials/material';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
 import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder';
@@ -458,16 +458,22 @@ export class Builder {
     this.solids.push({ min: [min.x, min.y, min.z], max: [max.x, max.y, max.z] });
   }
 
-  /** A crate barrier: a faint field that stops crates but the player walks straight through. */
+  /**
+   * A crate barrier: a see-through field that stops crates but the player walks straight through. Its edges are
+   * outlined so the field reads as a thing even in the dark skins.
+   */
   public barrier(min: Vector3, max: Vector3): void {
     const mat = this.ownMaterial(new StandardMaterial(`barrierMat_${this.n}`, this.scene));
     mat.diffuseColor = new Color3(1, 0.6, 0.2);
-    mat.emissiveColor = new Color3(0.5, 0.25, 0.05);
-    mat.alpha = 0.12;
+    mat.emissiveColor = new Color3(0.8, 0.42, 0.12);
+    mat.alpha = 0.32;
     mat.backFaceCulling = false;
     const m = this.plainBox('barrier', min, max, mat);
     m.checkCollisions = false;
     m.isPickable = false;
+    m.enableEdgesRendering();
+    m.edgesWidth = 2;
+    m.edgesColor = new Color4(1, 0.6, 0.2, 0.9);
     this.solids.push({ min: [min.x, min.y, min.z], max: [max.x, max.y, max.z] });
   }
 
