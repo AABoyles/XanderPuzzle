@@ -7,8 +7,12 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "typecheck": "tsc -b && tsc -p tsconfig.tests.json",
     "preview": "vite preview",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test:e2e": "playwright test"
   },
   "dependencies": {
@@ -17,8 +21,15 @@
     "@babylonjs/materials": "^7.54.2"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.65.0",
+    "@types/node": "^24.19.2",
+    "eslint": "^10.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.1",
     "typescript": "^5.6.3",
+    "typescript-eslint": "^8.72.2",
     "vite": "^8.3.7"
   }
 }

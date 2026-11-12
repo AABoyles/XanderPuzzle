@@ -11,7 +11,9 @@ function networkFirst(pathname, isNav) {
 self.addEventListener('install', (event) => {
   const base = self.registration.scope;
   event.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(PRECACHE.map((p) => new Request(new URL(p, base).href, { cache: 'reload' })))),
+    caches
+      .open(CACHE)
+      .then((c) => c.addAll(PRECACHE.map((p) => new Request(new URL(p, base).href, { cache: 'reload' })))),
   );
 });
 
@@ -23,7 +25,9 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((names) => Promise.all(names.filter((n) => n.startsWith(PREFIX) && n !== CACHE).map((n) => caches.delete(n))))
+      .then((names) =>
+        Promise.all(names.filter((n) => n.startsWith(PREFIX) && n !== CACHE).map((n) => caches.delete(n))),
+      )
       .then(() => self.clients.claim()),
   );
 });
@@ -45,7 +49,9 @@ self.addEventListener('fetch', (event) => {
           return res;
         })
         .catch(() =>
-          caches.match(req, { ignoreSearch: true }).then((r) => r || caches.match(new URL('./', self.registration.scope).href)),
+          caches
+            .match(req, { ignoreSearch: true })
+            .then((r) => r || caches.match(new URL('./', self.registration.scope).href)),
         ),
     );
   } else {

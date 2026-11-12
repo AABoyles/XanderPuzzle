@@ -4,7 +4,12 @@ import { GamepadInput, LOOK_SPEED } from '../src/input/GamepadInput.ts';
 import type { PadLike } from '../src/input/GamepadInput.ts';
 import { InputManager } from '../src/input/InputManager.ts';
 import {
-  emptyFrame, frameHasInput, lookStick, mergeFrames, radialDeadzone, stickVector,
+  emptyFrame,
+  frameHasInput,
+  lookStick,
+  mergeFrames,
+  radialDeadzone,
+  stickVector,
 } from '../src/input/InputSource.ts';
 import type { InputDevice, InputFrame, InputSource } from '../src/input/InputSource.ts';
 
@@ -22,9 +27,15 @@ test('mergeFrames sums look and ORs buttons', () => {
 });
 
 test('mergeFrames clamps combined movement to unit length', () => {
-  const m = mergeFrames([{ ...emptyFrame(), moveZ: 1 }, { ...emptyFrame(), moveX: 1 }]);
+  const m = mergeFrames([
+    { ...emptyFrame(), moveZ: 1 },
+    { ...emptyFrame(), moveX: 1 },
+  ]);
   assert.ok(Math.abs(Math.hypot(m.moveX, m.moveZ) - 1) < 1e-9);
-  const small = mergeFrames([{ ...emptyFrame(), moveX: 0.3 }, { ...emptyFrame(), moveZ: 0.2 }]);
+  const small = mergeFrames([
+    { ...emptyFrame(), moveX: 0.3 },
+    { ...emptyFrame(), moveZ: 0.2 },
+  ]);
   assert.equal(small.moveX, 0.3);
   assert.equal(small.moveZ, 0.2);
 });
@@ -51,7 +62,10 @@ test('stickVector clamps to unit length and rescales past the deadzone', () => {
 });
 
 test('mergeFrames ORs restart, undo and pause', () => {
-  const m = mergeFrames([{ ...emptyFrame(), restart: true }, { ...emptyFrame(), pause: true }]);
+  const m = mergeFrames([
+    { ...emptyFrame(), restart: true },
+    { ...emptyFrame(), pause: true },
+  ]);
   assert.ok(m.restart && m.pause && !m.undo);
   assert.ok(mergeFrames([emptyFrame(), { ...emptyFrame(), undo: true }]).undo);
 });

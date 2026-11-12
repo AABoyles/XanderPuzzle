@@ -50,12 +50,18 @@ export function layoutField(seed: number, darkFraction: number, count = FIELD_CO
     // Uniform over the ring's area, so the field isn't bunched at the fall line.
     const r = Math.sqrt(FIELD_CLEARANCE ** 2 + rand() * (FIELD_RADIUS ** 2 - FIELD_CLEARANCE ** 2));
     const theta = rand() * Math.PI * 2;
-    const position: Vec3 = [r * Math.cos(theta), FIELD_BOTTOM + rand() * (FIELD_TOP - FIELD_BOTTOM), r * Math.sin(theta)];
+    const position: Vec3 = [
+      r * Math.cos(theta),
+      FIELD_BOTTOM + rand() * (FIELD_TOP - FIELD_BOTTOM),
+      r * Math.sin(theta),
+    ];
     const dark = rand() < darkFraction;
     const axis = dark ? randomUnit(rand) : frameAxis(Math.floor(rand() * 3));
     const rate = dark ? 0.05 + rand() * 0.25 : 4 + rand() * 6;
     const phase = rand() * 20;
-    const clear = (position[1] < CHAMBER_DEPTH || r > CHAMBER_CLEARANCE) && cubes.every((c) => dist(c.position, position) > (c.size + size) * 0.9);
+    const clear =
+      (position[1] < CHAMBER_DEPTH || r > CHAMBER_CLEARANCE) &&
+      cubes.every((c) => dist(c.position, position) > (c.size + size) * 0.9);
     if (clear) cubes.push({ position, size, dark, axis, rate, phase });
   }
   return cubes;

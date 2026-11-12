@@ -48,7 +48,8 @@ export class AudioEngine {
   public unlock(): void {
     try {
       if (!this.ctx) {
-        const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        const Ctor =
+          window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
         if (!Ctor) return;
         this.ctx = new Ctor();
         this.sfxBus = this.ctx.createGain();

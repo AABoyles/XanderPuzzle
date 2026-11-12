@@ -47,7 +47,7 @@ export function buildBallast(scene: Scene, skin: SkinRuntime): BuiltLevel {
   // On the east wall above the plate, upright once it is the floor.
   b.placard(V(R, -4, 4), V(-1, 0, 0), '+X', 'BALLAST MASS SEATS HERE\nDO NOT OBSTRUCT', { width: 6, top: V(0, 1, 0) });
   // In the trough, under the crate until it slides out.
-  b.note(V(-4.6, -R, 4), V(0, 1, 0), '-Y', 'The crates don\'t need us.\nThey just need someone to throw the lever.', {
+  b.note(V(-4.6, -R, 4), V(0, 1, 0), '-Y', "The crates don't need us.\nThey just need someone to throw the lever.", {
     width: 6.4,
     lineHeight: 0.45,
     top: V(0, 0, 1),
@@ -63,3 +63,5 @@ export function buildBallast(scene: Scene, skin: SkinRuntime): BuiltLevel {
     exitRadius: 2,
   });
 }
+
+export default buildBallast;

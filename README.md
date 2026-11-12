@@ -124,7 +124,7 @@ Gravity-driven crates, pressure plates and plate-controlled doors (`Builder.addC
 - `src/input/` — `InputSource` (the shared frame of move/look/jump/use/restart/pause that every device produces, dependency-free and unit-tested), `InputManager` (reads and merges the sources once per frame and tracks the last-used device), `KeyboardMouseInput` (WASD, pointer-lock mouse look), `TouchInput` (on-screen controls) and `GamepadInput` (standard-mapping pads).
 - `src/player/PlayerController.ts` — reads and merges the input sources, and drives a kinematic body whose movement basis, ground checks, and camera orientation all derive from a smoothly-interpolated "up" vector, so a gravity flip reads as a coherent tumble into the new orientation rather than a snap.
 - `src/level/Builder.ts` — the `Builder` that chambers are written against: `slab` (wall with optional hole), `tube` (corridor/chamber), `box`, `grate`/`glass`/`barrier`, `addSwitch`/`addRelativeSwitch`/`addSequenceSwitch`, `addCrate`/`addPlate`/`addDoor`, `placard`/`note`. `finish()` adds the attendant printer at the spawn point.
-- `src/level/chambers/` — one file per chamber; `index.ts` holds `CHAMBERS`, the play order with each chamber's name (shown in the chamber select). To add a chamber, add a file and list it there.
+- `src/level/chambers/` — one file per chamber; `catalog.ts` holds `CHAMBERS`, the play order with each chamber's name (shown in the chamber select) and how to load it. Chamber code is loaded on demand: each file is its own chunk of the build, the next chamber is fetched while you play the current one, and the service worker precaches them all for offline play. To add a chamber, add a file and list it there.
 - `src/physics/boxPhysics.ts` — dependency-free swept axis-aligned box physics used by crates.
 - `src/level/Dynamics.ts` — crates, pressure plates, doors, and the per-frame update that ties them together.
 - `src/level/GravitySwitch.ts` — the wall-mounted lever interactable: fixed, relative or sequence, optionally one-shot.
@@ -134,6 +134,7 @@ Gravity-driven crates, pressure plates and plate-controlled doors (`Builder.addC
 - `src/ui/PauseMenu.ts` — the pause menu: resume, restart, chamber select, fullscreen, settings and the controls reference.
 - `src/settings.ts` — Babylon-free settings model (defaults, limits, parsing, load/save), tested by Node.
 - `src/pwa/` — fullscreen helpers, service-worker registration and the offline cache policy.
-- `src/main.ts` — scene bootstrap, skin switching, render loop, win-condition check, and deciding when the title's outside view is up.
+- `src/main.ts` — the entry point: builds the game, wires it up and starts the frame loop.
+- `src/app/` — the running game: `App` (the one object holding every service and all shared state), `bootstrap` (builds it), `chamberFlow` (start, restart, advance, pick, skin), `chamberStep` (one simulated frame), `shifts` (undo and the stuck notice), `menus`, `bindings` (page events), `frame` (the loop), `Sky` (the camera in use and the space outside the chamber) and the `__debug` hook.
 - `src/title/` — the title's outside view of the cube (`TitleView.ts`: its camera and backdrop options; `titleShot.ts`: the Babylon-free maths).
 - `src/progress.ts` — Babylon-free versioned, id-keyed progress (unlock rule, best times, fewest shifts, migration, reset), tested by Node.

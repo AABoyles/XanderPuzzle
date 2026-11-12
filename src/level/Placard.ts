@@ -78,7 +78,14 @@ export function createPlacard(scene: Scene, name: string, spec: PlacardSpec): { 
 
 type Pixels = { w: number; h: number; scale: number };
 
-function drawStencil(ctx: CanvasRenderingContext2D, lines: string[], lh: number, px: Pixels, ink: PlacardInk, text: string) {
+function drawStencil(
+  ctx: CanvasRenderingContext2D,
+  lines: string[],
+  lh: number,
+  px: Pixels,
+  ink: PlacardInk,
+  text: string,
+) {
   const pad = PADDING * px.scale;
   const fontPx = lh * 0.78;
   ctx.font = `${fontPx}px ${STENCIL_FONT}`;

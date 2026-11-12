@@ -1,13 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { HINT_AFTER, MORE_HINTS, hintFor, hintTier } from '../src/hints.ts';
+import { HINT_AFTER, HintLadder, MORE_HINTS, hintFor, hintTier } from '../src/hints.ts';
+import { CHAMBERS } from '../src/level/chambers/catalog.ts';
 
-// The 21 chamber ids in play order. tests/chambers.test.ts checks these against CHAMBERS (which needs Babylon).
-const IDS = [
-  'vault', 'shaft', 'divide', 'spiral', 'chimney', 'staircase', 'atrium', 'ballast', 'footing', 'stopper',
-  'counterweight', 'deadman', 'turnstile', 'lockout', 'grate', 'sieve', 'surplus', 'tide', 'pendulum', 'orrery',
-  'descent',
-];
+// The chamber ids in play order, from the catalog (Babylon-free, so Node reads it directly).
+const IDS = CHAMBERS.map((c) => c.id);
 
 test('the ladder: time alone, restarts alone, and neither', () => {
   assert.equal(hintTier(0, 0), 0);
@@ -32,7 +29,7 @@ test('hintFor: tier 0, an unknown id and an undefined id show the base hint', ()
   assert.equal(hintFor(undefined, 'Base.', 2), 'Base.');
 });
 
-test('hintFor: tiers 1 and 2 show the chamber\'s second and third lines', () => {
+test("hintFor: tiers 1 and 2 show the chamber's second and third lines", () => {
   assert.equal(hintFor('vault', 'Base.', 1), MORE_HINTS.vault[0]);
   assert.equal(hintFor('vault', 'Base.', 2), MORE_HINTS.vault[1]);
   assert.notEqual(MORE_HINTS.vault[0], MORE_HINTS.vault[1]);
@@ -68,4 +65,18 @@ test('no extra line uses a compass word or a room letter: the player has no comp
       assert.doesNotMatch(line, /\broom [abcd]\b/i, `${id}: ${line}`);
     }
   }
+});
+
+test('a visit climbs the ladder once per tier, keeps its place across restarts, and starts over on reset', () => {
+  const ladder = new HintLadder();
+  assert.equal(ladder.rise(0), undefined);
+  ladder.tick(HINT_AFTER[0].seconds);
+  assert.equal(ladder.rise(0), 1);
+  assert.equal(ladder.rise(0), undefined, 'the same tier is not announced twice');
+  assert.equal(ladder.shown, 1);
+  assert.equal(ladder.rise(HINT_AFTER[1].restarts), 2, 'restarts alone reach the next tier');
+  ladder.reset();
+  assert.equal(ladder.shown, 0);
+  assert.equal(ladder.seconds, 0);
+  assert.equal(ladder.rise(0), undefined);
 });

@@ -2,7 +2,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import {
-  AUDIO_FILES, IMPACT_FULL, IMPACT_QUIET, impactGain, MUSIC, pickVariant, SOUNDS, windCutoff, windGain, windLevel,
+  AUDIO_FILES,
+  IMPACT_FULL,
+  IMPACT_QUIET,
+  impactGain,
+  MUSIC,
+  pickVariant,
+  SOUNDS,
+  windCutoff,
+  windGain,
+  windLevel,
 } from '../src/audio/sounds.ts';
 
 test('every sound file the game asks for is in public/audio, with the credits', () => {

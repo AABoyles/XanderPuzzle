@@ -1,8 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  clampSettings, DEFAULT_SETTINGS, fovToRadians, LIMITS, loadSettings, masterGain, musicGain, parseSettings, saveSettings,
-  SETTINGS_KEY, stepSetting,
+  clampSettings,
+  DEFAULT_SETTINGS,
+  fovToRadians,
+  LIMITS,
+  loadSettings,
+  masterGain,
+  musicGain,
+  parseSettings,
+  saveSettings,
+  SETTINGS_KEY,
+  stepSetting,
 } from '../src/settings.ts';
 import type { SettingsStorage } from '../src/settings.ts';
 
@@ -34,7 +43,13 @@ test('the colour-blind palette is off by default and survives save and load', ()
 });
 
 test('clampSettings keeps numbers inside their limits', () => {
-  const s = clampSettings({ mouseSensitivity: 99, touchSensitivity: -1, volume: 500, fov: 5, gamepadLookSpeed: Infinity });
+  const s = clampSettings({
+    mouseSensitivity: 99,
+    touchSensitivity: -1,
+    volume: 500,
+    fov: 5,
+    gamepadLookSpeed: Infinity,
+  });
   assert.equal(s.mouseSensitivity, LIMITS.mouseSensitivity.max);
   assert.equal(s.touchSensitivity, LIMITS.touchSensitivity.min);
   assert.equal(s.volume, 100);
@@ -56,8 +71,12 @@ test('unavailable, throwing or corrupt storage gives defaults without throwing',
   assert.deepEqual(loadSettings(null), DEFAULT_SETTINGS);
   assert.deepEqual(loadSettings(undefined), DEFAULT_SETTINGS);
   const broken: SettingsStorage = {
-    getItem() { throw new Error('denied'); },
-    setItem() { throw new Error('quota'); },
+    getItem() {
+      throw new Error('denied');
+    },
+    setItem() {
+      throw new Error('quota');
+    },
   };
   assert.deepEqual(loadSettings(broken), DEFAULT_SETTINGS);
   assert.equal(saveSettings(broken, DEFAULT_SETTINGS), false);
@@ -73,7 +92,10 @@ test('stepSetting moves one step, snaps FOV to whole degrees and stops at the li
   assert.equal(stepSetting(DEFAULT_SETTINGS, 'fov', -1).fov, 56);
   assert.equal(stepSetting({ ...DEFAULT_SETTINGS, volume: 100 }, 'volume', 1).volume, 100);
   assert.equal(stepSetting({ ...DEFAULT_SETTINGS, volume: 0 }, 'volume', -1).volume, 0);
-  assert.equal(stepSetting({ ...DEFAULT_SETTINGS, touchSensitivity: 0.25 }, 'touchSensitivity', -1).touchSensitivity, 0.25);
+  assert.equal(
+    stepSetting({ ...DEFAULT_SETTINGS, touchSensitivity: 0.25 }, 'touchSensitivity', -1).touchSensitivity,
+    0.25,
+  );
 });
 
 test('masterGain follows volume and mute', () => {

@@ -42,7 +42,8 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   fov: DEFAULT_FOV_DEGREES,
 };
 
-export type NumericSetting = 'mouseSensitivity' | 'touchSensitivity' | 'gamepadLookSpeed' | 'volume' | 'musicVolume' | 'fov';
+export type NumericSetting =
+  'mouseSensitivity' | 'touchSensitivity' | 'gamepadLookSpeed' | 'volume' | 'musicVolume' | 'fov';
 
 export const LIMITS: Readonly<Record<NumericSetting, { min: number; max: number; step: number }>> = {
   mouseSensitivity: { min: 0.25, max: 3, step: 0.05 },
@@ -118,7 +119,11 @@ export const fovToRadians = (degrees: number): number => (degrees * Math.PI) / 1
 
 /** How a numeric setting reads in the menu: multipliers as a percentage, volume as a percentage, FOV in degrees. */
 export function formatSetting(key: NumericSetting, value: number): string {
-  return key === 'fov' ? `${Math.round(value)}°` : key === 'volume' || key === 'musicVolume' ? `${Math.round(value)}%` : `${Math.round(value * 100)}%`;
+  return key === 'fov'
+    ? `${Math.round(value)}°`
+    : key === 'volume' || key === 'musicVolume'
+      ? `${Math.round(value)}%`
+      : `${Math.round(value * 100)}%`;
 }
 
 /** The gain multiplier for sound effects: zero when muted. */

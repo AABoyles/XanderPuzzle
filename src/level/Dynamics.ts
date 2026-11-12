@@ -134,7 +134,12 @@ export class Door {
   public readonly aabb: Aabb;
   public readonly mesh: Mesh;
 
-  constructor(scene: Scene, min: Vector3, max: Vector3, public readonly plates: PressurePlate[]) {
+  constructor(
+    scene: Scene,
+    min: Vector3,
+    max: Vector3,
+    public readonly plates: PressurePlate[],
+  ) {
     this.aabb = { min: arr(min), max: arr(max) };
     const size = max.subtract(min);
     this.mesh = CreateBox('door', { width: size.x, height: size.y, depth: size.z }, scene);
@@ -152,7 +157,9 @@ export class Door {
     this.mesh.checkCollisions = !open;
     this.mesh.visibility = open ? 0.15 : 1;
     // Dim the glow too, or the glow layer makes an open door look as solid as a closed one.
-    (this.mesh.material as StandardMaterial).emissiveColor = open ? new Color3(0.04, 0.01, 0.01) : new Color3(0.5, 0.12, 0.08);
+    (this.mesh.material as StandardMaterial).emissiveColor = open
+      ? new Color3(0.04, 0.01, 0.01)
+      : new Color3(0.5, 0.12, 0.08);
     return true;
   }
 }
@@ -303,8 +310,7 @@ export class LevelDynamics {
 
     for (const plate of this.plates) {
       const held =
-        live.some((c) => overlaps(c.aabb, plate.trigger)) ||
-        (!plate.cratesOnly && overlaps(player, plate.trigger));
+        live.some((c) => overlaps(c.aabb, plate.trigger)) || (!plate.cratesOnly && overlaps(player, plate.trigger));
       if (plate.setPressed(held)) events.plateChanged = true;
     }
 

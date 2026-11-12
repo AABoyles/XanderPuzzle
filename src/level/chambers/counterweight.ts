@@ -67,9 +67,15 @@ export function buildCounterweight(scene: Scene, skin: SkinRuntime): BuiltLevel 
   b.placard(V(0, -5.5, R), V(0, 0, -1), '-Y', 'TRIM REQUIRES 2 MASSES\nATTENDANTS ON THIS CYCLE: 1', { width: 6 });
   b.placard(V(0, R, -7), V(0, -1, 0), '-Y', 'VIEWPORT · THE CROWN', { width: 6, top: V(0, 0, -1) });
   // Facing the entrance, above the Stencil: what the Margin saw through the skylight.
-  b.note(V(0, -2.5, R), V(0, 0, -1), '-Y', 'Look up. That is what we hold up.\nIt keeps the star off the ground.\nNobody is up there.', {
-    width: 5.6,
-  });
+  b.note(
+    V(0, -2.5, R),
+    V(0, 0, -1),
+    '-Y',
+    'Look up. That is what we hold up.\nIt keeps the star off the ground.\nNobody is up there.',
+    {
+      width: 5.6,
+    },
+  );
   // On the -X wall above the pit, upright once it is the floor.
   b.note(V(-R, -3, -4), V(1, 0, 0), '-X', 'I have never met another attendant.\nThe roster has room for hundreds.', {
     width: 6,
@@ -87,3 +93,5 @@ export function buildCounterweight(scene: Scene, skin: SkinRuntime): BuiltLevel 
     vista: true,
   });
 }
+
+export default buildCounterweight;

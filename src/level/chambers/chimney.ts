@@ -56,3 +56,5 @@ export function buildChimney(scene: Scene, skin: SkinRuntime): BuiltLevel {
     exitRadius: 2.5,
   });
 }
+
+export default buildChimney;

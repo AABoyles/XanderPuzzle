@@ -34,8 +34,19 @@ export interface InputSource {
 }
 
 export function emptyFrame(): InputFrame {
-  return { moveX: 0, moveZ: 0, lookX: 0, lookY: 0, sprint: false, jump: false, interact: false,
-    restart: false, undo: false, pause: false, activity: false };
+  return {
+    moveX: 0,
+    moveZ: 0,
+    lookX: 0,
+    lookY: 0,
+    sprint: false,
+    jump: false,
+    interact: false,
+    restart: false,
+    undo: false,
+    pause: false,
+    activity: false,
+  };
 }
 
 /** Combines several sources: movement is summed then limited to unit length, look is summed, buttons are ORed. */
@@ -81,8 +92,18 @@ export function stickVector(dx: number, dy: number, radius: number, deadzone: nu
  * because touch RUN is a toggle that stays on long after the thumb has left.
  */
 export function frameHasInput(f: InputFrame): boolean {
-  return f.moveX !== 0 || f.moveZ !== 0 || f.lookX !== 0 || f.lookY !== 0
-    || f.jump || f.interact || f.restart || f.undo || f.pause || f.activity;
+  return (
+    f.moveX !== 0 ||
+    f.moveZ !== 0 ||
+    f.lookX !== 0 ||
+    f.lookY !== 0 ||
+    f.jump ||
+    f.interact ||
+    f.restart ||
+    f.undo ||
+    f.pause ||
+    f.activity
+  );
 }
 
 /**

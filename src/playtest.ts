@@ -227,7 +227,11 @@ export class PlaytestRecorder {
     if (rows.length === 0) return 'No chamber visits recorded.';
     const head = ['chamber', 'time', 'shifts', 'restarts', 'falls', 'undos', 'cleared'];
     const widths = head.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i].length)));
-    const line = (cells: string[]) => cells.map((c, i) => c.padEnd(widths[i])).join('  ').trimEnd();
+    const line = (cells: string[]) =>
+      cells
+        .map((c, i) => c.padEnd(widths[i]))
+        .join('  ')
+        .trimEnd();
     return [line(head), ...rows.map(line)].join('\n');
   }
 }

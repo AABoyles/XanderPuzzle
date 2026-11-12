@@ -1,7 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  handwriting, LINE_HEIGHT, MAX_TEXTURE, PADDING, placardCorners, placardFrame, placardSize, PX_PER_UNIT, texturePixels,
+  handwriting,
+  LINE_HEIGHT,
+  MAX_TEXTURE,
+  PADDING,
+  placardCorners,
+  placardFrame,
+  placardSize,
+  PX_PER_UNIT,
+  texturePixels,
 } from '../src/level/placardText.ts';
 import type { Vec3 } from '../src/gravity/axes.ts';
 
@@ -43,16 +51,29 @@ test('floor and ceiling text needs a top direction along the face', () => {
 });
 
 test('the frame is right-handed in Babylon terms: right = up x forward', () => {
-  for (const [n, g] of [[[1, 0, 0], '-Y'], [[0, -1, 0], '+X'], [[0, 0, 1], '+Y']] as const) {
+  for (const [n, g] of [
+    [[1, 0, 0], '-Y'],
+    [[0, -1, 0], '+X'],
+    [[0, 0, 1], '+Y'],
+  ] as const) {
     const { right, up, forward } = placardFrame(n as Vec3, g);
-    const c = [up[1] * forward[2] - up[2] * forward[1], up[2] * forward[0] - up[0] * forward[2], up[0] * forward[1] - up[1] * forward[0]];
+    const c = [
+      up[1] * forward[2] - up[2] * forward[1],
+      up[2] * forward[0] - up[0] * forward[2],
+      up[0] * forward[1] - up[1] * forward[0],
+    ];
     assert.deepEqual(clean(right), clean(c as Vec3));
   }
 });
 
 test('corners span the placard around its centre', () => {
   const corners = placardCorners([0, 5, 12], placardFrame([0, 0, -1], '-Y'), 4, 2);
-  assert.deepEqual(corners.map(clean), [[-2, 4, 12], [2, 4, 12], [2, 6, 12], [-2, 6, 12]]);
+  assert.deepEqual(corners.map(clean), [
+    [-2, 4, 12],
+    [2, 4, 12],
+    [2, 6, 12],
+    [-2, 6, 12],
+  ]);
 });
 
 test('handwriting wobbles the same way for the same text, and only a little', () => {

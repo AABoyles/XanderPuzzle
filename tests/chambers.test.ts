@@ -22,7 +22,9 @@ const { Scene } = await import('@babylonjs/core/scene');
 const { GlowLayer } = await import('@babylonjs/core/Layers/glowLayer');
 await import('../src/babylonSideEffects.ts');
 const { createSkin } = await import('../src/skins/Skin.ts');
-const { CHAMBERS } = await import('../src/level/chambers/index.ts');
+const { CHAMBERS: CATALOG } = await import('../src/level/chambers/index.ts');
+// Chambers load lazily in the game; the tests fetch every module up front and build from them directly.
+const CHAMBERS = await Promise.all(CATALOG.map(async (c) => ({ ...c, build: (await c.load()).default })));
 const { buildLockout } = await import('../src/level/chambers/lockout.ts');
 
 /** Matches PlayerController's collider radius. */
@@ -147,25 +149,41 @@ for (const [index, chamber] of CHAMBERS.entries()) {
 
         // Levers: every one must be usable from some axis the player can reach, and the exit axis must be reachable.
         const reachable = reachableAxes(level.entranceAxis, level.switches.map(leverMoves));
-        assert.ok(reachable.has(level.exitAxis), `exitAxis ${level.exitAxis} is unreachable from ${level.entranceAxis}`);
+        assert.ok(
+          reachable.has(level.exitAxis),
+          `exitAxis ${level.exitAxis} is unreachable from ${level.entranceAxis}`,
+        );
         level.switches.forEach((sw, i) => {
           const usable = sw.spec.kind === 'sequence' || [...reachable].some((a) => sw.canUse(a));
-          assert.ok(usable, `lever ${i} (${JSON.stringify(sw.spec.kind)}) can never change gravity from a reachable axis`);
+          assert.ok(
+            usable,
+            `lever ${i} (${JSON.stringify(sw.spec.kind)}) can never change gravity from a reachable axis`,
+          );
           const t = sw.targetAxis;
-          if (t) assert.ok([...reachable].some((a) => a[1] !== t[1]), `lever ${i} targets ${t}, which is never different`);
+          if (t)
+            assert.ok(
+              [...reachable].some((a) => a[1] !== t[1]),
+              `lever ${i} targets ${t}, which is never different`,
+            );
         });
 
         // Crates, plates, doors.
         dynamics.crates.forEach((c, i) => {
           const box = bodyAabb(c.body);
-          assert.equal(solids.find((s) => overlaps(box, s)), undefined, `crate ${i} starts inside a solid`);
+          assert.equal(
+            solids.find((s) => overlaps(box, s)),
+            undefined,
+            `crate ${i} starts inside a solid`,
+          );
           dynamics.crates.forEach((o, j) => {
             if (j > i) assert.ok(!overlaps(box, bodyAabb(o.body)), `crates ${i} and ${j} overlap`);
           });
         });
         dynamics.doors.forEach((d, i) => {
           assert.ok(d.plates.length > 0, `door ${i} has no plates`);
-          d.plates.forEach((p) => assert.ok(dynamics.plates.includes(p), `door ${i} refers to a plate not in the level`));
+          d.plates.forEach((p) =>
+            assert.ok(dynamics.plates.includes(p), `door ${i} refers to a plate not in the level`),
+          );
         });
         if (dynamics.doors.length) assert.ok(dynamics.plates.length > 0, 'doors but no plates');
 
@@ -263,7 +281,10 @@ test('a crate chamber with its crate preview shown disposes everything, the ghos
   const predicted = level.dynamics.predict(GravitySystem.axisVector('-Y').scale(22), level.spawnPosition);
   level.dynamics.showPreview(shifted.map((p) => [...p]));
   assert.ok(predicted.length === level.dynamics.crates.length);
-  assert.ok(scene.meshes.some((m) => m.name === 'crateGhost'), 'a ghost was made');
+  assert.ok(
+    scene.meshes.some((m) => m.name === 'crateGhost'),
+    'a ghost was made',
+  );
   level.dispose();
   assert.deepEqual(counts(), before);
 });

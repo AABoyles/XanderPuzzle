@@ -44,3 +44,5 @@ export function buildSandbox(scene: Scene, skin: SkinRuntime): BuiltLevel {
     exitRadius: 2,
   });
 }
+
+export default buildSandbox;

@@ -83,7 +83,9 @@ export function buildPendulum(scene: Scene, skin: SkinRuntime): BuiltLevel {
   // On the north wall beside the raised exit door, west of the dais, read from the west floor while waiting.
   b.placard(V(-11.5, 4.5, Z), V(0, 0, -1), '-Y', 'DOOR HOLDS BALLAST POSITION\nNOT OPERATOR POSITION', { width: 4.6 });
   // On the partition's west face, read while it is the floor of the +X phase.
-  b.note(V(-0.5, 1.5, 9), V(-1, 0, 0), '-Y', 'They didn\'t fall. They left.\nA dark cube prints no one back.', { width: 5.4 });
+  b.note(V(-0.5, 1.5, 9), V(-1, 0, 0), '-Y', "They didn't fall. They left.\nA dark cube prints no one back.", {
+    width: 5.4,
+  });
 
   return b.finish({
     name: 'XIX · THE PENDULUM',
@@ -95,3 +97,5 @@ export function buildPendulum(scene: Scene, skin: SkinRuntime): BuiltLevel {
     exitRadius: 2.5,
   });
 }
+
+export default buildPendulum;

@@ -31,16 +31,22 @@ export function buildVault(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.tube(V(R + T, -2.5, -2.5), V(R + 9, 2.5, 2.5), ['-x'], b.exit);
 
   // The facility's induction placard, facing the entrance above the first lever.
-  b.placard(V(0, -6, R), V(0, 0, -1), '-Y', [
-    'CUBE 0112 · ATTENDANT INDUCTION',
-    'THE CROWN SHIELDS THE PLANET FROM THE STAR.',
-    'THE FIELD HOLDS UP THE CROWN.',
-    'EACH CUBE IS A COUNTERWEIGHT.',
-    'LEVERS TURN THE CUBE.',
-    'THE ARROW\'S WALL WILL FACE THE PLANET.',
-  ].join('\n'), {
-    width: 12,
-  });
+  b.placard(
+    V(0, -6, R),
+    V(0, 0, -1),
+    '-Y',
+    [
+      'CUBE 0112 · ATTENDANT INDUCTION',
+      'THE CROWN SHIELDS THE PLANET FROM THE STAR.',
+      'THE FIELD HOLDS UP THE CROWN.',
+      'EACH CUBE IS A COUNTERWEIGHT.',
+      'LEVERS TURN THE CUBE.',
+      "THE ARROW'S WALL WILL FACE THE PLANET.",
+    ].join('\n'),
+    {
+      width: 12,
+    },
+  );
 
   b.addSwitch(V(0, -R + 1.5, R - 0.3), V(0, 0, -1), '+Z');
   b.addSwitch(V(R - 0.3, 0, R - 1.5), V(-1, 0, 0), '+X');
@@ -53,30 +59,38 @@ export function buildVault(scene: Scene, skin: SkinRuntime): BuiltLevel {
   });
   // The Margin's first note, on the corridor wall to the left of the bed (in Axis the wall its red
   // pencil shows up on): addressed, and signed.
-  b.note(V(-2, -R + 1.6, -R - 3.6), V(1, 0, 0), '-Y', [
-    'To whoever they print next:',
-    'read the walls. I wrote on them.',
-    '\u2014 416',
-  ].join('\n'), {
-    width: 4.6,
-  });
+  b.note(
+    V(-2, -R + 1.6, -R - 3.6),
+    V(1, 0, 0),
+    '-Y',
+    ['To whoever they print next:', 'read the walls. I wrote on them.', '\u2014 416'].join('\n'),
+    {
+      width: 4.6,
+    },
+  );
   // Opposite it, the facility's answer. It has not been cleaned.
   b.placard(V(2, -R + 1.6, -R - 3.3), V(-1, 0, 0), '-Y', 'UNAUTHORISED MARKINGS\nWILL BE REMOVED\nAT NEXT CLEANING', {
     width: 4.4,
   });
   // On the +X wall, between the second lever's landing and the hole that is the way out: what the lit corridor is.
-  b.placard(V(R, 0, 5.5), V(-1, 0, 0), '+X', 'ATTENDANT RECLAIMER\nSTAND ON THE PLATE.\nYOU WILL BE REPRINTED\nAT THE NEXT CUBE.', {
-    width: 6,
-    top: V(0, 0, -1),
-  });
+  b.placard(
+    V(R, 0, 5.5),
+    V(-1, 0, 0),
+    '+X',
+    'ATTENDANT RECLAIMER\nSTAND ON THE PLATE.\nYOU WILL BE REPRINTED\nAT THE NEXT CUBE.',
+    {
+      width: 6,
+      top: V(0, 0, -1),
+    },
+  );
   // Named on the ceiling beside the skylight, read looking up from the doorway.
   b.placard(V(0, R, -10), V(0, -1, 0), '-Y', 'VIEWPORT · THE CROWN', { width: 6, top: V(0, 0, -1) });
   // The Margin, low on the exit wall: only upright while standing on the +Z wall.
-  b.note(V(R, -6, 10), V(-1, 0, 0), '+Z', 'You\'ll get used to it.\nThe turning, I mean.');
+  b.note(V(R, -6, 10), V(-1, 0, 0), '+Z', "You'll get used to it.\nThe turning, I mean.");
 
   return b.finish({
     name: 'I · THE VAULT',
-    hint: 'Levers turn the cube until the arrow\'s wall faces the planet. That wall is your floor now.',
+    hint: "Levers turn the cube until the arrow's wall faces the planet. That wall is your floor now.",
     spawnPosition: V(0, -R + 0.5, -R - 5),
     entranceAxis: '-Y',
     exitAxis: '+X',
@@ -85,3 +99,5 @@ export function buildVault(scene: Scene, skin: SkinRuntime): BuiltLevel {
     vista: true,
   });
 }
+
+export default buildVault;

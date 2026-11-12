@@ -118,7 +118,17 @@ export class TouchInput implements InputSource {
     const chambers = this.el('div', 'sb-btn sb-small sb-chambers', '☰');
     const pause = this.el('div', 'sb-btn sb-small sb-pause', '\u23F8');
     this.root.append(
-      moveZone, lookZone, this.stick, jump, this.useBtn, this.runBtn, restart, undo, chambers, pause, rotate,
+      moveZone,
+      lookZone,
+      this.stick,
+      jump,
+      this.useBtn,
+      this.runBtn,
+      restart,
+      undo,
+      chambers,
+      pause,
+      rotate,
     );
     document.body.appendChild(this.root);
 
@@ -149,9 +159,14 @@ export class TouchInput implements InputSource {
 
     if (TouchInput.isTouchDevice()) this.activate();
     else {
-      this.listen(window, 'pointerdown', ((e: PointerEvent) => {
-        if (e.pointerType === 'touch') this.activate();
-      }) as EventListener, true);
+      this.listen(
+        window,
+        'pointerdown',
+        ((e: PointerEvent) => {
+          if (e.pointerType === 'touch') this.activate();
+        }) as EventListener,
+        true,
+      );
     }
   }
 

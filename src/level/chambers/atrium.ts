@@ -98,3 +98,5 @@ export function buildAtrium(scene: Scene, skin: SkinRuntime): BuiltLevel {
     exitRadius: 2,
   });
 }
+
+export default buildAtrium;

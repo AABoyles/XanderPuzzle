@@ -68,7 +68,14 @@ export function buildOrrery(scene: Scene, skin: SkinRuntime): BuiltLevel {
   // The field between them: 13 cubes, 5 still lit (38%, the figure on the north wall's placard).
   const lit = [V(-3, -3, 2), V(2, -1, -3), V(4, 1, 1), V(-1, 2, 4), V(-4, 3, -2)];
   const dark = [
-    V(1, -4, 0), V(-2, -1, -1), V(4, -2, -4), V(0, 0, 2), V(-4, 0, 3), V(2, 3, -1), V(-1, 4, -4), V(3, 4, 4),
+    V(1, -4, 0),
+    V(-2, -1, -1),
+    V(4, -2, -4),
+    V(0, 0, 2),
+    V(-4, 0, 3),
+    V(2, 3, -1),
+    V(-1, 4, -4),
+    V(3, 4, 4),
   ];
   // The star, above the Crown: the Crown stands between it and the planet. Clear of anyone walking the ceiling.
   b.modelCube(V(0, 9.5, 0), 1.4, true);
@@ -109,14 +116,20 @@ export function buildOrrery(scene: Scene, skin: SkinRuntime): BuiltLevel {
 
   b.placard(V(-2, -H + 1.6, -18.5), V(1, 0, 0), '-Y', 'CUBE 0140', { width: 2.6 });
   // On the north wall, upright once it is the floor.
-  b.placard(V(4, -4, H), V(0, 0, -1), '+Z', [
-    'FIELD ALIGNMENT: 38% OF CUBES RESPONDING',
-    'CROWN SHIELD HOLDING AT 38%',
-    'ATTENDANT SUPPLY INCREASED TO COMPENSATE',
-  ].join('\n'), {
-    width: 10,
-    top: V(0, 1, 0),
-  });
+  b.placard(
+    V(4, -4, H),
+    V(0, 0, -1),
+    '+Z',
+    [
+      'FIELD ALIGNMENT: 38% OF CUBES RESPONDING',
+      'CROWN SHIELD HOLDING AT 38%',
+      'ATTENDANT SUPPLY INCREASED TO COMPENSATE',
+    ].join('\n'),
+    {
+      width: 10,
+      top: V(0, 1, 0),
+    },
+  );
   // The reveal (NARRATIVE.md): a fixed crate on the ceiling beside the walk to the relative lever, clear of the
   // live crate's path along the hall's edges.
   b.addFixedCrate(V(-5, H - 0.75, -2), 1.5, { stamp: 'BALLAST MASS\nAT-0416' });
@@ -125,15 +138,21 @@ export function buildOrrery(scene: Scene, skin: SkinRuntime): BuiltLevel {
     top: V(-1, 0, 0),
   });
   // The Margin's last note, far from the route on the west wall.
-  b.note(V(-H, -4, 6), V(1, 0, 0), '-X', [
-    'If you\'re reading this, I didn\'t',
-    'get back to cube 0147.',
-    'There is a hole in its ceiling.',
-    '\u2014 416',
-  ].join('\n'), {
-    width: 5,
-    top: V(0, 1, 0),
-  });
+  b.note(
+    V(-H, -4, 6),
+    V(1, 0, 0),
+    '-X',
+    [
+      "If you're reading this, I didn't",
+      'get back to cube 0147.',
+      'There is a hole in its ceiling.',
+      '\u2014 416',
+    ].join('\n'),
+    {
+      width: 5,
+      top: V(0, 1, 0),
+    },
+  );
 
   return b.finish({
     name: 'XX · THE ORRERY',
@@ -145,3 +164,5 @@ export function buildOrrery(scene: Scene, skin: SkinRuntime): BuiltLevel {
     exitRadius: 2,
   });
 }
+
+export default buildOrrery;

@@ -82,7 +82,7 @@ export const MORE_HINTS: Record<string, [string, string]> = {
   ],
   sieve: [
     'The field stops short of the ceiling. Look at the gap above it.',
-    'Throw the low lever on the field\'s near face first. Then the one near the exit.',
+    "Throw the low lever on the field's near face first. Then the one near the exit.",
   ],
   surplus: [
     'The door wants one crate on its plate, not two. The RELEASE APERTURE can take one.',
@@ -90,7 +90,7 @@ export const MORE_HINTS: Record<string, [string, string]> = {
   ],
   tide: [
     'The pillar and the tall wall each become a floor for one shift. Look at both.',
-    'Get into the pillar\'s lane before the first sideways shift, then climb its face.',
+    "Get into the pillar's lane before the first sideways shift, then climb its face.",
   ],
   pendulum: [
     'When the sideways shift comes, the partition stops whatever is at or below its top.',
@@ -112,4 +112,33 @@ export function hintFor(id: string | undefined, base: string, tier: number): str
   const more = MORE_HINTS[id];
   if (!more) return base;
   return more[Math.min(tier, more.length) - 1];
+}
+
+/**
+ * One chamber visit's place on the ladder: the time played, and the tier now on the HUD. The caller says when a visit
+ * begins (`reset`), feeds it play time (`tick`) and asks whether the hint should change (`rise`).
+ */
+export class HintLadder {
+  /** Simulated seconds played in this chamber across its restarts. */
+  public seconds = 0;
+  /** The tier now shown: 0 is the chamber's own hint. */
+  public shown: 0 | 1 | 2 = 0;
+
+  /** A different chamber has started. A restart of the same one keeps its place. */
+  public reset(): void {
+    this.seconds = 0;
+    this.shown = 0;
+  }
+
+  public tick(dt: number): void {
+    this.seconds += dt;
+  }
+
+  /** The tier to show now if it is higher than the one showing (which it then becomes), else undefined. */
+  public rise(restarts: number): 1 | 2 | undefined {
+    const tier = hintTier(this.seconds, restarts);
+    if (tier <= this.shown) return undefined;
+    this.shown = tier;
+    return tier as 1 | 2;
+  }
 }

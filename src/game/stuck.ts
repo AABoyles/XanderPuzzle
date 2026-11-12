@@ -16,7 +16,7 @@ export interface LeverMoves {
  */
 export function reachableAxes(start: GravityAxis, levers: LeverMoves[]): Set<GravityAxis> {
   const reachable = new Set<GravityAxis>([start]);
-  for (let grew = true; grew; ) {
+  for (let grew = true; grew;) {
     grew = false;
     for (const lever of levers) {
       const targets = lever.cycle ?? [...reachable].map((a) => lever.targetFor(a));

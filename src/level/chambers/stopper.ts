@@ -90,3 +90,5 @@ export function buildStopper(scene: Scene, skin: SkinRuntime): BuiltLevel {
     exitRadius: 1,
   });
 }
+
+export default buildStopper;

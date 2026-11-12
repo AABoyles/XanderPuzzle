@@ -243,4 +243,3 @@ test('formatShifts: shows the best against par, and nothing unless both are know
   assert.equal(formatShifts(3, undefined), '');
   assert.equal(formatShifts(3, 0), '');
 });
-

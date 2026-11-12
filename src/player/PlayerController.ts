@@ -103,7 +103,9 @@ export class PlayerController {
    */
   public lookDown(amount: number): void {
     this.pitch += (PITCH_LIMIT - this.pitch) * Math.min(Math.max(amount, 0), 1);
-    const look = Quaternion.RotationAxis(Vector3.Up(), this.yaw).multiply(Quaternion.RotationAxis(Vector3.Right(), this.pitch));
+    const look = Quaternion.RotationAxis(Vector3.Up(), this.yaw).multiply(
+      Quaternion.RotationAxis(Vector3.Right(), this.pitch),
+    );
     this.camera.rotationQuaternion = this.alignRot.multiply(look);
   }
 

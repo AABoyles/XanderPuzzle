@@ -29,7 +29,10 @@ test('the title shot with the planet beyond the cube (gravity +Z, up -Z)', () =>
 });
 
 test('the camera stands off the hull at the standoff distance and the sun is a unit vector', () => {
-  for (const down of [[0, -1, 0], [0, 0, 1]] as Vec3[]) {
+  for (const down of [
+    [0, -1, 0],
+    [0, 0, 1],
+  ] as Vec3[]) {
     const shot = titleShotFrame(bounds, down, 3.7);
     const dx = shot.position[0] - shot.anchor[0];
     const dy = shot.position[1] - shot.anchor[1];

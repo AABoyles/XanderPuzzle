@@ -136,7 +136,8 @@ test('showPreview shows a ghost only where a crate would move, and dispose() rel
   try {
     dyn.showPreview([[0, 0.75, 0]]);
     const ghost = scene.meshes.find((m) => m.name === 'crateGhost');
-    assert.ok(ghost?.isEnabled(), 'a ghost shows where the crate will land');
+    if (!ghost) assert.fail('the preview makes a crate ghost');
+    assert.ok(ghost.isEnabled(), 'a ghost shows where the crate will land');
     assert.ok(!ghost.isPickable && !ghost.checkCollisions);
     dyn.showPreview([[0, 5, 0]]);
     assert.ok(!ghost.isEnabled(), 'no ghost where the crate would not move');

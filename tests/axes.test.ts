@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { MAX_SIM_DELTA } from '../src/time.ts';
-import { AXES, areAdjacent, GravitySequencer, opposite, rotateClockwise, type GravityAxis } from '../src/gravity/axes.ts';
+import {
+  AXES,
+  areAdjacent,
+  GravitySequencer,
+  opposite,
+  rotateClockwise,
+  type GravityAxis,
+} from '../src/gravity/axes.ts';
 
 test('rotateClockwise leaves the axis of rotation alone', () => {
   for (const a of AXES) {

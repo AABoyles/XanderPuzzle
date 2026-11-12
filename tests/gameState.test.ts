@@ -112,7 +112,12 @@ test('chamber select returns to where it was opened', () => {
 });
 
 test('picking a chamber starts play from any way into the select', () => {
-  for (const s of [select, titleSelect, transition(paused, { type: 'openChambers' }), transition(won, { type: 'openChambers' })]) {
+  for (const s of [
+    select,
+    titleSelect,
+    transition(paused, { type: 'openChambers' }),
+    transition(won, { type: 'openChambers' }),
+  ]) {
     assert.equal(kinds(transition(s as State, { type: 'pick', immediate: true })), 'playing');
     assert.equal(transition(s as State, { type: 'pick', immediate: true })?.begun, true);
   }
@@ -144,8 +149,12 @@ test('a keyboard player can win from the title (they can move there) and advance
 
 test('derived queries', () => {
   const all: [string, State][] = [
-    ['title', INITIAL_STATE], ['playing', playing], ['falling', falling],
-    ['paused', paused], ['chamberSelect', select], ['won', won],
+    ['title', INITIAL_STATE],
+    ['playing', playing],
+    ['falling', falling],
+    ['paused', paused],
+    ['chamberSelect', select],
+    ['won', won],
   ];
   const sim = (d: string) => all.filter(([, s]) => simulates(s, d)).map(([n]) => n);
   assert.deepEqual(sim('keyboard'), ['title', 'playing', 'falling']);
@@ -153,12 +162,21 @@ test('derived queries', () => {
   assert.deepEqual(sim('gamepad'), ['playing', 'falling']);
   assert.equal(isFrozen(won, 'keyboard'), false); // the backdrop keeps moving behind the win screen
   assert.equal(isFrozen(paused, 'keyboard'), true);
-  assert.deepEqual(all.filter(([, s]) => showsTouchControls(s)).map(([n]) => n), ['playing', 'falling']);
-  assert.deepEqual(all.filter(([, s]) => escapePauses(s)).map(([n]) => n), ['playing', 'falling']);
+  assert.deepEqual(
+    all.filter(([, s]) => showsTouchControls(s)).map(([n]) => n),
+    ['playing', 'falling'],
+  );
+  assert.deepEqual(
+    all.filter(([, s]) => escapePauses(s)).map(([n]) => n),
+    ['playing', 'falling'],
+  );
 });
 
 test('views: which overlays are up', () => {
-  const only = (s: State) => Object.entries(viewOf(s)).filter(([, v]) => v).map(([k]) => k);
+  const only = (s: State) =>
+    Object.entries(viewOf(s))
+      .filter(([, v]) => v)
+      .map(([k]) => k);
   assert.deepEqual(only(INITIAL_STATE), ['title']);
   assert.deepEqual(only(playing), []);
   assert.deepEqual(only(falling), []);
@@ -176,7 +194,10 @@ test('GameState holds the state and reports accepted changes only', () => {
   assert.equal(g.send({ type: 'begin' }), true);
   assert.equal(g.send({ type: 'pause' }), true);
   assert.equal(g.kind, 'paused');
-  assert.deepEqual(seen, [['title', 'playing', 'begin'], ['playing', 'paused', 'pause']]);
+  assert.deepEqual(seen, [
+    ['title', 'playing', 'begin'],
+    ['playing', 'paused', 'pause'],
+  ]);
 });
 
 test('the final fall: descend from play or a fall, no restart or win, and it ends on the end card', () => {

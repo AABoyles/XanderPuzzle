@@ -1,8 +1,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  CHAMBER_CLEARANCE, CHAMBER_DEPTH, chamberHull, CUBE_MAX, cubeAngle, FIELD_BOTTOM, FIELD_CLEARANCE, FIELD_COUNT, FIELD_RADIUS, FIELD_TOP, fieldBasis, layoutField,
-  toWorld, TURN_TIME,
+  CHAMBER_CLEARANCE,
+  CHAMBER_DEPTH,
+  chamberHull,
+  CUBE_MAX,
+  cubeAngle,
+  FIELD_BOTTOM,
+  FIELD_CLEARANCE,
+  FIELD_COUNT,
+  FIELD_RADIUS,
+  FIELD_TOP,
+  fieldBasis,
+  layoutField,
+  toWorld,
+  TURN_TIME,
 } from '../src/environment/ballastField.ts';
 import type { Vec3 } from '../src/environment/fall.ts';
 
@@ -74,14 +86,22 @@ test('a dark cube tumbles steadily', () => {
 });
 
 test('the field frame is orthonormal with y pointing away from the planet', () => {
-  for (const down of [[0, -1, 0], [1, 0, 0], [0, 0, -1], [0.6, -0.8, 0]] as Vec3[]) {
+  for (const down of [
+    [0, -1, 0],
+    [1, 0, 0],
+    [0, 0, -1],
+    [0.6, -0.8, 0],
+  ] as Vec3[]) {
     const { x, y, z } = fieldBasis(down);
     for (const v of [x, y, z]) assert.ok(near(dot(v, v), 1));
     assert.ok(near(dot(x, y), 0) && near(dot(y, z), 0) && near(dot(x, z), 0));
     assert.ok(near(dot(y, down), -1));
   }
   const p = toWorld([10, 0, 0], fieldBasis([0, -1, 0]), [0, 5, 0]);
-  assert.deepEqual(p.map((v) => Math.round(v * 1e9) / 1e9), [10, 5, 0]);
+  assert.deepEqual(
+    p.map((v) => Math.round(v * 1e9) / 1e9),
+    [10, 5, 0],
+  );
 });
 
 test('the chamber hull is a cube that encloses the chamber with a margin', () => {

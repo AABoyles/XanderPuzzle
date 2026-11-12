@@ -79,3 +79,5 @@ export function buildSurplus(scene: Scene, skin: SkinRuntime): BuiltLevel {
     exitRadius: 1.5,
   });
 }
+
+export default buildSurplus;

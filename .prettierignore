@@ -1,0 +1,14 @@
+# Build output and generated files
+dist/
+dist-ssr/
+coverage/
+test-results/
+playwright-report/
+tsconfig.tsbuildinfo
+package-lock.json
+
+# Prose is written by hand and wrapped by hand; keep Prettier off the Markdown
+*.md
+
+# Vendored or binary assets
+public/

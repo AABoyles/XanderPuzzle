@@ -64,7 +64,8 @@ export function placardFrame(normal: Readonly<Vec3>, readAs: GravityAxis, top?: 
     up = [-g[0], -g[1], -g[2]];
   } else {
     if (!top) throw new Error(`a placard on the floor or ceiling under ${readAs} needs a top direction`);
-    if (!isAxis(top) || dot(top, normal) !== 0) throw new Error(`placard top ${top} must be a unit axis along the face`);
+    if (!isAxis(top) || dot(top, normal) !== 0)
+      throw new Error(`placard top ${top} must be a unit axis along the face`);
     up = [top[0], top[1], top[2]];
   }
   const forward: Vec3 = [-normal[0], -normal[1], -normal[2]];
@@ -74,7 +75,12 @@ export function placardFrame(normal: Readonly<Vec3>, readAs: GravityAxis, top?: 
 /** The placard's corners in world space: centre `at`, size `width` x `height` in `frame`. */
 export function placardCorners(at: Readonly<Vec3>, frame: PlacardFrame, width: number, height: number): Vec3[] {
   const out: Vec3[] = [];
-  for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+  for (const [sx, sy] of [
+    [-1, -1],
+    [1, -1],
+    [1, 1],
+    [-1, 1],
+  ]) {
     const p: Vec3 = [0, 0, 0];
     for (let i = 0; i < 3; i++) p[i] = at[i] + (frame.right[i] * sx * width) / 2 + (frame.up[i] * sy * height) / 2;
     out.push(p);
@@ -100,7 +106,12 @@ export function handwriting(seed: number, count: number): Glyph[] {
   let drift = (rand() - 0.5) * 0.06;
   for (let i = 0; i < count; i++) {
     drift = drift * 0.85 + (rand() - 0.5) * 0.03;
-    glyphs.push({ angle: (rand() - 0.5) * 0.14, dx: (rand() - 0.5) * 0.03, dy: drift + (rand() - 0.5) * 0.03, ink: 0.7 + rand() * 0.3 });
+    glyphs.push({
+      angle: (rand() - 0.5) * 0.14,
+      dx: (rand() - 0.5) * 0.03,
+      dy: drift + (rand() - 0.5) * 0.03,
+      ink: 0.7 + rand() * 0.3,
+    });
   }
   return glyphs;
 }

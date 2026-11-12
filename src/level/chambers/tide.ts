@@ -62,7 +62,7 @@ export function buildTide(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.placard(V(door.x[0], 1.7, -3), V(1, 0, 0), '-Y', 'CUBE 0134', { width: 2.6 });
   b.placard(V(4, 4, 0), V(0, 0, 1), '-Y', 'AUTOMATIC TRIM ENGAGED\nATTENDANT PRESENCE OPTIONAL', { width: 7 });
   // On the high ledge, read while waiting for the last shift.
-  b.note(V(5.5, 12, 18), V(0, 1, 0), '-Y', 'It doesn\'t need us any more.\nI don\'t think it ever did.', {
+  b.note(V(5.5, 12, 18), V(0, 1, 0), '-Y', "It doesn't need us any more.\nI don't think it ever did.", {
     width: 4.8,
     top: V(0, 0, 1),
   });
@@ -77,3 +77,5 @@ export function buildTide(scene: Scene, skin: SkinRuntime): BuiltLevel {
     exitRadius: 2.5,
   });
 }
+
+export default buildTide;
