@@ -20,6 +20,8 @@ export interface Settings {
   muted: boolean;
   /** Snaps the camera to a new gravity instead of rolling into it (the OS preference also forces this). */
   reducedMotion: boolean;
+  /** Swaps the six gravity-axis colours for a colour-blind-safe palette (see `skins/axisPalette.ts`). */
+  colorAssist: boolean;
   /** Vertical field of view in degrees. */
   fov: number;
 }
@@ -36,6 +38,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   musicVolume: 60,
   muted: false,
   reducedMotion: false,
+  colorAssist: false,
   fov: DEFAULT_FOV_DEGREES,
 };
 
@@ -51,7 +54,7 @@ export const LIMITS: Readonly<Record<NumericSetting, { min: number; max: number;
 };
 
 const NUMERIC = Object.keys(LIMITS) as NumericSetting[];
-const BOOLEAN = ['invertY', 'muted', 'reducedMotion'] as const;
+const BOOLEAN = ['invertY', 'muted', 'reducedMotion', 'colorAssist'] as const;
 
 /** A minimal slice of `localStorage`, so tests can fake it. */
 export interface SettingsStorage {

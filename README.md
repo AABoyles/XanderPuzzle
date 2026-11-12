@@ -30,7 +30,7 @@ Any standard-mapping controller works; no pointer lock is needed. Press **A** or
 
 **Esc** pauses (the browser releases the mouse, and the pause menu opens); everything freezes until you resume. On a gamepad press **Start**, on a touch device tap **⏸**. The menu has Resume, Restart chamber, Chamber select, Fullscreen (where the browser allows it), Settings and a Controls reference, which opens on the device you used last. Use the mouse, arrows/WASD with Enter, the gamepad, or touch. Resume and Enter capture the mouse again; if the browser refuses just after Esc, the menu stays open so you can try again.
 
-Settings apply immediately and are remembered in `localStorage` (`shiftbound.settings`; defaults are used if storage is unavailable): mouse sensitivity, touch look sensitivity and gamepad look speed (25%-300%), invert Y (all devices), master volume and mute, reduced motion (snaps the camera on a gravity shift instead of rolling; also on if the OS asks for reduced motion), and field of view (50-100 degrees; the default is the original view).
+Settings apply immediately and are remembered in `localStorage` (`shiftbound.settings`; defaults are used if storage is unavailable): mouse sensitivity, touch look sensitivity and gamepad look speed (25%-300%), invert Y (all devices), master volume and mute, reduced motion (snaps the camera on a gravity shift instead of rolling; also on if the OS asks for reduced motion), a colour-blind palette (swaps the six gravity-axis colours for the Okabe-Ito set, so +X and -X and the other pairs stay distinct), and field of view (50-100 degrees; the default is the original view).
 
 ### Install and play offline
 
@@ -86,7 +86,7 @@ A dark drone loops under the whole game. The printer and the reclaimer crack wit
 
 ## Skins
 
-Press **K** in game to cycle skins (Shift+K goes back), or load with `?skin=station|axis|monolith|draft|neon`. New players start in Station. The choice is remembered.
+Press **K** in game to cycle skins (Shift+K goes back), or load with `?skin=station|axis|monolith|draft|neon`. New players start in Station. The choice is remembered. The colour-blind palette (Pause menu > Settings) recolours the lever and HUD colours in every skin, and the surfaces of Axis and Station, in place of each skin's own; Monolith and Draft keep their neutral surfaces. It rebuilds the chamber in place, like K.
 
 - **Station** (default): the cubes as the machinery they are. Brushed, bolted hull plating under cool work lights; each plate carries a painted band in the colour of the lever that makes that face the floor, and the way out is the lit white corridor.
 - **Axis**: matte pastel tiles where every surface is the colour of the lever that makes it the floor, so you can plan a route by colour. Soft sun and shadows.

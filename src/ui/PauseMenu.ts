@@ -293,7 +293,7 @@ export class PauseMenu {
     };
   }
 
-  private toggle(label: string, key: 'invertY' | 'muted' | 'reducedMotion'): Row {
+  private toggle(label: string, key: 'invertY' | 'muted' | 'reducedMotion' | 'colorAssist'): Row {
     return {
       kind: 'toggle',
       label,
@@ -322,6 +322,7 @@ export class PauseMenu {
       this.slider('Music volume', 'musicVolume'),
       this.toggle('Mute', 'muted'),
       this.reducedMotionRow(),
+      this.toggle('Colour-blind palette', 'colorAssist'),
       this.slider('Field of view', 'fov'),
       {
         kind: 'button',

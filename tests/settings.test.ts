@@ -24,6 +24,15 @@ test('parseSettings tolerates garbage, missing fields and wrong types', () => {
   assert.equal(s.fov, DEFAULT_SETTINGS.fov);
 });
 
+test('the colour-blind palette is off by default and survives save and load', () => {
+  assert.equal(DEFAULT_SETTINGS.colorAssist, false);
+  assert.equal(parseSettings({ colorAssist: 'yes' }).colorAssist, false);
+  assert.equal(parseSettings({ colorAssist: true }).colorAssist, true);
+  const store = memory();
+  assert.ok(saveSettings(store, { ...DEFAULT_SETTINGS, colorAssist: true }));
+  assert.equal(loadSettings(store).colorAssist, true);
+});
+
 test('clampSettings keeps numbers inside their limits', () => {
   const s = clampSettings({ mouseSensitivity: 99, touchSensitivity: -1, volume: 500, fov: 5, gamepadLookSpeed: Infinity });
   assert.equal(s.mouseSensitivity, LIMITS.mouseSensitivity.max);

@@ -113,7 +113,9 @@ let levelIndex = sandbox ? 0 : Math.min(resumeIndex(progress, CHAMBER_IDS), LEVE
 const skinParam = params.get('skin') as SkinId | null;
 const storedSkin = Math.floor(store.get('skin') ?? SKIN_IDS.indexOf(DEFAULT_SKIN));
 let skinIndex = skinParam && SKIN_IDS.includes(skinParam) ? SKIN_IDS.indexOf(skinParam) : ((storedSkin % SKIN_IDS.length) + SKIN_IDS.length) % SKIN_IDS.length;
-let skin = createSkin(SKIN_IDS[skinIndex], scene, glow);
+// The colour-blind palette is read at start-up from the same saved settings `applySettings` uses.
+let skinColorAssist = loadSettings(storageAvailable ? localStorage : null).colorAssist;
+let skin = createSkin(SKIN_IDS[skinIndex], scene, glow, skinColorAssist);
 // Placards draw at once in fallback fonts and redraw when the bundled ones arrive.
 void loadFonts();
 let level = LEVELS[levelIndex](scene, skin);
@@ -157,6 +159,8 @@ function applySettings(): void {
   player.camera.fov = fovToRadians(settings.fov);
   player.reducedMotion = reducedMotionActive();
   sound.setVolumes(masterGain(settings), musicGain(settings));
+  // The palette is baked into the skin, so changing it rebuilds the chamber the way K does.
+  if (settings.colorAssist !== skinColorAssist) setSkin(skinIndex);
 }
 applySettings();
 
@@ -447,7 +451,8 @@ function setSkin(index: number): void {
   skin.dispose();
   skinIndex = ((index % SKIN_IDS.length) + SKIN_IDS.length) % SKIN_IDS.length;
   store.set('skin', skinIndex);
-  skin = createSkin(SKIN_IDS[skinIndex], scene, glow);
+  skinColorAssist = settings.colorAssist;
+  skin = createSkin(SKIN_IDS[skinIndex], scene, glow, skinColorAssist);
   level = LEVELS[levelIndex](scene, skin);
   syncPrinter();
   hud.setSkin(SKIN_LABELS[skin.id]);

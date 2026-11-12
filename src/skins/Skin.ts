@@ -14,6 +14,7 @@ import { Texture } from '@babylonjs/core/Materials/Textures/texture';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { GridMaterial } from '@babylonjs/materials/grid/gridMaterial';
 import { GravityAxis } from '../gravity/GravitySystem';
+import { COLOR_ASSIST_AXIS } from './axisPalette';
 
 /**
  * A skin decides how level geometry, levers and the world around them look. Geometry is always
@@ -203,7 +204,18 @@ abstract class BaseSkin implements SkinRuntime {
   protected readonly owned: { dispose(): void }[] = [];
   protected env?: ReturnType<typeof applyEnvironment>;
 
-  constructor(protected readonly scene: Scene) {}
+  constructor(
+    protected readonly scene: Scene,
+    /** The colour-blind palette replaces this skin's own axis colours (lever, HUD and any axis-coloured surface). */
+    protected readonly colorAssist: boolean,
+  ) {}
+
+  /** An axis's colour: the skin's own, or the colour-blind palette's when the player has asked for it. */
+  protected axisColor(own: Record<GravityAxis, Color3>, axis: GravityAxis): Color3 {
+    if (!this.colorAssist) return own[axis];
+    const [r, g, b] = COLOR_ASSIST_AXIS[axis];
+    return new Color3(r, g, b);
+  }
 
   public materials(role: SurfaceRole, accent: Color3): Material[] {
     const key = `${role}:${this.usesAccent ? hex(accent) : ''}`;
@@ -282,8 +294,8 @@ class NeonSkin extends BaseSkin {
   readonly placardInk: PlacardInk = { color: '#7fffd0', outline: false, weathered: false, glow: true };
   protected usesAccent = true;
 
-  constructor(scene: Scene, glow: GlowLayer) {
-    super(scene);
+  constructor(scene: Scene, glow: GlowLayer, colorAssist: boolean) {
+    super(scene, colorAssist);
     this.env = applyEnvironment(scene, glow, {
       sky: ['#0a1420', '#050810', '#000000'],
       hemi: { intensity: 0.55, sky: Color3.White(), ground: new Color3(0.15, 0.17, 0.22), direction: new Vector3(0.3, 1, 0.2) },
@@ -315,11 +327,12 @@ class NeonSkin extends BaseSkin {
   }
 
   public leverColor(axis: GravityAxis): Color3 {
-    return NEON_LEVER[axis];
+    return this.axisColor(NEON_LEVER, axis);
   }
 
-  public hudColor(): string {
-    return '#bfe3ff';
+  public hudColor(axis: GravityAxis): string {
+    // The fixed cool HUD colour, unless the colour-blind palette is on: then the HUD follows the lever colours.
+    return this.colorAssist ? super.hudColor(axis) : '#bfe3ff';
   }
 }
 
@@ -350,8 +363,8 @@ class AxisSkin extends BaseSkin {
   readonly placardInk: PlacardInk = { color: '#3a3e47', outline: false, weathered: false, glow: false };
   private readonly tiles: DynamicTexture;
 
-  constructor(scene: Scene, glow: GlowLayer) {
-    super(scene);
+  constructor(scene: Scene, glow: GlowLayer, colorAssist: boolean) {
+    super(scene, colorAssist);
     this.env = applyEnvironment(scene, glow, {
       sky: ['#f6e9df', '#e9d9e6', '#cfd9ec'],
       fog: { color: Color3.FromHexString('#efe3e3'), density: 0.012 },
@@ -398,7 +411,7 @@ class AxisSkin extends BaseSkin {
     return AXIS_ORDER.map((axis) => {
       const m = new StandardMaterial(`axis_${role}_${axis}`, this.scene);
       m.diffuseTexture = this.tiles;
-      const base = AXIS_PALETTE[axis];
+      const base = this.axisColor(AXIS_PALETTE, axis);
       m.diffuseColor = role === 'alcove' ? base.scale(0.82) : base;
       m.specularColor = new Color3(0.06, 0.06, 0.06);
       m.emissiveColor = base.scale(0.12);
@@ -412,11 +425,11 @@ class AxisSkin extends BaseSkin {
   }
 
   public leverColor(axis: GravityAxis): Color3 {
-    return AXIS_LEVER[axis];
+    return this.axisColor(AXIS_LEVER, axis);
   }
 
   public hudColor(axis: GravityAxis): string {
-    return hex(AXIS_PALETTE[axis]);
+    return hex(this.axisColor(AXIS_PALETTE, axis));
   }
 }
 
@@ -429,8 +442,8 @@ class MonolithSkin extends BaseSkin {
   private readonly concrete: DynamicTexture;
   private readonly bump: DynamicTexture;
 
-  constructor(scene: Scene, glow: GlowLayer) {
-    super(scene);
+  constructor(scene: Scene, glow: GlowLayer, colorAssist: boolean) {
+    super(scene, colorAssist);
     this.env = applyEnvironment(scene, glow, {
       sky: ['#d9b48a', '#8a6a55', '#2a2220'],
       fog: { color: new Color3(0.62, 0.5, 0.4), density: 0.022 },
@@ -523,7 +536,7 @@ class MonolithSkin extends BaseSkin {
 
   public leverColor(axis: GravityAxis): Color3 {
     // Saturated enough to stand out against grey concrete.
-    return AXIS_LEVER[axis];
+    return this.axisColor(AXIS_LEVER, axis);
   }
 }
 
@@ -554,8 +567,8 @@ class DraftSkin extends BaseSkin {
   readonly placardInk: PlacardInk = { color: '#1c2333', outline: true, weathered: false, glow: false };
   private readonly sheets = new Map<string, DynamicTexture>();
 
-  constructor(scene: Scene, glow: GlowLayer) {
-    super(scene);
+  constructor(scene: Scene, glow: GlowLayer, colorAssist: boolean) {
+    super(scene, colorAssist);
     this.env = applyEnvironment(scene, glow, {
       sky: ['#f4eedf', '#efe7d3', '#e6dcc4'],
       fog: { color: Color3.FromHexString('#f1eadb'), density: 0.03 },
@@ -658,7 +671,7 @@ class DraftSkin extends BaseSkin {
   }
 
   public leverColor(axis: GravityAxis): Color3 {
-    return DRAFT_INK[axis];
+    return this.axisColor(DRAFT_INK, axis);
   }
 }
 
@@ -684,8 +697,8 @@ class StationSkin extends BaseSkin {
   private readonly plates = new Map<GravityAxis, DynamicTexture>();
   private readonly bump: DynamicTexture;
 
-  constructor(scene: Scene, glow: GlowLayer) {
-    super(scene);
+  constructor(scene: Scene, glow: GlowLayer, colorAssist: boolean) {
+    super(scene, colorAssist);
     this.env = applyEnvironment(scene, glow, {
       // Behind the walls is space; the backdrop draws over this.
       sky: ['#07090d', '#05070a', '#020304'],
@@ -823,7 +836,7 @@ class StationSkin extends BaseSkin {
     let tex = this.plates.get(axis);
     if (!tex) {
       tex = canvasTexture(this.scene, `stationPlate_${axis}`, 512, (ctx, s) =>
-        StationSkin.paint(ctx, s, STATION_TRIM[axis], false),
+        StationSkin.paint(ctx, s, this.axisColor(STATION_TRIM, axis), false),
       );
       this.plates.set(axis, tex);
       this.owned.push(tex);
@@ -837,7 +850,7 @@ class StationSkin extends BaseSkin {
       m.diffuseTexture = this.plate(axis);
       m.bumpTexture = this.bump;
       m.bumpTexture.level = 0.7;
-      const trim = STATION_TRIM[axis];
+      const trim = this.axisColor(STATION_TRIM, axis);
       // A faint wash of the face's colour over the steel; structure inside the room is a shade lighter than the hull,
       // corridors a shade darker.
       const steel = new Color3(0.74, 0.77, 0.82);
@@ -856,21 +869,21 @@ class StationSkin extends BaseSkin {
   }
 
   public leverColor(axis: GravityAxis): Color3 {
-    return STATION_TRIM[axis];
+    return this.axisColor(STATION_TRIM, axis);
   }
 }
 
-export function createSkin(id: SkinId, scene: Scene, glow: GlowLayer): SkinRuntime {
+export function createSkin(id: SkinId, scene: Scene, glow: GlowLayer, colorAssist = false): SkinRuntime {
   switch (id) {
     case 'station':
-      return new StationSkin(scene, glow);
+      return new StationSkin(scene, glow, colorAssist);
     case 'neon':
-      return new NeonSkin(scene, glow);
+      return new NeonSkin(scene, glow, colorAssist);
     case 'monolith':
-      return new MonolithSkin(scene, glow);
+      return new MonolithSkin(scene, glow, colorAssist);
     case 'draft':
-      return new DraftSkin(scene, glow);
+      return new DraftSkin(scene, glow, colorAssist);
     default:
-      return new AxisSkin(scene, glow);
+      return new AxisSkin(scene, glow, colorAssist);
   }
 }
