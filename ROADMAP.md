@@ -99,7 +99,7 @@ Two aims: the player should see crates move (and learn what gravity does to them
 
 ### Still to do
 - **A manual playtest of all of it.** Every changed and new chamber builds, passes the headless invariants and crate-route tests, and can be "solved" by the teleporting smoke test. Only the Footing's climb and the Stopper's final drop were also driven with real movement. Reach, sightlines and difficulty are otherwise unproven.
-- **The lever's own arrow is in the way.** From the usual standing distance the lever and its arrow fill the middle of the view, so a crate straight behind the lever is partly hidden. Either set the screens to one side of the sightline or make the lever smaller.
+- **The lever's own arrow is in the way.** The arrow was made smaller and moved beside the lever, close to the wall, so it no longer fills the middle of the view and hides the crate behind the lever. It still needs a manual playtest: is the arrow still easy to read from the usual standing distance, and is the crate behind a lever now visible?
 - **The Pendulum is simple.** With a full-height partition the puzzle is only "be on the west side when +X comes". Lowering the partition would make the west floor unsafe too.
 - **The barrier field was made more opaque and outlined, but needs a look.** Its alpha went from 0.12 to 0.32, its emissive colour is stronger and its edges are outlined. Check in a manual playtest, in every skin, that the Sieve's field reads as a thing and still reads as see-through.
 - **The story pass is unplayed.** The print bay, the skylights (Vault, Counterweight), the Orrery's model and the ending were checked in screenshots only. NARRATIVE.md, "For playtesting", lists what to look at; the Orrery's model also changes what a mid-hall fall lands on.

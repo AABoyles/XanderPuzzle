@@ -12,6 +12,12 @@ import { GravityAxis, GravitySystem } from '../gravity/GravitySystem';
 
 const INTERACT_RANGE = 2.6;
 const SPENT_COLOR = new Color3(0.22, 0.22, 0.24);
+// The arrow sits beside the lever, close to the wall, so it does not hide what the lever moves.
+const ARROW_DIAMETER = 0.3;
+const ARROW_HEIGHT = 0.5;
+const ARROW_OUT = 0.4; // from the wall, when the arrow points along it
+const ARROW_ALONG = 0.8; // to the side of the lever, when the arrow points along the wall
+const ARROW_IN_LINE = 1.0; // from the wall, on the lever's centre line, when it points into or out of the wall
 
 /**
  * What a lever does when thrown:
@@ -101,7 +107,7 @@ export class GravitySwitch {
     }
 
     // Arrow showing which way "down" will be once the lever is thrown.
-    const arrowShape = { diameterTop: 0, diameterBottom: 0.45, height: 0.7 };
+    const arrowShape = { diameterTop: 0, diameterBottom: ARROW_DIAMETER, height: ARROW_HEIGHT };
     this.arrow = CreateCylinder('switchArrow', arrowShape, scene);
     this.arrow.material = this.glowMat;
     this.arrow.parent = this.root;
@@ -202,7 +208,10 @@ export class GravitySwitch {
     if (!axis) return;
     const dir = GravitySystem.axisVector(axis);
     const normal = GravitySystem.axisVector(this.wallAxis);
-    this.arrow.position = normal.scale(1.25).add(dir.scale(0.2));
+    const alongWall = Math.abs(Vector3.Dot(dir, normal)) < 0.0001;
+    this.arrow.position = alongWall
+      ? normal.scale(ARROW_OUT).add(dir.scale(ARROW_ALONG))
+      : normal.scale(ARROW_IN_LINE);
     this.arrow.rotationQuaternion = GravitySwitch.rotationFromUp(dir);
   }
 
