@@ -62,7 +62,7 @@ Twenty-one chambers ship with the game, each teaching or testing one idea:
 16. **The Sieve** (`-Y → +X → +Y → +X → -Y`) — the reverse: a field that stops the crate and lets you through, so the crate has to go over the top.
 17. **The Surplus** (`-Y → -X → -Y → +X → -Y`) — one crate too many, and a hole in the cube to throw it out of. Throw out the wrong one and there is no replacement.
 18. **The Tide** (`-Y → +X → +Z`, on a timer) — a lever starts gravity cycling; be in the right place when each change comes. Too low on the pillar and the next shift drops you out through the north wall.
-19. **The Pendulum** (`-Y → +X → -Y → -X`, on a timer) — the cycle swings a crate back and forth, and the door is open only while the crate holds its plate; be on the door's side of the partition when it does.
+19. **The Pendulum** (`-Y → +X → -Y → -X`, on a timer) — the cycle swings a crate back and forth, and the door is open only while the crate holds its plate. A 3-high partition splits the room: when `+X` comes, anything above its top is carried east over it, so wait low on the west side, then climb the dais and steps to the raised door during the `-Y` after it.
 20. **The Orrery** (all six) — the finale: a crate, a relative lever and a one-shot lever, leaving through the entrance corridor's ceiling. One lever on the way parks the crate where it can never reach its plate.
 21. **The Descent** (`-Y → +X → +Y`) — the epilogue: two one-shot levers and no door. The only way out is a hole in the ceiling, and the fall through it ends the game.
 

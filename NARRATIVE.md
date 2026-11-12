@@ -175,7 +175,7 @@ Cubes in this act show their age: Monolith-style wear can bleed into the other s
 - **The Sieve:** the Grate's mirror. A field that stops the mass and lets the attendant through. The Margin connects the lights on the planet to the dark cubes.
 - **The Surplus:** the attendant throws ballast out of a trap hole on purpose. The log line, `BALLAST MASS RELEASED. REPLACEMENT NOT SCHEDULED.`, is the recovery line's opposite: attendants are replaced, masses are not.
 - **The Tide:** the lever starts the cube turning on its own. It's the first time the machine moves without you. The Stencil calls it `AUTOMATIC TRIM`.
-- **The Pendulum:** the cycle now swings a crate, and the door answers to the crate, not to you. The Margin reaches its conclusion: they didn't fall, they left, and a dark cube prints no one back.
+- **The Pendulum:** the cycle now swings a crate, and the door answers to the crate, not to you. The partition is low enough to be carried over, so the rule is when the field turns east, anything above it goes with it. The Margin reaches its conclusion: they didn't fall, they left, and a dark cube prints no one back.
 
 ### Act IV · The Orrery (XX)
 
@@ -300,8 +300,8 @@ The cubes show their age. The Margin turns personal and frightened.
 | XVII · Surplus | M | *It lets go of whatever / it has no use for.* | -X wall above the Stencil by the hole, under -Y. On route. | The Margin stops short of asking which it is. |
 | XVIII · Tide | S | `AUTOMATIC TRIM ENGAGED` / `ATTENDANT PRESENCE OPTIONAL` | Wall beside the sequence lever, under -Y. On route. | The machine no longer needs you, and it tells you so politely. |
 | XVIII · Tide | M | *It doesn't need us any more. / I don't think it ever did.* | The high ledge, under -Y, top towards the tall wall. On route, read while waiting for the last shift. | The Margin's fear peaks. |
-| XIX · Pendulum | S | `DOOR HOLDS BALLAST POSITION` / `NOT OPERATOR POSITION` | North wall above the exit door, under -Y. On route. | The door follows the crate, not you. |
-| XIX · Pendulum | M | *They didn't fall. They left. / A dark cube prints no one back.* | Partition's west face, under -Y; you stand on that face through the +X phase. On route. | The Margin's conclusion, and the plan: fear turns to resolve. |
+| XIX · Pendulum | S | `DOOR HOLDS BALLAST POSITION` / `NOT OPERATOR POSITION` | North wall, west of the dais, beside the raised exit door, under -Y. On route. | The door follows the crate, not you. |
+| XIX · Pendulum | M | *They didn't fall. They left. / A dark cube prints no one back.* | Partition's west face, low on the face (y 1.5), under -Y; you stand on that face through the +X phase. On route. | The Margin's conclusion, and the plan: fear turns to resolve. |
 
 ### Act IV · The Orrery
 
