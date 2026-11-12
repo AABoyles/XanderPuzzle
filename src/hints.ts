@@ -58,7 +58,7 @@ export const MORE_HINTS: Record<string, [string, string]> = {
   ],
   stopper: [
     'A shelf on the wall opposite the plug is level with the mouth. Mind where the plug goes.',
-    'Throw the lever by the mouth first. Then the one whose arrow points away from the entrance.',
+    'Throw the lever by the mouth first. Then the one whose arrow points away from the way in.',
   ],
   counterweight: [
     'The floor has a pit at one end. A crate that drops into it stays there.',
