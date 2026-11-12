@@ -611,6 +611,8 @@ export class HUD {
   public log(text: string, seconds = 5): void {
     clearTimeout(this.logTimer);
     this.logLabel.text = text;
+    // One 22px row per line, so a two-line notice (see `NO_TRIM`) is not clipped.
+    this.logLabel.height = `${22 * text.split('\n').length}px`;
     this.logLabel.isVisible = true;
     this.logTimer = setTimeout(() => {
       this.logLabel.isVisible = false;

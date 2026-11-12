@@ -76,6 +76,12 @@ export const MASS_RELEASED = 'BALLAST MASS RELEASED. REPLACEMENT NOT SCHEDULED.'
 /** Logged when the player undoes the last gravity shift: the trim is put back, and the facility does not say why. */
 export const SHIFT_REVERTED = 'TRIM RESTORED TO LAST SETTING.';
 
+/**
+ * Logged when no lever left can turn gravity to the exit's: the facility's first line. The second line, which names the
+ * keys for undo and restart, depends on the input device, so main.ts adds it.
+ */
+export const NO_TRIM = 'NO SETTING FROM HERE RETURNS THIS CUBE TO TRIM.';
+
 /** The share of the ballast field gone dark, seen when falling from chamber `index` of `count`: it grows each chamber. */
 export const darkFraction = (index: number, count: number): number =>
   0.15 + 0.5 * Math.min(Math.max(index / Math.max(count - 1, 1), 0), 1);

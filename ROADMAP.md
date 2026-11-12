@@ -74,6 +74,7 @@ What exists today: static axis-aligned boxes, wall-mounted levers that set gravi
 7. **Level-design pass engine work.** Done: crates that fall out of the level are lost (`Crate.lost`, `MASS_RELEASED` log line), inverted plates (`addPlate(..., cratesOnly, inverted)`), a burnt-out lever prop (`addSpentLever`), and `tests/crateRoutes.test.ts`, which replays crate routes headlessly.
 8. **Telling the story.** Done: the attendant printer at every entrance and the print-in (`Builder.finish()`, `HUD.printIn`), skylights and `vista` chambers that show the field and the Crown from inside, the title's outside view of the cube, the Orrery's model of the field (`modelCube`), signed notes from attendant 416, and an ending that says why it is one (the Descent's printer goes offline, its cube goes dark, one more light on the planet). See NARRATIVE.md, "Building it".
 6. **Platform.** Done: touch controls, gamepad support, a pause menu with persistent settings and a controls reference, fullscreen with landscape lock, and an installable offline-capable web app. These are outside the chamber designs above.
+9. **Stuck notice.** Done, unplayed: `src/game/stuck.ts` checks whether any lever left can turn gravity to the exit's, and when none can, the facility logs a notice that points at Z and R. It is lever-only. It does not detect a crate that can no longer reach its plate (The Surplus's wrong crate thrown out, The Orrery's parked crate), and it does not know where the player can walk, so it stays silent in those cases.
 
 ## Level-design pass
 

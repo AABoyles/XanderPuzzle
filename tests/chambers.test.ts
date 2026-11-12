@@ -10,6 +10,9 @@ import { AXES, axisVec } from '../src/gravity/axes.ts';
 import { placardCorners } from '../src/level/placardText.ts';
 import { darkFraction } from '../src/narrative.ts';
 import type { GravityAxis } from '../src/gravity/axes.ts';
+import { leversExhausted, reachableAxes } from '../src/game/stuck.ts';
+import type { LeverMoves } from '../src/game/stuck.ts';
+import type { GravitySwitch } from '../src/level/GravitySwitch.ts';
 
 setupHeadless();
 // Dynamic imports: they must run after the hooks are registered.
@@ -19,6 +22,7 @@ const { GlowLayer } = await import('@babylonjs/core/Layers/glowLayer');
 await import('../src/babylonSideEffects.ts');
 const { createSkin } = await import('../src/skins/Skin.ts');
 const { CHAMBERS } = await import('../src/level/chambers/index.ts');
+const { buildLockout } = await import('../src/level/chambers/lockout.ts');
 
 /** Matches PlayerController's collider radius. */
 const PLAYER_RADIUS = 0.5;
@@ -27,6 +31,12 @@ const playerBox = (c: readonly number[]): Aabb => ({
   max: [c[0] + PLAYER_RADIUS, c[1] + PLAYER_RADIUS, c[2] + PLAYER_RADIUS],
 });
 const inside = (b: Aabb, p: readonly number[]) => [0, 1, 2].every((i) => p[i] >= b.min[i] && p[i] <= b.max[i]);
+
+/** A built lever as the stuck check sees it. */
+const leverMoves = (sw: GravitySwitch): LeverMoves => ({
+  targetFor: (a) => sw.targetFor(a),
+  cycle: sw.spec.kind === 'sequence' ? sw.spec.sequencer.axes : undefined,
+});
 
 const engine = new NullEngine();
 const scene = new Scene(engine);
@@ -131,17 +141,7 @@ for (const [index, chamber] of CHAMBERS.entries()) {
         }
 
         // Levers: every one must be usable from some axis the player can reach, and the exit axis must be reachable.
-        const reachable = new Set<GravityAxis>([level.entranceAxis]);
-        for (let grew = true; grew; ) {
-          grew = false;
-          for (const sw of level.switches) {
-            const targets: (GravityAxis | null)[] =
-              sw.spec.kind === 'sequence'
-                ? sw.spec.sequencer.axes
-                : [...reachable].map((a) => sw.targetFor(a));
-            for (const t of targets) if (t && !reachable.has(t)) (reachable.add(t), (grew = true));
-          }
-        }
+        const reachable = reachableAxes(level.entranceAxis, level.switches.map(leverMoves));
         assert.ok(reachable.has(level.exitAxis), `exitAxis ${level.exitAxis} is unreachable from ${level.entranceAxis}`);
         level.switches.forEach((sw, i) => {
           const usable = sw.spec.kind === 'sequence' || [...reachable].some((a) => sw.canUse(a));
@@ -244,4 +244,23 @@ test('building and disposing every chamber in sequence leaves the scene clean', 
   const before = counts();
   for (const c of CHAMBERS) c.build(scene, skin).dispose();
   assert.deepEqual(counts(), before);
+});
+
+test('The Lockout is stuck once its one-shot lever is burnt out on the wrong axis, and not at the start', () => {
+  const level = buildLockout(scene, skin);
+  try {
+    const relative = level.switches.find((sw) => sw.spec.kind === 'relative');
+    assert.ok(relative, 'The Lockout has no relative lever');
+    const levers = level.switches.map(leverMoves);
+    assert.equal(level.entranceAxis, '-Y');
+    assert.equal(level.exitAxis, '+Y');
+    assert.equal(leversExhausted(level.entranceAxis, level.exitAxis, levers), false, 'stuck at the start');
+    // The wrong first throw: from -Y the one-shot lever turns gravity to -X, and burns out.
+    const wrong = relative.targetFor('-Y');
+    assert.equal(wrong, '-X', 'the one-shot lever should turn -Y to -X');
+    relative.burnOut();
+    assert.equal(leversExhausted('-X', level.exitAxis, levers), true, 'burnt out on -X, the exit is still reachable');
+  } finally {
+    level.dispose();
+  }
 });

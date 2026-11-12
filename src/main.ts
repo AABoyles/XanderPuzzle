@@ -26,13 +26,14 @@ import { PlayerController } from './player/PlayerController';
 import { canFullscreen, isFullscreen, isIOS, isStandalone, onFullscreenChange, toggleFullscreen } from './pwa/fullscreen';
 import { loadFonts } from './level/fonts';
 import {
-  darkFraction, DESCENT_OUT_OF_TRIM, descentAlarm, dutyLine, endCard, MASS_RELEASED, NOT_RECOVERED, planetLights,
-  recoveryLine, SHIFT_REVERTED, stormLine, winTitle, workLog,
+  darkFraction, DESCENT_OUT_OF_TRIM, descentAlarm, dutyLine, endCard, MASS_RELEASED, NO_TRIM, NOT_RECOVERED,
+  planetLights, recoveryLine, SHIFT_REVERTED, stormLine, winTitle, workLog,
 } from './narrative';
 import { registerServiceWorker } from './pwa/register';
 import { shiftTone } from './gravity/shiftSound';
 import { simDelta } from './time';
 import { UndoStack } from './game/undo';
+import { leversExhausted } from './game/stuck';
 import type { DynamicsSnapshot } from './level/Dynamics';
 import { fovToRadians, loadSettings, masterGain, musicGain, saveSettings } from './settings';
 import type { Settings, SettingsStorage } from './settings';
@@ -322,7 +323,35 @@ function undoLastShift(): boolean {
   hud.log(SHIFT_REVERTED);
   beep(300, 220, 0.12, 'triangle', 0.06);
   syncPrinter();
+  checkTrim();
   return true;
+}
+
+/** Whether the no-trim notice is showing: set by `checkTrim`, reset whenever a chamber starts. */
+let outOfTrim = false;
+
+/**
+ * Tells the player once when no lever left can turn gravity to the exit's (a lever-only check, see `leversExhausted`).
+ * Not in the Descent, not while a sequence runs, and not in the sandbox. Called after every gravity change.
+ */
+function checkTrim(): void {
+  const exhausted =
+    !sandbox &&
+    !level.ending &&
+    !level.sequencer?.active &&
+    leversExhausted(
+      gravity.axis,
+      level.exitAxis,
+      level.switches.map((sw) => ({
+        targetFor: (a: GravityAxis) => sw.targetFor(a),
+        cycle: sw.spec.kind === 'sequence' ? sw.spec.sequencer.axes : undefined,
+      })),
+    );
+  if (exhausted && !outOfTrim) {
+    hud.log(`${NO_TRIM}\n${TEXT[input.lastDevice].stuck}`, 12);
+    beep(140, 90, 0.15, 'square', 0.08);
+  }
+  outOfTrim = exhausted;
 }
 
 /** Restarts the chamber; if the player was falling, the facility logs the lost attendant's replacement. */
@@ -341,7 +370,15 @@ function printIn(repeats = 0): void {
   sound.play('print');
 }
 
-type Prompts = { void: string; cycle: string; next: string; again: string; select: string; title: string };
+type Prompts = {
+  void: string;
+  cycle: string;
+  next: string;
+  again: string;
+  select: string;
+  title: string;
+  stuck: string;
+};
 const TEXT: Record<InputDevice, Prompts> = {
   keyboard: {
     void: 'Outside the cube · press [R] to be reprinted',
@@ -350,6 +387,7 @@ const TEXT: Record<InputDevice, Prompts> = {
     again: 'Click or press Enter to play again',
     select: '\nL for chamber select',
     title: 'Click or press Enter to return to the title',
+    stuck: '[Z] takes back the last lever · [R] reprints you at the entrance',
   },
   touch: {
     void: 'Outside the cube · tap \u21BB to be reprinted',
@@ -358,6 +396,7 @@ const TEXT: Record<InputDevice, Prompts> = {
     again: 'Tap to play again',
     select: '\nTap \u2630 for chamber select',
     title: 'Tap to return to the title',
+    stuck: '↶ takes back the last lever · ↻ reprints you at the entrance',
   },
   gamepad: {
     void: 'Outside the cube · press [Y] to be reprinted',
@@ -366,6 +405,7 @@ const TEXT: Record<InputDevice, Prompts> = {
     again: 'Press [A] to play again',
     select: '\nBack for chamber select',
     title: 'Press [A] to return to the title',
+    stuck: 'Press [B] to take back the last lever · [Y] reprints you at the entrance',
   },
 };
 
@@ -394,6 +434,7 @@ function startLevel(index: number): void {
   levelTime = 0;
   shifts = 0;
   undoStack.clear();
+  outOfTrim = false;
   arrival = 0;
   reclaimHold = 0;
   // Behind the title the view is outside the cube; the print-in plays when the title lifts.
@@ -744,6 +785,7 @@ engine.runRenderLoop(() => {
         if (sw.spec.kind !== 'sequence') level.sequencer?.stop();
         shifts++;
         shiftSound(gravity.axis);
+        checkTrim();
         // In the Descent, the facility objects to every throw.
         if (level.ending) {
           hud.log(descentAlarm(shifts - 1, cubeOf(levelIndex) ?? ''), 9);
@@ -986,6 +1028,8 @@ if (import.meta.env.DEV) {
     /** Undoes the last hand-thrown lever, as Z does. Returns whether anything was undone. */
     undo: () => (game.kind === 'playing' || game.kind === 'falling') && undoLastShift(),
     undoDepth: () => undoStack.size,
+    /** Whether the no-trim notice (no lever left reaches the exit's gravity) is showing. */
+    outOfTrim: () => outOfTrim,
     openPause: () => game.send({ type: 'pause' }),
     pauseOpen: () => game.kind === 'paused',
     openLevelSelect,
