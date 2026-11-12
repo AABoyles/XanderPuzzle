@@ -1,3 +1,5 @@
+import { encodeSpec } from '../src/level/specCodec.ts';
+import { CHIMNEY } from '../src/level/specs/chimney.ts';
 import { expect, Page, test } from '@playwright/test';
 
 /**
@@ -259,3 +261,23 @@ async function throwLever(page: Page, index: number, expected: string) {
   }
   expect(axis, `gravity after lever ${index}`).toBe(expected);
 }
+
+test('a #c= link opens the chamber it carries, alone', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  await page.goto(`/?skin=axis#c=${await encodeSpec(CHIMNEY)}`);
+  await page.waitForFunction(() => '__debug' in window);
+  expect(await dbg(page, (d) => d.levelCount())).toBe(1);
+  expect(await dbg(page, (d) => d.switches().length)).toBe(CHIMNEY.levers.length);
+  expect(errors, 'browser errors').toEqual([]);
+});
+
+test('a broken #c= link falls back to the test room', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  await page.goto('/?skin=axis#c=v1.nonsense');
+  await page.waitForFunction(() => '__debug' in window);
+  expect(await dbg(page, (d) => d.levelCount())).toBe(1);
+  expect(await dbg(page, (d) => d.switches().length)).toBeGreaterThan(0);
+  expect(errors, 'browser errors').toEqual([]);
+});

@@ -53,7 +53,7 @@ export interface App {
   readonly scene: Scene;
   readonly glow: GlowLayer;
   readonly gravity: GravitySystem;
-  /** The chambers' code, fetched as each is needed (`?sandbox` makes it a list of one: the physics test room). */
+  /** The chambers' code, fetched as each is needed (`?sandbox` or a shared chamber link makes it a list of one: the test room, or the shared chamber). */
   readonly chambers: ChamberLoader;
   readonly keyboardMouse: KeyboardMouseInput;
   readonly touch: TouchInput;

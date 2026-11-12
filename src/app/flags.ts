@@ -1,11 +1,19 @@
+import { specFromHash } from '../level/specCodec';
+
 /**
  * What the page was opened with: the URL's flags, and whether this browser will store anything. Read once, when the
  * page loads; `main.ts` and the modules it wires up import them from here.
  */
 export const params = new URLSearchParams(location.search);
 
-/** `?sandbox` loads the physics test room instead of the chambers. */
-export const sandbox = params.has('sandbox');
+/** A shared chamber's encoded spec, from a link ending `#c=...` (see `src/level/specCodec.ts`). Not yet decoded. */
+export const sharedSpec = specFromHash(location.hash);
+
+/**
+ * `?sandbox` loads the physics test room instead of the chambers, and a shared chamber link loads that one chamber: both
+ * are a single room outside the catalog, with no progress, hints, serials or chamber select.
+ */
+export const sandbox = params.has('sandbox') || sharedSpec !== undefined;
 
 /** Whether `localStorage` works here (it can be blocked or full). */
 export const storageAvailable = (() => {

@@ -14,7 +14,8 @@ import { GamepadInput } from '../input/GamepadInput';
 import { InputManager } from '../input/InputManager';
 import { KeyboardMouseInput } from '../input/KeyboardMouseInput';
 import { TouchInput } from '../input/TouchInput';
-import { CHAMBERS, ChamberLoader, SANDBOX } from '../level/chambers';
+import { CHAMBERS, ChamberLoader } from '../level/chambers';
+import { roomSource } from './sharedChamber';
 import { CratePreview } from '../level/CratePreview';
 import { loadFonts } from '../level/fonts';
 import { PlayerController } from '../player/PlayerController';
@@ -59,7 +60,7 @@ export async function createApp(): Promise<App> {
   glow.intensity = 0.7;
 
   const gravity = new GravitySystem('-Y', 22);
-  const chambers = new ChamberLoader(sandbox ? [SANDBOX] : CHAMBERS);
+  const chambers = new ChamberLoader(sandbox ? [roomSource()] : CHAMBERS);
   const playtest = playtesting ? new PlaytestRecorder(() => new Date().toISOString()) : undefined;
   // Progress is keyed by chamber id.
   const progress = loadProgress(progressStorage(), CHAMBER_IDS);
