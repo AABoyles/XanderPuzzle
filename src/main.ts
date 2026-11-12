@@ -827,6 +827,7 @@ engine.runRenderLoop(() => {
     const tier = hintTier(chamberSeconds, repeatStarts);
     if (!sandbox && game.kind === 'playing' && tier > shownHintTier) {
       shownHintTier = tier;
+      playtest?.hint(tier);
       hud.setHint(hintFor(CHAMBERS[levelIndex]?.id, level.hint, tier));
       beep(440, 440, 0.12, 'sine', 0.04);
     }
