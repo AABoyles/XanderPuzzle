@@ -25,8 +25,8 @@ export const MORE_HINTS: Record<string, [string, string]> = {
     'Throw the low lever on the far wall first. The next one is on a side wall.',
   ],
   shaft: [
-    'The wall you climb has an opening in it. Read the placard just before the opening.',
-    'Throw the low lever first, then climb the wall it makes, keeping clear of the opening.',
+    'The wall you climb has a gap right across it. Read the placard just before the gap.',
+    'Throw the low lever first, then climb the wall it makes, jumping the gap.',
   ],
   divide: [
     'The partition does not reach the ceiling. Look at the gap over it.',

@@ -10,17 +10,17 @@ const h: [number, number] = [y0, y1];
  * Level 2 - a 40-unit vertical shaft. The exit door is at the very top, upside down.
  * -Y -> +X (walk up the wall) -> +Y (stand on the ceiling).
  *
- * Trap hole: a 4 x 4.5 opening in the +X wall at height 12..16, straight ahead of where the first lever
- * lands you. Under +X it is a hole in the floor (the planet shows through it): walk straight up and you
- * walk into it and fall out of the chamber. A 4-wide strip on the +Z side passes it. A placard just
- * before it says what recovery is: a replacement, printed at the entrance.
+ * Trap gap: a 1-unit slot across the whole +X wall at height 12..13, straight ahead of where the first lever
+ * lands you. Under +X it is a gap in the floor (the planet shows through it) with no way round: walk straight
+ * up and you fall out of the chamber, so it has to be jumped. A placard just before it says what recovery is:
+ * a replacement, printed at the entrance.
  */
 export const SHAFT: ChamberSpec = {
   accent: [0.9, 0.35, 0.55],
   parts: [
     { kind: 'slab', axis: 'y', lo: y0 - T, hi: y0, u: w, v: w, role: 'shell' },
     { kind: 'slab', axis: 'y', lo: y1, hi: y1 + T, u: w, v: w, role: 'shell' },
-    // Trap hole open to space, in the climb: +X wall at y [12, 16], z [-3.5, 1]; strip z [1, 5] stays walkable.
+    // Trap gap open to space, in the climb: +X wall at y [12, 13], the full width (z [-5, 5]): it must be jumped.
     {
       kind: 'slab',
       axis: 'x',
@@ -29,7 +29,7 @@ export const SHAFT: ChamberSpec = {
       u: h,
       v: w,
       role: 'shell',
-      hole: { u: [12, 16], v: [-3.5, 1] },
+      hole: { u: [12, 13], v: [-W, W] },
     },
     { kind: 'slab', axis: 'z', lo: W, hi: W + T, u: w, v: h, role: 'shell' },
     { kind: 'slab', axis: 'z', lo: -W - T, hi: -W, u: w, v: h, role: 'shell', hole: { u: [-2, 2], v: [y0, y0 + 3] } },

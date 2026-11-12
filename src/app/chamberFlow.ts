@@ -17,6 +17,7 @@ import {
   reducedMotionActive,
 } from './App';
 import type { App } from './App';
+import { hashForChamber } from '../level/route';
 import { leaveShared, sandbox, store } from './flags';
 
 /**
@@ -76,6 +77,9 @@ export function startLevel(app: App, index: number): void {
   app.level.dispose();
   app.repeatStarts = index === app.levelIndex ? app.repeatStarts + 1 : 0;
   app.levelIndex = index;
+  // The address bar names the chamber, so copying it shares this chamber (`#<id>`); `replaceState` fires no event.
+  if (!sandbox)
+    history.replaceState(null, '', location.pathname + location.search + hashForChamber(CHAMBERS[index].id));
   app.playtest?.enter(CHAMBERS[index].id);
   persistPlaytest(app);
   if (progressWritable()) {

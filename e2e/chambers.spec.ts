@@ -313,7 +313,7 @@ test('pasting a #c= link into a tab that is already open loads its chamber', asy
   await page.waitForFunction(() => (window as any).__debug?.level() === -1);
 });
 
-test('leaving a shared chamber clears the link from the address bar', async ({ page }) => {
+test('leaving a shared chamber replaces the link in the address bar with the chamber picked', async ({ page }) => {
   await page.goto(`/?skin=axis#c=${await encodeSpec(CHIMNEY)}`);
   await page.waitForFunction(() => '__debug' in window);
   await dbg(page, (d) => d.begin());
@@ -321,5 +321,31 @@ test('leaving a shared chamber clears the link from the address bar', async ({ p
   await page.waitForFunction(() => (window as any).__debug.levelSelectOpen());
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => !(window as any).__debug.levelSelectOpen());
-  expect(new URL(page.url()).hash).toBe('');
+  expect(new URL(page.url()).hash).toBe('#vault');
+});
+
+test('#<id> starts that chamber when it is open, and the address bar follows the chamber', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  await page.goto('/?skin=axis&unlockall#shaft');
+  await page.waitForFunction(() => '__debug' in window);
+  expect(await dbg(page, (d) => d.level())).toBe(1);
+  await dbg(page, (d) => d.startLevel(2));
+  expect(new URL(page.url()).hash).toBe('#divide');
+  expect(errors, 'browser errors').toEqual([]);
+});
+
+test('#<id> of a chamber that is still locked, or that does not exist, opens the game as usual', async ({ page }) => {
+  for (const hash of ['#shaft', '#nonesuch']) {
+    await page.goto(`/?skin=axis${hash}`);
+    await page.waitForFunction(() => '__debug' in window);
+    expect(await dbg(page, (d) => d.level()), hash).toBe(0);
+  }
+});
+
+test('pasting #<id> into a tab that is already open loads that chamber', async ({ page }) => {
+  await page.goto('/?skin=axis&unlockall');
+  await page.waitForFunction(() => '__debug' in window);
+  await page.evaluate(() => (location.hash = 'spiral'));
+  await page.waitForFunction(() => (window as any).__debug?.level() === 3);
 });

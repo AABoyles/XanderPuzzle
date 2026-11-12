@@ -233,7 +233,7 @@ The second line points at the thing to notice (which lever, which surface, what 
 | Chamber | Hint 1 (its own) | Hint 2 (at 150 s or 3 restarts) | Hint 3 (at 360 s or 7 restarts) |
 | --- | --- | --- | --- |
 | I · The Vault | Levers turn the cube until the arrow's wall faces the planet. That wall is your floor now. | The placard above the first lever explains the arrows. Read it before you throw. | Throw the low lever on the far wall first. The next one is on a side wall. |
-| II · The Shaft | The way out is a long way up. Walls are just floors you have not met yet. | The wall you climb has an opening in it. Read the placard just before the opening. | Throw the low lever first, then climb the wall it makes, keeping clear of the opening. |
+| II · The Shaft | The way out is a long way up. Walls are just floors you have not met yet. | The wall you climb has a gap right across it. Read the placard just before the opening. | Throw the low lever first, then climb the wall it makes, jumping the opening. |
 | III · The Divide | Too tall to jump. But is it too tall to walk around? | The partition does not reach the ceiling. Look at the gap over it. | Throw the low lever before the partition first. Then walk up the wall and over it. |
 | IV · The Spiral | One lever leads to the next. Not every lever leads somewhere. | Two levers share one wall. The ceiling lists the sequence. | Throw the lower of those two levers first. The next one is on the ceiling. |
 | V · The Chimney | Falling is just walking, faster. Steer. | Straight down from the lever is a wide ledge. It catches anyone who drops. | Throw the lever, then steer across to the other side before the first ledge. |

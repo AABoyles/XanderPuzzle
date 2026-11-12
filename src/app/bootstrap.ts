@@ -20,7 +20,8 @@ import { CratePreview } from '../level/CratePreview';
 import { loadFonts } from '../level/fonts';
 import { PlayerController } from '../player/PlayerController';
 import { PlaytestRecorder, loadPlaytest, playtestFileName } from '../playtest';
-import { loadProgress, resetProgress, resumeIndex } from '../progress';
+import { furthestCleared, isUnlocked, loadProgress, resetProgress, resumeIndex } from '../progress';
+import { routeFromHash } from '../level/route';
 import { isFullscreen } from '../pwa/fullscreen';
 import { loadSettings, saveSettings } from '../settings';
 import { createSkin, DEFAULT_SKIN, SKIN_IDS, SKIN_LABELS, SkinId } from '../skins/Skin';
@@ -41,7 +42,7 @@ import {
 import type { App } from './App';
 import { applySettings } from './applySettings';
 import { ChamberSelect } from './ChamberSelect';
-import { params, playtesting, sandbox, shared, storageAvailable, store } from './flags';
+import { params, playtesting, sandbox, shared, storageAvailable, store, unlockAll } from './flags';
 import { Sky } from './Sky';
 
 /**
@@ -68,11 +69,17 @@ export async function createApp(): Promise<App> {
   // Progress is keyed by chamber id.
   const progress = loadProgress(progressStorage(), CHAMBER_IDS);
   // Resume at the last chamber reached.
+  // `#<id>` names a chamber to start at; it must be open, like a pick from the chamber list.
+  const route = routeFromHash(location.hash);
+  const routed = route?.kind === 'chamber' ? CHAMBER_IDS.indexOf(route.id) : -1;
+  const routedOpen = routed >= 0 && isUnlocked(routed, furthestCleared(progress, CHAMBER_IDS), unlockAll);
   const levelIndex = guest
     ? GUEST_INDEX
     : sandbox
       ? 0
-      : Math.min(resumeIndex(progress, CHAMBER_IDS), chambers.count - 1);
+      : routedOpen
+        ? routed
+        : Math.min(resumeIndex(progress, CHAMBER_IDS), chambers.count - 1);
   // Skin: `?skin=station|axis|monolith|draft|neon`, else the last one picked with K, else Station.
   const skinParam = params.get('skin') as SkinId | null;
   const storedSkin = Math.floor(store.get('skin') ?? SKIN_IDS.indexOf(DEFAULT_SKIN));
