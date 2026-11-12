@@ -3,14 +3,13 @@ import { Color4 } from '@babylonjs/core/Maths/math.color';
 import { Engine } from '@babylonjs/core/Engines/engine';
 import { GlowLayer } from '@babylonjs/core/Layers/glowLayer';
 import { Scene } from '@babylonjs/core/scene';
-import { TargetCamera } from '@babylonjs/core/Cameras/targetCamera';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import {
   chaseDirection, DESCENT_DURATION, STORM_FIRST, distanceOutside, FALL_DURATION, FallTracker, PLANET_LAST, PLANET_NEAR,
   planetDistance, Vec3,
 } from './environment/fall';
-import { chamberHull, fieldBasis } from './environment/ballastField';
 import { SpaceBackdrop } from './environment/SpaceBackdrop';
+import { TitleView } from './title/TitleView';
 import { GameState, escapePauses, isFrozen, showsTouchControls, simulates, transition, viewOf } from './game/GameState';
 import type { State } from './game/GameState';
 import { AudioEngine } from './audio/AudioEngine';
@@ -251,22 +250,10 @@ const backdrop = new SpaceBackdrop(scene, glow);
 backdrop.setChamber(level.bounds);
 const fall = new FallTracker();
 
-/**
- * The title's view: the cube from outside, hanging in the field with the Crown above it and the planet below (the one
- * place the whole machine is seen at once, before the attendant is printed inside it). It holds only while the title
- * is up and the player has not moved from the print bed.
- */
-const titleCamera = new TargetCamera('titleCamera', Vector3.Zero(), scene);
-titleCamera.fov = 1.45;
-titleCamera.minZ = 1;
-titleCamera.maxZ = 2000;
+/** The title's outside view (`src/title/TitleView.ts`), on screen only while `titleShot` holds. */
+const titleView = new TitleView(scene);
 scene.activeCamera = player.camera;
-const TITLE_STANDOFF = 200;
-const TITLE_PLANET = 225;
-const TITLE_CROWN = 120;
-const titleSun = new Vector3();
-const titleAnchor = new Vector3();
-let titleTime = 0;
+/** Whether the title's view is up: the title is showing and the player has not left the print bed. */
 let titleShot = false;
 let wasStorming = false;
 /** Seconds the player has stood on the reclaimer's plate; it takes them after `RECLAIM_HOLD`. */
@@ -986,7 +973,7 @@ engine.runRenderLoop(() => {
   titleShot = game.kind === 'title' && !sandbox && atPrintBed();
   if (titleShot !== wasTitleShot) {
     backdrop.resetField(); // the field is laid out around the cube for the title, around the view otherwise
-    scene.activeCamera = titleShot ? titleCamera : player.camera;
+    scene.activeCamera = titleShot ? titleView.camera : player.camera;
   }
   // Where a window shows the sky, the planet and the Crown swing round as the cube turns; elsewhere a hole in the
   // floor shows the planet at once.
@@ -997,33 +984,7 @@ engine.runRenderLoop(() => {
     planetLights: planetLights(levelIndex, sandbox ? -1 : LIGHTS_FROM, LEVELS.length),
   };
   if (titleShot) {
-    // Stand off to one side of the cube, a little above its middle, and drift slowly around it.
-    titleTime += reducedMotionActive() ? 0 : dt;
-    const hull = chamberHull(level.bounds);
-    titleAnchor.fromArray(hull.center);
-    const axes = fieldBasis(planetDir);
-    const a = 0.6 + 0.16 * Math.sin(titleTime * 0.08);
-    const at = (k: number) =>
-      hull.center[k] + (axes.x[k] * Math.cos(a) + axes.z[k] * Math.sin(a)) * TITLE_STANDOFF + axes.y[k] * 12;
-    titleCamera.position.set(at(0), at(1), at(2));
-    titleCamera.upVector.fromArray(axes.y);
-    const up = Vector3.FromArray(axes.y);
-    titleCamera.setTarget(titleAnchor.add(up.scale(47)));
-    // From the side the star cannot be both straight above the Crown and in the picture, so here it is drawn where
-    // the eye expects it: beyond the Crown, on the line up from the planet through the cube.
-    titleSun.copyFrom(titleAnchor).addInPlace(up.scale(TITLE_CROWN + 70)).subtractInPlace(titleCamera.position);
-    titleSun.normalize();
-    backdrop.update({
-      ...shared,
-      cameraPosition: titleCamera.position,
-      anchor: titleAnchor,
-      visibility: 1,
-      planetDistance: TITLE_PLANET,
-      crownDistance: TITLE_CROWN,
-      sunDirection: titleSun,
-      speed: 0,
-      dt,
-    });
+    backdrop.update({ ...shared, ...titleView.update(level.bounds, planetDir, dt, reducedMotionActive()), dt });
   } else {
     // The last fall has ended: one more light comes up on the planet, under the end card.
     // The view settles on the ground below, where it is.

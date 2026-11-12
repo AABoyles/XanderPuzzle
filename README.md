@@ -134,5 +134,6 @@ Gravity-driven crates, pressure plates and plate-controlled doors (`Builder.addC
 - `src/ui/PauseMenu.ts` — the pause menu: resume, restart, chamber select, fullscreen, settings and the controls reference.
 - `src/settings.ts` — Babylon-free settings model (defaults, limits, parsing, load/save), tested by Node.
 - `src/pwa/` — fullscreen helpers, service-worker registration and the offline cache policy.
-- `src/main.ts` — scene bootstrap, skin switching, render loop, win-condition check, and the title's outside view of the cube.
+- `src/main.ts` — scene bootstrap, skin switching, render loop, win-condition check, and deciding when the title's outside view is up.
+- `src/title/` — the title's outside view of the cube (`TitleView.ts`: its camera and backdrop options; `titleShot.ts`: the Babylon-free maths).
 - `src/progress.ts` — Babylon-free versioned, id-keyed progress (unlock rule, best times, fewest shifts, migration, reset), tested by Node.
