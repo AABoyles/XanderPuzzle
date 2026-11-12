@@ -40,7 +40,7 @@ const ROUTES: Route[] = [
   { id: 'sieve', what: 'the route', steps: [['+X'], ['+Y'], ['+X'], ['-Y']], solved: true },
   {
     id: 'sieve',
-    what: '+X then -Y: stopped at the field',
+    what: '+X then -Y: stopped at the partition',
     steps: [['+X'], ['-Y']],
     solved: false,
     crates: [[-1, -5.25, 4]],

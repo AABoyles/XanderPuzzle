@@ -10,7 +10,7 @@ import { Builder, BuiltLevel, T, V } from '../Builder';
  * east end and presses a plate that opens the exit door; under -X it slides back to the west end and the door shuts.
  * So the door is open for a +X phase and the -Y phase after it.
  * A partition (x = 0, 3 high) splits the room. It is too tall to jump (a jump is under 2), and the lane runs through it
- * behind a grate (the crate passes, you do not). The lever is on the east half's side of the lane, so the first +X
+ * as an open gap (the crate passes; you cannot get into the lane, which is sealed in glass). The lever is on the east half's side of the lane, so the first +X
  * carries you east and you watch the crate swing, the door open out of reach and shut again.
  * The rule to find: when +X comes, anything higher than the top of the partition (y 3) is carried east over it.
  * Anything at or below y 3 is caught by the partition's west face and stays west.
@@ -54,8 +54,7 @@ export function buildPendulum(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.box(V(-0.5, 0, 2.2), V(0.5, 3, Z), b.exit);
   // Above the lane it continues (the lane's own roof is glass at y 2..2.2).
   b.box(V(-0.5, 2.2, 0), V(0.5, 3, 2.2), b.exit);
-  // The lane through the partition: a grate stops you, the crate slides through.
-  b.grate(V(-0.5, 0, 0), V(0.5, 2, 2));
+  // The lane through the partition is an open gap: it is sealed in glass on its other sides, so only the crate is ever in it.
 
   // The dais under the raised exit doorway, and the two steps up to it from the south (tops 2.4 and 1.2).
   b.box(V(-9, 0, 12), V(-5, 3.5, Z), b.exit);

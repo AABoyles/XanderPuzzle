@@ -4,9 +4,11 @@ import { SkinRuntime } from '../../skins/Skin';
 import { Builder, BuiltLevel, T, V } from '../Builder';
 
 /**
- * Level 12 - the floor is half grate, half glass, over a sealed lower deck. You cannot go down, but
- * crates can: shift east and the crate slides across the glass onto the grate, shift back and it drops
- * through onto a crates-only plate whose door is the exit. Route: -Y -> +X -> -Y.
+ * Level 15 - the floor is glass over a sealed lower deck, with one hole at the far end of the crate's lane
+ * (x 5.5..8, z 3..5). Shift east and the crate slides across the glass to the east wall, shift back and it drops
+ * through the hole onto a crates-only plate whose door is the exit. You never meet the hole: it is not in your lane
+ * (every lever and landing is at z <= -4.5). Gravity decides who falls, and where you stand decides what you meet;
+ * if you do walk into it, you drop to the lower deck and Z or a restart brings you back. Route: -Y -> +X -> -Y.
  */
 export function buildGrate(scene: Scene, skin: SkinRuntime): BuiltLevel {
   const b = new Builder(scene, skin, new Color3(0.2, 0.85, 0.75));
@@ -26,9 +28,11 @@ export function buildGrate(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.slab('z', -R - T, -R, x, [lo, hi], b.wall, { u: door.x, v: door.y });
   b.slab('z', R, R + T, x, [lo, hi], b.wall, { u: door.x, v: door.y });
 
-  // The upper floor: glass in the west half (the crate cannot fall here), grate in the east half.
-  b.glass(V(-R, F - 0.5, -R), V(-2, F, R));
-  b.grate(V(-2, F - 0.5, -R), V(R, F, R));
+  // The upper floor: glass all over, with one hole in the crate's lane at the east end (x 5.5..8, z 3..5).
+  const hole = { x: [5.5, R] as [number, number], z: [3, 5] as [number, number] };
+  b.glass(V(-R, F - 0.5, -R), V(R, F, hole.z[0]));
+  b.glass(V(-R, F - 0.5, hole.z[1]), V(R, F, R));
+  b.glass(V(-R, F - 0.5, hole.z[0]), V(hole.x[0], F, hole.z[1]));
   // Under the doorways, level with the floor.
   b.box(V(-2, F - 0.5, -R - T), V(2, F, -R), b.alcove);
   b.box(V(-2, F - 0.5, R), V(2, F, R + T), b.exit);
