@@ -60,3 +60,12 @@ test('no extra line names an axis (+X, -Y and so on): the player sees directions
     for (const line of MORE_HINTS[id]) assert.doesNotMatch(line, /[+-][XYZ]/, `${id}: ${line}`);
   }
 });
+
+test('no extra line uses a compass word or a room letter: the player has no compass and never sees those names', () => {
+  for (const id of IDS) {
+    for (const line of MORE_HINTS[id]) {
+      assert.doesNotMatch(line, /\b(north|south|east|west)\b/i, `${id}: ${line}`);
+      assert.doesNotMatch(line, /\broom [abcd]\b/i, `${id}: ${line}`);
+    }
+  }
+});

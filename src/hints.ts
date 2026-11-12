@@ -30,11 +30,11 @@ export const MORE_HINTS: Record<string, [string, string]> = {
   ],
   divide: [
     'The partition does not reach the ceiling. Look at the gap over it.',
-    'Throw the lever on the near side first. Then walk up the wall and over the partition.',
+    'Throw the low lever before the partition first. Then walk up the wall and over it.',
   ],
   spiral: [
-    'Two levers share the west wall. The ceiling lists the sequence.',
-    'Throw the lowest lever on the west wall first. The next one is on the ceiling.',
+    'Two levers share one wall. The ceiling lists the sequence.',
+    'Throw the lower of those two levers first. The next one is on the ceiling.',
   ],
   chimney: [
     'Straight down from the lever is a wide ledge. It catches anyone who drops.',
@@ -42,51 +42,51 @@ export const MORE_HINTS: Record<string, [string, string]> = {
   ],
   staircase: [
     'One lane of each cell has a block overhead. Look up before you climb.',
-    'Climb the first riser in the open lane and step off its top.',
+    'Throw the lever in the lane with nothing hanging over it first, then climb the riser.',
   ],
   atrium: [
-    'Only one lever in the cube turns gravity up. It is in room C.',
-    'Throw the start lever, then in room A the one that leads straight to room C.',
+    'Only one lever in the cube has its arrow pointing up. It is in a side room.',
+    'Throw the start lever, then take the room lever whose arrow faces a doorway wall.',
   ],
   ballast: [
     'The crate leaves its trough when gravity turns. Look at the plate it lands on.',
-    'Throw the lever on the glass screen first. Then the one by the east wall.',
+    'Throw the lever on the glass screen first. Then the low lever on the wall it slides to.',
   ],
   footing: [
     'The window is too high to reach. A low block in front of it stops a crate.',
-    'Throw the east console\'s lever first. The crate slides west, clear of the low block.',
+    'Throw the console lever beside the crate first. The crate slides clear of the low block.',
   ],
   stopper: [
-    'A shelf on the south wall is level with the mouth. Mind where the plug goes next.',
-    'Throw the lever by the mouth first. From the south wall, take the one that sends you east.',
+    'A shelf on the wall opposite the plug is level with the mouth. Mind where the plug goes.',
+    'Throw the lever by the mouth first. Then the one whose arrow points away from the entrance.',
   ],
   counterweight: [
-    'The floor has a pit near the west wall. A crate that drops into it stays there.',
-    'Slide the crate nearer the pit west and let it drop in. Only then send the other east.',
+    'The floor has a pit at one end. A crate that drops into it stays there.',
+    'Slide the crate nearest the pit into it. Only then send the other to its plate.',
   ],
   deadman: [
     'The gate has its own plate out in the room. It holds only while you stand on it.',
     'Throw the tunnel lever first. Stand on the gate plate until the crate is through.',
   ],
   turnstile: [
-    'The floor lever has a black gap in view, in the start wall. Look before you throw.',
-    'Throw the start-corner lever from the floor. Then throw it again from the new floor.',
+    'A black gap sits in view of the floor lever, in the wall you came in by.',
+    'Throw the lever beside the entrance from the floor, then again from the new floor.',
   ],
   lockout: [
-    'The lever on the back wall burns out when thrown. Look behind the screen by the west wall.',
-    'Throw the lever behind the screen first. Then walk the west wall to the back-wall lever.',
+    'The white lever with a ring burns out when thrown. Look behind the screen on your left.',
+    'Throw the lever behind the screen first. Then walk to the white lever on the far wall.',
   ],
   grate: [
     'Only the grate lets a crate through. The glass holds it.',
-    'Throw the middle lever first. Then take the one near the east wall.',
+    'Throw the middle lever first. Then throw the other one, further along the same row.',
   ],
   sieve: [
     'The field stops short of the ceiling. Look at the gap above it.',
-    'Throw the low lever on the field\'s near face first. Then the one by the east wall.',
+    'Throw the low lever on the field\'s near face first. Then the one near the exit.',
   ],
   surplus: [
-    'The door wants one crate on its plate, not two. The west wall has a hole for one.',
-    'Throw the north lever on the glass pane\'s west face first. Leave the south one alone.',
+    'The door wants one crate on its plate, not two. The RELEASE APERTURE can take one.',
+    'Throw the pane lever nearer the exit first. Leave the one nearer the entrance alone.',
   ],
   tide: [
     'The pillar and the tall wall each become a floor for one shift. Look at both.',
@@ -94,15 +94,15 @@ export const MORE_HINTS: Record<string, [string, string]> = {
   ],
   pendulum: [
     'When the sideways shift comes, the partition stops whatever is at or below its top.',
-    'Stay low on the west side for the next shift east. Then climb the steps to the dais.',
+    'Stay low on the dais side of the partition for the next swing. Then climb the steps.',
   ],
   orrery: [
     'The ceiling has a lever of its own. Think about where it sends the crate.',
-    'Throw the low lever on the east wall first. Then walk north along that wall.',
+    'Throw the low lever on the wall to your right as you come in. Then walk along that wall.',
   ],
   descent: [
     'There is no door in this cube. Look at the ceiling, and the lever on its edge.',
-    'Throw the low lever on the east wall first. Then walk up it to the ceiling lever.',
+    'Throw the lever under the trim notice first. Then walk up that wall to the ceiling lever.',
   ],
 };
 
