@@ -54,6 +54,21 @@ test('chamber ids and names are unique', () => {
   assert.equal(new Set(CHAMBERS.map((c) => c.name)).size, CHAMBERS.length);
 });
 
+test('par: every non-timed chamber has an integer par of at least 1, and timed chambers have none', () => {
+  for (const chamber of CHAMBERS) {
+    const level = chamber.build(scene, skin);
+    try {
+      const timed = level.switches.some((sw) => sw.spec.kind === 'sequence');
+      if (timed) assert.equal(chamber.par, undefined, `${chamber.name} is timed, so it has no par`);
+      else {
+        assert.ok(Number.isInteger(chamber.par) && (chamber.par ?? 0) >= 1, `${chamber.name} has par ${chamber.par}`);
+      }
+    } finally {
+      level.dispose();
+    }
+  }
+});
+
 for (const [index, chamber] of CHAMBERS.entries()) {
   describe(`${chamber.name}`, () => {
     test('structure', () => {
@@ -179,6 +194,37 @@ for (const [index, chamber] of CHAMBERS.entries()) {
             assert.ok(!solids.some((s) => inside(s, front)), `${label}: ${c} is covered by a solid`);
           }
         }
+      } finally {
+        level.dispose();
+      }
+    });
+
+    test('par is no smaller than the shortest lever route from entrance to exit', () => {
+      const par = chamber.par;
+      if (par === undefined) return;
+      const level = chamber.build(scene, skin);
+      try {
+        // Breadth-first over gravity axes, using every lever wherever it would change gravity. One-shot levers and the
+        // need to walk between levers are ignored, which only makes the route shorter: a lower bound on any real route.
+        const dist = new Map<GravityAxis, number>([[level.entranceAxis, 0]]);
+        const queue: GravityAxis[] = [level.entranceAxis];
+        // The route must end with a shift onto the exit axis, even when that is the entrance axis (a round trip).
+        let shortest = Infinity;
+        for (let i = 0; i < queue.length; i++) {
+          const from = queue[i];
+          for (const sw of level.switches) {
+            if (sw.spec.kind === 'sequence') continue;
+            const to = sw.targetFor(from);
+            if (!to) continue;
+            if (to === level.exitAxis) shortest = Math.min(shortest, dist.get(from)! + 1);
+            if (!dist.has(to)) {
+              dist.set(to, dist.get(from)! + 1);
+              queue.push(to);
+            }
+          }
+        }
+        assert.ok(Number.isFinite(shortest), `exitAxis ${level.exitAxis} is unreachable through the levers`);
+        assert.ok(par >= shortest, `par ${par} is less than the shortest lever route, ${shortest} shifts`);
       } finally {
         level.dispose();
       }

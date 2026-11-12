@@ -27,6 +27,8 @@ export interface ChamberEntry {
   cube: string;
   /** Best time, or "not completed". */
   best: string;
+  /** Best shift count against par (`3/3 shifts`), or empty when the chamber has no par or no count yet. */
+  shifts: string;
   completed: boolean;
   unlocked: boolean;
 }
@@ -479,7 +481,11 @@ export class HUD {
     cube.top = '13px';
     row.addControl(cube);
 
-    const status = new TextBlock(`chamberStatus${index}`, entry.unlocked ? entry.best : 'LOCKED');
+    // The shift count goes under the time, not beside it: a long chamber name and both on one line overflow a phone.
+    const status = new TextBlock(
+      `chamberStatus${index}`,
+      !entry.unlocked ? 'LOCKED' : entry.shifts ? `${entry.best}\n${entry.shifts}` : entry.best,
+    );
     status.color = !entry.unlocked ? '#ff9d9d' : entry.completed ? '#9dffb0' : '#aab8cc';
     status.fontSize = 15;
     status.fontFamily = 'Consolas, monospace';

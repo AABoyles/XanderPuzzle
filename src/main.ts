@@ -39,6 +39,7 @@ import type { Settings, SettingsStorage } from './settings';
 import { createSkin, DEFAULT_SKIN, SKIN_IDS, SKIN_LABELS, SkinId } from './skins/Skin';
 import {
   formatBest,
+  formatShifts,
   furthestCleared,
   isUnlocked,
   loadProgress,
@@ -421,7 +422,7 @@ function syncPrinter(): void {
 function beginDescent(): void {
   const chamberId = CHAMBERS[levelIndex]?.id;
   if (progressWritable && chamberId !== undefined) {
-    recordWin(progress, chamberId, levelTime);
+    recordWin(progress, chamberId, levelTime, shifts);
     persistProgress();
   }
   hud.setSequence(null);
@@ -453,6 +454,7 @@ function showChamberSelect(): void {
       name: c.name,
       cube: c.cube,
       best: formatBest(progress.best[c.id]),
+      shifts: formatShifts(progress.shifts[c.id], c.par),
       completed: i <= furthest,
       unlocked: isUnlocked(i, furthest, unlockAll),
     };
@@ -824,12 +826,13 @@ engine.runRenderLoop(() => {
       const chamberId = CHAMBERS[levelIndex]?.id;
       const best = chamberId === undefined ? undefined : progress.best[chamberId];
       if (progressWritable && chamberId !== undefined) {
-        recordWin(progress, chamberId, levelTime);
+        recordWin(progress, chamberId, levelTime, shifts);
         persistProgress();
       }
       const last = finishedAll();
       const cube = cubeOf(levelIndex);
-      const log = workLog({ time: levelTime, best, shifts, next: last ? undefined : cubeOf(levelIndex + 1) });
+      const par = CHAMBERS[levelIndex]?.par;
+      const log = workLog({ time: levelTime, best, shifts, par, next: last ? undefined : cubeOf(levelIndex + 1) });
       const text = TEXT[input.lastDevice];
       const select = sandbox ? '' : text.select;
       const update = applyUpdate ? '\nUpdate ready: it installs when you continue' : '';

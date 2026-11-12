@@ -4,6 +4,7 @@ import {
   PROGRESS_KEY,
   emptyProgress,
   formatBest,
+  formatShifts,
   furthestCleared,
   isUnlocked,
   loadProgress,
@@ -194,3 +195,52 @@ test('formatBest: one decimal place; missing or invalid reads as not completed',
   assert.equal(formatBest(undefined), 'not completed');
   assert.equal(formatBest(Number.NaN), 'not completed');
 });
+
+test('recordWin keeps the fewest shifts, and a run without a count leaves them alone', () => {
+  const p = emptyProgress();
+  recordWin(p, 'b', 30, 4);
+  assert.equal(p.shifts.b, 4);
+  recordWin(p, 'b', 20, 6);
+  assert.equal(p.shifts.b, 4);
+  recordWin(p, 'b', 50, 3);
+  assert.equal(p.shifts.b, 3);
+  recordWin(p, 'b', 10);
+  assert.equal(p.shifts.b, 3);
+  assert.equal(p.best.b, 10);
+});
+
+test('shift counts round-trip through storage and reset with the rest of progress', () => {
+  const { storage, map } = memory();
+  const p = emptyProgress();
+  recordWin(p, 'a', 12, 2);
+  saveProgress(storage, p);
+  assert.deepEqual(stored(map).shifts, { a: 2 });
+  assert.deepEqual(loadProgress(storage, IDS), p);
+  resetProgress(storage);
+  assert.deepEqual(loadProgress(storage, IDS).shifts, {});
+});
+
+test('an old save without a shifts field still loads with its times intact', () => {
+  const old = JSON.stringify({ version: 2, cleared: ['a', 'b'], best: { a: 11, b: 22.5 }, resume: 'c' });
+  const p = loadProgress(memory({ [PROGRESS_KEY]: old }).storage, IDS);
+  assert.deepEqual(p.best, { a: 11, b: 22.5 });
+  assert.deepEqual(p.cleared, ['a', 'b']);
+  assert.equal(p.resume, 'c');
+  assert.deepEqual(p.shifts, {});
+});
+
+test('parseProgress keeps only whole, non-negative shift counts', () => {
+  const p = parseProgress({ shifts: { a: 3, b: 2.5, c: -1, d: '4', e: null, f: 0 } });
+  assert.deepEqual(p.shifts, { a: 3, f: 0 });
+  assert.deepEqual(parseProgress({ shifts: [3] }).shifts, {});
+  assert.deepEqual(parseProgress({ shifts: 'x' }).shifts, {});
+});
+
+test('formatShifts: shows the best against par, and nothing unless both are known', () => {
+  assert.equal(formatShifts(3, 3), '3/3 shifts');
+  assert.equal(formatShifts(5, 3), '5/3 shifts');
+  assert.equal(formatShifts(undefined, 3), '');
+  assert.equal(formatShifts(3, undefined), '');
+  assert.equal(formatShifts(3, 0), '');
+});
+

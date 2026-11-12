@@ -39,6 +39,22 @@ test('the work log counts shifts, compares the record and sends the attendant on
   assert.match(workLog({ time: 9, best: 10, shifts: 2 }), /NEW RECORD\)\nCROWN LOAD BALANCED\.\nTHANK YOU FOR YOUR CONTINUED ALIGNMENT\.$/);
 });
 
+test('the work log shows the par beside the shift count, and only when there is one', () => {
+  assert.equal(
+    workLog({ time: 12.34, shifts: 4, par: 3, next: '0113' }),
+    '4 SHIFTS LOGGED · PAR 3 · 12.3s (NEW RECORD)\nCROWN LOAD BALANCED.\nATTENDANT RECLAIMED. REPRINT AT CUBE 0113.',
+  );
+  // At or under par the line says nothing more: no praise.
+  assert.equal(
+    workLog({ time: 9, best: 10, shifts: 2, par: 2 }),
+    '2 SHIFTS LOGGED · PAR 2 · 9.0s (NEW RECORD)\nCROWN LOAD BALANCED.\nTHANK YOU FOR YOUR CONTINUED ALIGNMENT.',
+  );
+  assert.equal(
+    workLog({ time: 15, best: 10.2, shifts: 1, par: 1 }),
+    '1 SHIFT LOGGED · PAR 1 · 15.0s (RECORD 10.2s)\nCROWN LOAD BALANCED.\nTHANK YOU FOR YOUR CONTINUED ALIGNMENT.',
+  );
+});
+
 test('more of the field has gone dark with each chamber', () => {
   assert.ok(Math.abs(darkFraction(0, 14) - 0.15) < 1e-12);
   assert.ok(Math.abs(darkFraction(13, 14) - 0.65) < 1e-12);

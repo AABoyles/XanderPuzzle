@@ -35,6 +35,8 @@ export interface WorkLog {
   /** The previous best, if there is one. */
   best?: number;
   shifts: number;
+  /** The fewest shifts that clear the cube (see CHAMBERS), if it has a par. */
+  par?: number;
   /** The next cube's serial, or undefined when this was the last cube. */
   next?: string;
 }
@@ -50,9 +52,10 @@ export const RECLAIMED = 'ATTENDANT RECLAIMED.';
 export const CROWN_BALANCED = 'CROWN LOAD BALANCED.';
 
 /** The win screen's stats and next instruction, without the input prompts. */
-export function workLog({ time, best, shifts, next }: WorkLog): string {
+export function workLog({ time, best, shifts, par, next }: WorkLog): string {
   const record = best === undefined || time < best ? 'NEW RECORD' : `RECORD ${best.toFixed(1)}s`;
-  const stats = `${shifts} SHIFT${shifts === 1 ? '' : 'S'} LOGGED · ${time.toFixed(1)}s (${record})`;
+  const count = `${shifts} SHIFT${shifts === 1 ? '' : 'S'} LOGGED`;
+  const stats = `${par === undefined ? count : `${count} · PAR ${par}`} · ${time.toFixed(1)}s (${record})`;
   // The exit is a reclaimer: the attendant does not travel to the next cube, it is printed there.
   const instruction =
     next === undefined ? 'THANK YOU FOR YOUR CONTINUED ALIGNMENT.' : `${RECLAIMED} REPRINT AT ${cubeLabel(next)}.`;

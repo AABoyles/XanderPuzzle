@@ -16,6 +16,8 @@ export interface Progress {
   cleared: string[];
   /** Best time in seconds per chamber id. */
   best: Record<string, number>;
+  /** Fewest gravity shifts per chamber id, in the run that set it. Missing in older saves, which read as empty. */
+  shifts: Record<string, number>;
   /** The chamber to resume at, if any. */
   resume?: string;
 }
@@ -27,10 +29,14 @@ export interface ProgressStorage {
   removeItem(key: string): void;
 }
 
-export const emptyProgress = (): Progress => ({ version: PROGRESS_VERSION, cleared: [], best: {} });
+export const emptyProgress = (): Progress => ({ version: PROGRESS_VERSION, cleared: [], best: {}, shifts: {} });
 
 function isTime(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v) && v >= 0;
+}
+
+function isShiftCount(v: unknown): v is number {
+  return typeof v === 'number' && Number.isInteger(v) && v >= 0;
 }
 
 /** Turns anything (parsed JSON, garbage, null) into valid progress, dropping bad fields. Unknown ids are kept. */
@@ -43,6 +49,10 @@ export function parseProgress(raw: unknown): Progress {
   }
   if (typeof r.best === 'object' && r.best !== null && !Array.isArray(r.best)) {
     for (const [id, t] of Object.entries(r.best)) if (isTime(t)) out.best[id] = t;
+  }
+  // A save from before shift counts were kept has no `shifts` field: it reads as empty, and nothing else changes.
+  if (typeof r.shifts === 'object' && r.shifts !== null && !Array.isArray(r.shifts)) {
+    for (const [id, n] of Object.entries(r.shifts)) if (isShiftCount(n)) out.shifts[id] = n;
   }
   if (typeof r.resume === 'string') out.resume = r.resume;
   return out;
@@ -163,16 +173,29 @@ export function isUnlocked(index: number, furthest: number, unlockAll = false): 
   return unlockAll || index <= furthest + 1;
 }
 
-/** Records a completed run: marks the chamber cleared and keeps the better time. Returns whether it is a new best. */
-export function recordWin(progress: Progress, id: string, seconds: number): boolean {
+/**
+ * Records a completed run: marks the chamber cleared, keeps the better time and, when given, the fewer shifts.
+ * Returns whether the time is a new best.
+ */
+export function recordWin(progress: Progress, id: string, seconds: number, shifts?: number): boolean {
   if (!progress.cleared.includes(id)) progress.cleared.push(id);
   const best = progress.best[id];
   const isBest = !isTime(best) || seconds < best;
   if (isBest && isTime(seconds)) progress.best[id] = seconds;
+  const fewest = progress.shifts[id];
+  if (isShiftCount(shifts) && (!isShiftCount(fewest) || shifts < fewest)) progress.shifts[id] = shifts;
   return isBest;
 }
 
 /** A best time as shown in the chamber list. */
 export function formatBest(seconds: number | undefined): string {
   return isTime(seconds) ? `${seconds.toFixed(1)}s` : 'not completed';
+}
+
+/**
+ * The best shift count against a chamber's par, as shown in the chamber list: `3/3 shifts`. Empty when either is
+ * unknown (a timed chamber has no par; a chamber never cleared has no count).
+ */
+export function formatShifts(shifts: number | undefined, par: number | undefined): string {
+  return isShiftCount(shifts) && isShiftCount(par) && par >= 1 ? `${shifts}/${par} shifts` : '';
 }
