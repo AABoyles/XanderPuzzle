@@ -1,8 +1,24 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  ATTENDANT, CUBE_SERIAL, cubeLabel, darkFraction, descentAlarm, dutyLine, endCard, MASS_RELEASED, NOT_RECOVERED,
-  planetLights, PREDECESSOR, SHIFT_REVERTED, stormLine, MARGIN_SIGN, recoveryLine, winTitle, workLog, NO_TRIM,
+  ATTENDANT,
+  CUBE_SERIAL,
+  cubeLabel,
+  darkFraction,
+  descentAlarm,
+  dutyLine,
+  endCard,
+  MASS_RELEASED,
+  NOT_RECOVERED,
+  planetLights,
+  PREDECESSOR,
+  SHIFT_REVERTED,
+  stormLine,
+  MARGIN_SIGN,
+  recoveryLine,
+  winTitle,
+  workLog,
+  NO_TRIM,
   cubeUnreachable,
 } from '../src/narrative.ts';
 
@@ -37,7 +53,10 @@ test('the work log counts shifts, compares the record and sends the attendant on
     workLog({ time: 15, best: 10.2, shifts: 1, next: '0113' }),
     '1 SHIFT LOGGED · 15.0s (RECORD 10.2s)\nCROWN LOAD BALANCED.\nATTENDANT RECLAIMED. REPRINT AT CUBE 0113.',
   );
-  assert.match(workLog({ time: 9, best: 10, shifts: 2 }), /NEW RECORD\)\nCROWN LOAD BALANCED\.\nTHANK YOU FOR YOUR CONTINUED ALIGNMENT\.$/);
+  assert.match(
+    workLog({ time: 9, best: 10, shifts: 2 }),
+    /NEW RECORD\)\nCROWN LOAD BALANCED\.\nTHANK YOU FOR YOUR CONTINUED ALIGNMENT\.$/,
+  );
 });
 
 test('the work log shows the par beside the shift count, and only when there is one', () => {

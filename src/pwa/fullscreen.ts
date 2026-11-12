@@ -17,14 +17,16 @@ export function isStandalone(): boolean {
   if (typeof window === 'undefined') return false;
   const mm = typeof window.matchMedia === 'function' ? window.matchMedia.bind(window) : null;
   return (
-    !!mm && (mm('(display-mode: fullscreen)').matches || mm('(display-mode: standalone)').matches) ||
+    (!!mm && (mm('(display-mode: fullscreen)').matches || mm('(display-mode: standalone)').matches)) ||
     (navigator as Navigator & { standalone?: boolean }).standalone === true
   );
 }
 
 export function isIOS(): boolean {
   if (typeof navigator === 'undefined') return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
 }
 
 export async function toggleFullscreen(): Promise<void> {

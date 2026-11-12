@@ -142,14 +142,11 @@ test.describe('chambers', () => {
       if (row.timed) {
         // Throw the sequence lever; the sequencer must then carry gravity through `axes` on its own.
         const lever = (await dbg(page, (d) => d.switches()))[0];
-        await page.evaluate(
-          ([x, y, z]) => {
-            const d = (window as any).__debug;
-            d.setPosition(x, y, z);
-            d.interact();
-          },
-          lever.position,
-        );
+        await page.evaluate(([x, y, z]) => {
+          const d = (window as any).__debug;
+          d.setPosition(x, y, z);
+          d.interact();
+        }, lever.position);
         for (const axis of row.axes) {
           // Each step of the cycle is a few seconds of game time.
           await untilSim(page, () => dbg(page, (d) => d.gravityAxis()), axis, 15, 'gravity after an automatic shift');
@@ -249,14 +246,11 @@ async function throwLever(page: Page, index: number, expected: string) {
   expect(sw.target, `lever ${index} should offer ${expected}`).toBe(expected);
   let axis = '';
   for (let tries = 0; tries < 30 && axis !== expected; tries++) {
-    await page.evaluate(
-      ([x, y, z]) => {
-        const d = (window as any).__debug;
-        d.setPosition(x, y, z);
-        d.interact();
-      },
-      sw.position,
-    );
+    await page.evaluate(([x, y, z]) => {
+      const d = (window as any).__debug;
+      d.setPosition(x, y, z);
+      d.interact();
+    }, sw.position);
     await simWait(page, 0.25);
     axis = await dbg(page, (d) => d.gravityAxis());
   }

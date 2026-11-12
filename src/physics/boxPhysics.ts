@@ -53,7 +53,11 @@ export function overlaps(a: Aabb, b: Aabb, eps = OVERLAP_EPS): boolean {
  * Moves `box` by `delta`, one axis at a time, stopping flush against any obstacle in the way.
  * Returns how far it actually moved and which axes were blocked. `box` is not modified.
  */
-export function sweep(box: Aabb, delta: Vec3, obstacles: Iterable<Aabb>): { moved: Vec3; hit: [boolean, boolean, boolean] } {
+export function sweep(
+  box: Aabb,
+  delta: Vec3,
+  obstacles: Iterable<Aabb>,
+): { moved: Vec3; hit: [boolean, boolean, boolean] } {
   const min: Vec3 = [...box.min];
   const max: Vec3 = [...box.max];
   const moved: Vec3 = [0, 0, 0];

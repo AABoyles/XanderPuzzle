@@ -65,15 +65,16 @@ export function buildStaircase(scene: Scene, skin: SkinRuntime): BuiltLevel {
 
   b.placard(V(1.5, 2, -0.5), V(0, 0, -1), '-Y', 'CUBE 0118', { width: 2.6 });
   // The first riser, in the open lane.
-  b.placard(V(L, 1.6, 3.2), V(-1, 0, 0), '-Y', [
-    'RISER MAINTENANCE',
-    '3 CLIMBS SCHEDULED',
-    'SCHEDULE UNCHANGED',
-    'SINCE CYCLE 1',
-  ].join('\n'), {
-    width: 5,
-    lineHeight: 0.5,
-  });
+  b.placard(
+    V(L, 1.6, 3.2),
+    V(-1, 0, 0),
+    '-Y',
+    ['RISER MAINTENANCE', '3 CLIMBS SCHEDULED', 'SCHEDULE UNCHANGED', 'SINCE CYCLE 1'].join('\n'),
+    {
+      width: 5,
+      lineHeight: 0.5,
+    },
+  );
   // High on the next cell's sealed block, upright under +X: seen by looking up from the first climb.
   b.note(V(L, 10, 3.25), V(-1, 0, 0), '+X', 'Same stairs every time.\nI counted.', { top: V(0, 1, 0) });
 

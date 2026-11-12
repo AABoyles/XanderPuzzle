@@ -3,11 +3,11 @@
  *
  * `transition(state, event)` is the whole rulebook: it returns the next state, or null when the event does not apply
  * in that state (so stray key presses and late browser events are simply ignored). `GameState` holds the current state
- * and reports each change to one `onChange` handler, which is where main.ts shows and hides overlays and moves the
+ * and reports each change to one `onChange` handler, which is where `src/app/menus.ts` shows and hides overlays and moves the
  * pointer lock. The queries below (`simulates`, `viewOf`, ...) are what the render loop asks instead of combining flags.
  *
  * To add a state: add its kind to `Kind`, its rows to `transition`, and its answers to `simulates`/`isFrozen`/
- * `viewOf`/`showsTouchControls`. main.ts needs a change only where the new state has a visible effect.
+ * `viewOf`/`showsTouchControls`. That handler needs a change only where the new state has a visible effect.
  */
 
 /**

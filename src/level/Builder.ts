@@ -201,7 +201,18 @@ export class Builder {
     for (let f = 0; f < idx.length / 6; f++) {
       const vi = idx[f * 6] * 3;
       const [nx, ny, nz] = [nrm[vi], nrm[vi + 1], nrm[vi + 2]];
-      const axis = Math.abs(nx) > 0.5 ? (nx > 0 ? '-X' : '+X') : Math.abs(ny) > 0.5 ? (ny > 0 ? '-Y' : '+Y') : nz > 0 ? '-Z' : '+Z';
+      const axis =
+        Math.abs(nx) > 0.5
+          ? nx > 0
+            ? '-X'
+            : '+X'
+          : Math.abs(ny) > 0.5
+            ? ny > 0
+              ? '-Y'
+              : '+Y'
+            : nz > 0
+              ? '-Z'
+              : '+Z';
       new SubMesh(AXIS_ORDER.indexOf(axis), 0, total, f * 6, 6, m);
     }
     m.material = this.multi(role);
@@ -329,7 +340,7 @@ export class Builder {
   /**
    * The reclaimer: a print bay lit amber on the floor under the exit point, with a pressure plate on its bed like the
    * ones that open doors (red until stood on, then green and sunk). The plate belongs to no door and is not in
-   * `dynamics.plates`: main.ts wins the chamber when the player has stood on it for a moment.
+   * `dynamics.plates`: `stepChamber` wins the chamber when the player has stood on it for a moment.
    */
   private addReclaimer(exit: Vector3, axis: GravityAxis): Reclaimer | undefined {
     const bay = this.addBay(exit, axis, RECLAIMER_GLOW, 8);
@@ -508,7 +519,12 @@ export class Builder {
     const frame = placardFrame(arr(normal), readAs, opts.top && arr(opts.top));
     const width = opts.width ?? DEFAULT_WIDTH[voice];
     const { mesh, height } = createPlacard(this.scene, `placard_${this.n++}`, {
-      text, voice, width, lineHeight: opts.lineHeight, frame, ink: this.skin.placardInk,
+      text,
+      voice,
+      width,
+      lineHeight: opts.lineHeight,
+      frame,
+      ink: this.skin.placardInk,
     });
     mesh.position = at.add(normal.scale(SURFACE_OFFSET));
     mesh.freezeWorldMatrix();
@@ -530,10 +546,22 @@ export class Builder {
 
   /** Stencils `stamp` on every face of a crate mesh; disposing the crate (with materials) releases the stamps. */
   private stampCrate(crate: Crate, size: number, stamp: string): void {
-    for (const n of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]] as Vec3[]) {
+    for (const n of [
+      [1, 0, 0],
+      [-1, 0, 0],
+      [0, 1, 0],
+      [0, -1, 0],
+      [0, 0, 1],
+      [0, 0, -1],
+    ] as Vec3[]) {
       const frame = placardFrame(n, '-Y', n[1] === 0 ? undefined : [0, 0, 1]);
       const { mesh } = createPlacard(this.scene, `crateStamp_${this.n++}`, {
-        text: stamp, voice: 'stencil', width: size * 0.85, lineHeight: size * 0.17, frame, ink: this.skin.placardInk,
+        text: stamp,
+        voice: 'stencil',
+        width: size * 0.85,
+        lineHeight: size * 0.17,
+        frame,
+        ink: this.skin.placardInk,
       });
       mesh.parent = crate.mesh;
       mesh.position = Vector3.FromArray(n).scale(size / 2 + SURFACE_OFFSET);
@@ -551,7 +579,10 @@ export class Builder {
     crate.mesh.freezeWorldMatrix();
     this.fixedCrates.push(crate.mesh);
     const h = size / 2;
-    this.solids.push({ min: [center.x - h, center.y - h, center.z - h], max: [center.x + h, center.y + h, center.z + h] });
+    this.solids.push({
+      min: [center.x - h, center.y - h, center.z - h],
+      max: [center.x + h, center.y + h, center.z + h],
+    });
   }
 
   /** A crate. `stamp` is stencilled on every face; it slides but never turns, so the stamps stay square. */
@@ -585,7 +616,15 @@ export class Builder {
   public finish(
     info: Omit<
       BuiltLevel,
-      | 'switches' | 'dispose' | 'dynamics' | 'solids' | 'bounds' | 'update' | 'sequencer' | 'placards' | 'printer'
+      | 'switches'
+      | 'dispose'
+      | 'dynamics'
+      | 'solids'
+      | 'bounds'
+      | 'update'
+      | 'sequencer'
+      | 'placards'
+      | 'printer'
       | 'reclaimer'
     >,
   ): BuiltLevel {

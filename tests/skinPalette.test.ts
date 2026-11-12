@@ -31,7 +31,13 @@ const counts = () => ({
 });
 
 const hexOf = (c: { r: number; g: number; b: number }) =>
-  [c.r, c.g, c.b].map((v) => Math.round(v * 255).toString(16).padStart(2, '0')).join('');
+  [c.r, c.g, c.b]
+    .map((v) =>
+      Math.round(v * 255)
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    .join('');
 
 test('with the palette on, every skin levers and HUD use the palette colours for each axis', () => {
   for (const id of SKIN_IDS) {

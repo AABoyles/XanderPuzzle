@@ -68,7 +68,7 @@ export function buildDeadman(scene: Scene, skin: SkinRuntime): BuiltLevel {
     width: 5,
     top: V(0, 1, 0),
   });
-  b.note(V(R, 0.8, -1), V(-1, 0, 0), '+X', 'It can\'t tell us\nfrom the crates.', {
+  b.note(V(R, 0.8, -1), V(-1, 0, 0), '+X', "It can't tell us\nfrom the crates.", {
     width: 4.4,
     lineHeight: 0.45,
     top: V(0, 1, 0),
@@ -76,7 +76,7 @@ export function buildDeadman(scene: Scene, skin: SkinRuntime): BuiltLevel {
 
   return b.finish({
     name: 'XII · THE DEADMAN',
-    hint: 'Something has to hold the gate for it. The crate can\'t be the one.',
+    hint: "Something has to hold the gate for it. The crate can't be the one.",
     spawnPosition: V(0, -R + 0.5, -R - 5),
     entranceAxis: '-Y',
     exitAxis: '-Y',

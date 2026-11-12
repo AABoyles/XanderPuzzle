@@ -122,7 +122,8 @@ test('a longer fall (the Descent) lasts its own duration and ends nearer the pla
 });
 
 test('a stellar storm breaks every period: builds fast, holds, dies away, then quiet', async () => {
-  const { STORM_FIRST, STORM_FADE, STORM_HOLD, STORM_PERIOD, STORM_RISE, stormStrength } = await import('../src/environment/fall.ts');
+  const { STORM_FIRST, STORM_FADE, STORM_HOLD, STORM_PERIOD, STORM_RISE, stormStrength } =
+    await import('../src/environment/fall.ts');
   assert.equal(stormStrength(0), 0);
   assert.equal(stormStrength(STORM_FIRST - 0.01), 0);
   assert.ok(stormStrength(STORM_FIRST + STORM_RISE / 2) > 0.4);

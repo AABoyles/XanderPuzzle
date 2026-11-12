@@ -36,10 +36,16 @@ export function buildShaft(scene: Scene, skin: SkinRuntime): BuiltLevel {
   b.box(V(-W - T, y1, -2), V(-W, y1 + T, 2), b.exit);
 
   // The Margin, on the face overhead during the climb under +X: only seen by looking up on the way.
-  b.note(V(-W, 20, 0), V(1, 0, 0), '+X', 'It is a long way up.\nIt is a longer way down.\nI checked. It printed me back.', {
-    top: V(0, 1, 0),
-    width: 5,
-  });
+  b.note(
+    V(-W, 20, 0),
+    V(1, 0, 0),
+    '+X',
+    'It is a long way up.\nIt is a longer way down.\nI checked. It printed me back.',
+    {
+      top: V(0, 1, 0),
+      width: 5,
+    },
+  );
 
   b.addSwitch(V(W - 0.3, y0 + 1.5, 0), V(-1, 0, 0), '+X');
   b.addSwitch(V(W - 1.5, y1 - 0.3, 0), V(0, -1, 0), '+Y');

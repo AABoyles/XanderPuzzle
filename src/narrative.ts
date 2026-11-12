@@ -19,8 +19,7 @@ export const PREDECESSOR = 'AT-0416';
 export const MARGIN_SIGN = `\u2014 ${PREDECESSOR.slice(-3)}`;
 
 /** Logged when a chamber starts: every attendant is printed at the cube's entrance. */
-export const dutyLine = (serial: string): string =>
-  `${cubeLabel(serial)} · ATTENDANT ${ATTENDANT} PRINTED · ON DUTY`;
+export const dutyLine = (serial: string): string => `${cubeLabel(serial)} · ATTENDANT ${ATTENDANT} PRINTED · ON DUTY`;
 
 /**
  * Logged when an attendant who fell out of the cube is replaced at the entrance. `count` counts this session's.
@@ -78,13 +77,13 @@ export const SHIFT_REVERTED = 'TRIM RESTORED TO LAST SETTING.';
 
 /**
  * Logged when no lever left can turn gravity to the exit's: the facility's first line. The second line, which names the
- * keys for undo and restart, depends on the input device, so main.ts adds it.
+ * keys for undo and restart, depends on the input device, so `checkTrim` adds it.
  */
 export const NO_TRIM = 'NO SETTING FROM HERE RETURNS THIS CUBE TO TRIM.';
 
 /**
  * Logged when a chamber's code could not be fetched (the player went offline before reaching it). The facility's half
- * of the notice; main.ts adds a plain second line saying what to do.
+ * of the notice; `whenLoaded` adds a plain second line saying what to do.
  */
 export const cubeUnreachable = (cube: string | undefined): string =>
   cube === undefined ? 'CUBE OUT OF RANGE. NO LINK.' : `CUBE ${cube} OUT OF RANGE. NO LINK.`;

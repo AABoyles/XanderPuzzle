@@ -273,7 +273,8 @@ export class PauseMenu {
     const rows: Row[] = [{ kind: 'button', label: 'Resume', run: () => this.onResume() }];
     if (this.updateReady) rows.push({ kind: 'button', label: 'Update and reload', run: () => this.onUpdate() });
     rows.push({ kind: 'button', label: 'Restart chamber', run: () => this.onRestart() });
-    if (this.opts.hasChamberSelect) rows.push({ kind: 'button', label: 'Chamber select', run: () => this.onChambers() });
+    if (this.opts.hasChamberSelect)
+      rows.push({ kind: 'button', label: 'Chamber select', run: () => this.onChambers() });
     if (this.opts.onSavePlaytest) {
       rows.push({ kind: 'button', label: 'Save playtest log', run: () => this.opts.onSavePlaytest?.() });
     }
@@ -308,7 +309,8 @@ export class PauseMenu {
       kind: 'toggle',
       label,
       value: () => (this.opts.getSettings()[key] ? 'ON' : 'OFF'),
-      adjust: () => this.opts.onSettingsChange({ ...this.opts.getSettings(), [key]: !this.opts.getSettings()[key] }, key),
+      adjust: () =>
+        this.opts.onSettingsChange({ ...this.opts.getSettings(), [key]: !this.opts.getSettings()[key] }, key),
     };
   }
 
@@ -508,10 +510,11 @@ export class PauseMenu {
       step('pauseDown', '\u2212', -1, `-${BUTTON_SIZE + 6 + 62}px`);
       step('pauseUp', '+', 1, '-6px');
     }
-    if (interactive && row.kind !== 'slider') b.onPointerClickObservable.add(() => {
-      this.setFocus(index);
-      this.activate();
-    });
+    if (interactive && row.kind !== 'slider')
+      b.onPointerClickObservable.add(() => {
+        this.setFocus(index);
+        this.activate();
+      });
     return b;
   }
 

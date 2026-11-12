@@ -1,15 +1,18 @@
 import { AdvancedDynamicTexture } from '@babylonjs/gui/2D/advancedDynamicTexture';
-import { Button } from '@babylonjs/gui/2D/controls/button';
 import { Control } from '@babylonjs/gui/2D/controls/control';
 import { Ellipse } from '@babylonjs/gui/2D/controls/ellipse';
 import { Rectangle } from '@babylonjs/gui/2D/controls/rectangle';
-import { ScrollViewer } from '@babylonjs/gui/2D/controls/scrollViewers/scrollViewer';
-import { StackPanel } from '@babylonjs/gui/2D/controls/stackPanel';
 import { TextBlock } from '@babylonjs/gui/2D/controls/textBlock';
 import { GravityAxis } from '../gravity/GravitySystem';
 import type { InputDevice } from '../input/InputSource';
-import { cubeLabel } from '../narrative';
-import { printInDuration } from './printTiming';
+import type { ChamberEntry } from './overlays/ChamberSelect';
+import { ChamberSelect } from './overlays/ChamberSelect';
+import { EndCard } from './overlays/EndCard';
+import { PrintWipe } from './overlays/PrintWipe';
+import { StartOverlay } from './overlays/StartOverlay';
+import { WinOverlay } from './overlays/WinOverlay';
+
+export type { ChamberEntry } from './overlays/ChamberSelect';
 
 const AXIS_LABEL: Record<GravityAxis, string> = {
   '+X': 'EAST WALL',
@@ -20,35 +23,10 @@ const AXIS_LABEL: Record<GravityAxis, string> = {
   '-Z': 'SOUTH WALL',
 };
 
-/** One row of the chamber select list. */
-export interface ChamberEntry {
-  name: string;
-  /** The facility's serial for the chamber, shown under its name. */
-  cube: string;
-  /** Best time, or "not completed". */
-  best: string;
-  /** Best shift count against par (`3/3 shifts`), or empty when the chamber has no par or no count yet. */
-  shifts: string;
-  completed: boolean;
-  unlocked: boolean;
-}
-
-const ROW_HEIGHT = 52;
-const DESKTOP_SUBTITLE =
-  'Click to look around  \u2022  WASD to move  \u2022  Shift to run  \u2022  Space to jump\nWalk up to a lever and press E to rotate gravity 90\u00B0\nR restarts the chamber  \u2022  L opens chamber select\n\nClick anywhere to begin';
-const TOUCH_SUBTITLE =
-  'Left thumb: move  \u2022  Right side: drag to look\nJUMP to jump  \u2022  USE at a lever to rotate gravity 90\u00B0\n\nTap anywhere to begin';
-const GAMEPAD_SUBTITLE =
-  'Left stick move  \u2022  Right stick look  \u2022  LT run  \u2022  A jump\nWalk up to a lever and press X to rotate gravity 90\u00B0\nY restarts  \u2022  Back opens chamber select  \u2022  Start pauses\n\nPress A to begin';
 const KEYS_LABEL: Record<InputDevice, string> = {
-  keyboard: 'WASD move \u00B7 Shift run \u00B7 Space jump \u00B7 E use \u00B7 R restart \u00B7 Z undo \u00B7 L chambers \u00B7 K skin',
+  keyboard: 'WASD move · Shift run · Space jump · E use · R restart · Z undo · L chambers · K skin',
   touch: '',
-  gamepad: 'L-stick move \u00B7 R-stick look \u00B7 LT run \u00B7 A jump \u00B7 X use \u00B7 Y restart \u00B7 B undo \u00B7 Back chambers',
-};
-const SUBTITLES: Record<InputDevice, string> = {
-  keyboard: DESKTOP_SUBTITLE,
-  touch: TOUCH_SUBTITLE,
-  gamepad: GAMEPAD_SUBTITLE,
+  gamepad: 'L-stick move · R-stick look · LT run · A jump · X use · Y restart · B undo · Back chambers',
 };
 const USE_PROMPT: Record<InputDevice, string> = {
   keyboard: 'Press [E] to shift gravity',
@@ -56,6 +34,10 @@ const USE_PROMPT: Record<InputDevice, string> = {
   gamepad: 'Press [X] to shift gravity',
 };
 
+/**
+ * The in-play HUD: the crosshair, prompts, gravity and chamber labels, and the key reminder. The start, chamber select,
+ * win and end cards and the print wipe are overlays in `./overlays/`; this class holds them and delegates.
+ */
 export class HUD {
   /** The start overlay's chamber select button was pressed. */
   public onOpenLevelSelect: () => void = () => {};
@@ -73,37 +55,20 @@ export class HUD {
   private readonly gravityLabel: TextBlock;
   private gravityColor = '#bfe3ff';
   private keysLabel!: TextBlock;
-  private subtitle!: TextBlock;
   private gravityBox!: Rectangle;
   private device: InputDevice = 'keyboard';
   private skinLabel = '';
-  private readonly startOverlay: Rectangle;
-  private readonly winOverlay: Rectangle;
   private readonly sequenceLabel: TextBlock;
   private readonly levelLabel: TextBlock;
   private readonly hintLabel: TextBlock;
   private readonly logLabel: TextBlock;
   private logTimer: ReturnType<typeof setTimeout> | undefined;
-  private readonly printFog: Rectangle;
-  private readonly printBar: Rectangle;
-  private printTimer: ReturnType<typeof setInterval> | undefined;
-  private readonly endOverlay: Rectangle;
-  private readonly endTitle: TextBlock;
-  private readonly endBody: TextBlock;
-  private endTimer: ReturnType<typeof setInterval> | undefined;
-  private winTitle!: TextBlock;
-  private winSubtitle!: TextBlock;
+  private readonly printWipe: PrintWipe;
+  private readonly startOverlay: StartOverlay;
+  private readonly winOverlay: WinOverlay;
+  private readonly endCard: EndCard;
+  private readonly levelSelect: ChamberSelect;
   private readonly updateNotice: TextBlock;
-  private selectButton!: Button;
-  private fullscreenButton!: Button;
-  private fullscreenHint!: TextBlock;
-  private fullscreenMode: 'toggle' | 'hint' | 'none' = 'none';
-  private readonly selectOverlay: Rectangle;
-  private readonly selectScroll: ScrollViewer;
-  private readonly selectList: StackPanel;
-  private readonly selectFooter: TextBlock;
-  private selectRows: Button[] = [];
-  private selectEntries: ChamberEntry[] = [];
 
   constructor() {
     this.ui = AdvancedDynamicTexture.CreateFullscreenUI('hud');
@@ -207,25 +172,8 @@ export class HUD {
     this.logLabel.isVisible = false;
     this.ui.addControl(this.logLabel);
 
-    // The print-in (see `printIn`): a pale fog over the view that a bright line wipes away from the feet up. It sits
-    // under every overlay added after it.
-    this.printFog = new Rectangle('printFog');
-    this.printFog.width = 1;
-    this.printFog.thickness = 0;
-    this.printFog.background = 'rgb(196,240,255)';
-    this.printFog.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    this.printFog.isHitTestVisible = false;
-    this.printFog.isVisible = false;
-    this.ui.addControl(this.printFog);
-    this.printBar = new Rectangle('printBar');
-    this.printBar.width = 1;
-    this.printBar.height = '5px';
-    this.printBar.thickness = 0;
-    this.printBar.background = 'white';
-    this.printBar.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    this.printBar.isHitTestVisible = false;
-    this.printBar.isVisible = false;
-    this.ui.addControl(this.printBar);
+    // The print wipe sits under every overlay added after it.
+    this.printWipe = new PrintWipe(this.ui);
 
     const keys = (this.keysLabel = new TextBlock('keys', ''));
     this.setSkin('');
@@ -238,71 +186,13 @@ export class HUD {
     keys.height = '20px';
     this.ui.addControl(keys);
 
-    // Start overlay
-    this.startOverlay = new Rectangle('startOverlay');
-    this.startOverlay.width = 1;
-    this.startOverlay.height = 1;
-    this.startOverlay.thickness = 0;
-    this.startOverlay.background = 'rgba(0,0,0,0.6)';
-    this.ui.addControl(this.startOverlay);
-
-    const title = new TextBlock('title', 'SHIFTBOUND');
-    title.color = 'white';
-    title.fontSize = 52;
-    title.fontFamily = 'Segoe UI, sans-serif';
-    title.top = '-90px';
-    title.fontWeight = 'bold';
-    this.startOverlay.addControl(title);
-
-    const subtitle = (this.subtitle = new TextBlock('subtitle', DESKTOP_SUBTITLE));
-    subtitle.color = '#d8e6ff';
-    subtitle.fontSize = 20;
-    subtitle.top = '10px';
-    subtitle.textWrapping = true;
-    subtitle.lineSpacing = '6px';
-    this.startOverlay.addControl(subtitle);
-
-    const selectButton = (this.selectButton = Button.CreateSimpleButton('openLevelSelect', 'CHAMBER SELECT  [L]'));
-    selectButton.width = '260px';
-    selectButton.height = '44px';
-    selectButton.top = '190px';
-    selectButton.cornerRadius = 6;
-    selectButton.color = 'rgba(255,255,255,0.6)';
-    selectButton.thickness = 1;
-    selectButton.background = 'rgba(20,28,40,0.85)';
-    selectButton.fontSize = 18;
-    selectButton.fontFamily = 'Consolas, monospace';
-    if (selectButton.textBlock) selectButton.textBlock.color = 'white';
-    selectButton.pointerEnterAnimation = () => (selectButton.background = 'rgba(60,80,110,0.9)');
-    selectButton.pointerOutAnimation = () => (selectButton.background = 'rgba(20,28,40,0.85)');
-    selectButton.onPointerClickObservable.add(() => this.onOpenLevelSelect());
-    this.startOverlay.addControl(selectButton);
-
-    // Fullscreen (touch only): a button where the browser allows it, otherwise an install hint.
-    const fsButton = (this.fullscreenButton = Button.CreateSimpleButton('toggleFullscreen', 'FULLSCREEN'));
-    fsButton.width = '260px';
-    fsButton.height = '44px';
-    fsButton.top = '244px';
-    fsButton.cornerRadius = 6;
-    fsButton.color = 'rgba(255,255,255,0.6)';
-    fsButton.thickness = 1;
-    fsButton.background = 'rgba(20,28,40,0.85)';
-    fsButton.fontSize = 18;
-    fsButton.fontFamily = 'Consolas, monospace';
-    if (fsButton.textBlock) fsButton.textBlock.color = 'white';
-    fsButton.isVisible = false;
-    fsButton.onPointerClickObservable.add(() => this.onToggleFullscreen());
-    this.startOverlay.addControl(fsButton);
-    this.fullscreenHint = new TextBlock('fullscreenHint', 'Add to Home Screen for fullscreen');
-    this.fullscreenHint.color = '#ffd36b';
-    this.fullscreenHint.fontSize = 15;
-    this.fullscreenHint.height = '24px';
-    this.fullscreenHint.top = '244px';
-    this.fullscreenHint.isVisible = false;
-    this.startOverlay.addControl(this.fullscreenHint);
+    this.startOverlay = new StartOverlay(this.ui, {
+      onOpenLevelSelect: () => this.onOpenLevelSelect(),
+      onToggleFullscreen: () => this.onToggleFullscreen(),
+    });
 
     // Small notice while a new version is waiting; it is applied from the pause menu or between chambers.
-    this.updateNotice = new TextBlock('updateNotice', 'Update available \u2014 reload from the pause menu');
+    this.updateNotice = new TextBlock('updateNotice', 'Update available — reload from the pause menu');
     this.updateNotice.color = '#ffd36b';
     this.updateNotice.fontSize = 13;
     this.updateNotice.outlineColor = 'black';
@@ -313,101 +203,13 @@ export class HUD {
     this.updateNotice.isVisible = false;
     this.ui.addControl(this.updateNotice);
 
-    // Win overlay
-    this.winOverlay = new Rectangle('winOverlay');
-    this.winOverlay.width = 1;
-    this.winOverlay.height = 1;
-    this.winOverlay.thickness = 0;
-    this.winOverlay.background = 'rgba(5,15,10,0.72)';
-    this.winOverlay.isVisible = false;
-    this.ui.addControl(this.winOverlay);
-
-    const winTitle = (this.winTitle = new TextBlock('winTitle', 'CHAMBER CLEARED'));
-    winTitle.color = '#9dffb0';
-    winTitle.fontSize = 56;
-    winTitle.fontWeight = 'bold';
-    winTitle.top = '-120px'; // clear of the body, which is centred and up to eight lines tall
-    this.winOverlay.addControl(winTitle);
-
-    const winSubtitle = (this.winSubtitle = new TextBlock('winSubtitle', ''));
-    winSubtitle.color = 'white';
-    winSubtitle.fontSize = 22;
-    winSubtitle.top = '40px';
-    this.winOverlay.addControl(winSubtitle);
-
-    // End card, after the final fall: fades to black on the facility's last log line, then the game's name.
-    this.endOverlay = new Rectangle('endOverlay');
-    this.endOverlay.width = 1;
-    this.endOverlay.height = 1;
-    this.endOverlay.thickness = 0;
-    // Not quite opaque: the planet, and the one new light on it, stay faintly in view behind the card.
-    this.endOverlay.background = 'rgba(0,0,0,0.72)';
-    this.endOverlay.isVisible = false;
-    this.ui.addControl(this.endOverlay);
-    this.endTitle = new TextBlock('endTitle', '');
-    this.endTitle.color = '#d8c89a';
-    this.endTitle.fontSize = 26;
-    this.endTitle.fontFamily = 'Consolas, monospace';
-    this.endTitle.top = '-70px';
-    this.endOverlay.addControl(this.endTitle);
-    this.endBody = new TextBlock('endBody', '');
-    this.endBody.color = 'white';
-    this.endBody.fontSize = 22;
-    this.endBody.top = '50px';
-    this.endBody.height = '200px';
-    this.endOverlay.addControl(this.endBody);
-
-    // Chamber select overlay
-    this.selectOverlay = new Rectangle('selectOverlay');
-    this.selectOverlay.width = 1;
-    this.selectOverlay.height = 1;
-    this.selectOverlay.thickness = 0;
-    this.selectOverlay.background = 'rgba(4,6,12,0.96)';
-    this.selectOverlay.isVisible = false;
-    this.ui.addControl(this.selectOverlay);
-
-    const selectTitle = new TextBlock('selectTitle', 'CHAMBER SELECT');
-    selectTitle.color = 'white';
-    selectTitle.fontSize = 36;
-    selectTitle.fontWeight = 'bold';
-    selectTitle.height = '60px';
-    selectTitle.top = '24px';
-    selectTitle.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    this.selectOverlay.addControl(selectTitle);
-
-    this.selectScroll = new ScrollViewer('selectScroll');
-    this.selectScroll.thickness = 0;
-    this.selectScroll.barSize = 10;
-    this.selectScroll.barColor = 'rgba(255,255,255,0.4)';
-    this.selectScroll.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    this.selectScroll.top = '96px';
-    this.selectOverlay.addControl(this.selectScroll);
-
-    this.selectList = new StackPanel('selectList');
-    this.selectList.isVertical = true;
-    this.selectScroll.addControl(this.selectList);
-
-    const back = Button.CreateSimpleButton('closeLevelSelect', 'BACK');
-    back.width = '140px';
-    back.height = '40px';
-    back.top = '-44px';
-    back.cornerRadius = 6;
-    back.color = 'rgba(255,255,255,0.6)';
-    back.thickness = 1;
-    back.background = 'rgba(20,28,40,0.85)';
-    back.fontSize = 16;
-    if (back.textBlock) back.textBlock.color = 'white';
-    back.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-    back.onPointerClickObservable.add(() => this.onCloseLevelSelect());
-    this.selectOverlay.addControl(back);
-
-    this.selectFooter = new TextBlock('selectFooter', '');
-    this.selectFooter.color = 'rgba(255,255,255,0.65)';
-    this.selectFooter.fontSize = 14;
-    this.selectFooter.height = '24px';
-    this.selectFooter.top = '-12px';
-    this.selectFooter.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-    this.selectOverlay.addControl(this.selectFooter);
+    this.winOverlay = new WinOverlay(this.ui);
+    this.endCard = new EndCard(this.ui);
+    this.levelSelect = new ChamberSelect(this.ui, {
+      onPick: (index) => this.onPickLevel(index),
+      onHover: (index) => this.onHoverLevel(index),
+      onClose: () => this.onCloseLevelSelect(),
+    });
   }
 
   /** The GUI layer, so other overlays (the pause menu) can add themselves on top. */
@@ -416,95 +218,29 @@ export class HUD {
   }
 
   public get isLevelSelectOpen(): boolean {
-    return this.selectOverlay.isVisible;
+    return this.levelSelect.isOpen;
   }
 
   /** Shows the chamber list with `selected` highlighted. */
   public showLevelSelect(entries: ChamberEntry[], selected: number, footer: string): void {
-    for (const row of this.selectRows) row.dispose();
-    this.selectEntries = entries;
-    this.selectRows = entries.map((entry, i) => this.createChamberRow(entry, i));
-    for (const row of this.selectRows) this.selectList.addControl(row);
-
-    const size = this.ui.getSize();
-    const width = Math.max(240, Math.min(600, size.width - 32));
-    this.selectList.width = `${width - 14}px`;
-    this.selectScroll.width = `${width}px`;
-    this.selectScroll.height = `${Math.max(ROW_HEIGHT, Math.min(entries.length * (ROW_HEIGHT + 8), size.height - 210))}px`;
-    this.selectFooter.text = footer;
-    this.selectOverlay.isVisible = true;
-    this.highlightLevel(selected);
+    this.levelSelect.show(entries, selected, footer);
   }
 
   public hideLevelSelect(): void {
-    this.selectOverlay.isVisible = false;
+    this.levelSelect.hide();
   }
 
   /** Moves the keyboard/gamepad highlight to row `index`, scrolling it into view. */
   public highlightLevel(index: number): void {
-    this.selectRows.forEach((row, i) => {
-      const unlocked = this.selectEntries[i].unlocked;
-      row.thickness = i === index ? 2 : 1;
-      row.color = i === index ? '#ffffff' : 'rgba(255,255,255,0.25)';
-      row.background = i === index && unlocked ? 'rgba(60,80,110,0.9)' : 'rgba(20,28,40,0.8)';
-    });
-    const n = this.selectRows.length;
-    if (n > 1) this.selectScroll.verticalBar.value = index / (n - 1);
-  }
-
-  private createChamberRow(entry: ChamberEntry, index: number): Button {
-    const row = new Button(`chamber${index}`);
-    row.height = `${ROW_HEIGHT + 8}px`;
-    row.paddingTop = '4px';
-    row.paddingBottom = '4px';
-    row.cornerRadius = 6;
-    row.alpha = entry.unlocked ? 1 : 0.45;
-    row.hoverCursor = entry.unlocked ? 'pointer' : 'not-allowed';
-    row.pointerEnterAnimation = () => this.onHoverLevel(index);
-    row.pointerOutAnimation = () => {};
-    row.pointerDownAnimation = () => {};
-    row.pointerUpAnimation = () => {};
-
-    const name = new TextBlock(`chamberName${index}`, entry.name);
-    name.color = 'white';
-    name.fontSize = 18;
-    name.fontFamily = 'Consolas, monospace';
-    name.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-    name.paddingLeft = '16px';
-    name.top = '-7px';
-    row.addControl(name);
-
-    const cube = new TextBlock(`chamberCube${index}`, cubeLabel(entry.cube));
-    cube.color = '#8a96a8';
-    cube.fontSize = 12;
-    cube.fontFamily = 'Consolas, monospace';
-    cube.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-    cube.paddingLeft = '16px';
-    cube.top = '13px';
-    row.addControl(cube);
-
-    // The shift count goes under the time, not beside it: a long chamber name and both on one line overflow a phone.
-    const status = new TextBlock(
-      `chamberStatus${index}`,
-      !entry.unlocked ? 'LOCKED' : entry.shifts ? `${entry.best}\n${entry.shifts}` : entry.best,
-    );
-    status.color = !entry.unlocked ? '#ff9d9d' : entry.completed ? '#9dffb0' : '#aab8cc';
-    status.fontSize = 15;
-    status.fontFamily = 'Consolas, monospace';
-    status.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
-    status.paddingRight = '16px';
-    row.addControl(status);
-
-    row.onPointerClickObservable.add(() => this.onPickLevel(index));
-    return row;
+    this.levelSelect.highlight(index);
   }
 
   public hideStartOverlay(): void {
-    this.startOverlay.isVisible = false;
+    this.startOverlay.hide();
   }
 
   public showStartOverlay(): void {
-    this.startOverlay.isVisible = true;
+    this.startOverlay.show();
   }
 
   public get isStartOverlayVisible(): boolean {
@@ -515,7 +251,7 @@ export class HUD {
   public setDevice(device: InputDevice): void {
     this.device = device;
     const touch = device === 'touch';
-    this.subtitle.text = SUBTITLES[device];
+    this.startOverlay.setDevice(device);
     this.keysLabel.isVisible = !touch;
     this.refreshKeys();
     // Leave the top-right corner to the touch RESTART / CHAMBERS buttons.
@@ -523,17 +259,15 @@ export class HUD {
     this.levelLabel.width = touch ? '34%' : '100%';
     this.hintLabel.width = touch ? '34%' : '100%';
     this.hintLabel.textWrapping = touch;
-    this.layoutStartButtons();
   }
 
   /** What the start overlay offers for fullscreen; shown on touch devices only. */
   public configureFullscreen(mode: 'toggle' | 'hint' | 'none'): void {
-    this.fullscreenMode = mode;
-    this.layoutStartButtons();
+    this.startOverlay.configureFullscreen(mode);
   }
 
   public setFullscreenState(on: boolean): void {
-    if (this.fullscreenButton.textBlock) this.fullscreenButton.textBlock.text = on ? 'EXIT FULLSCREEN' : 'FULLSCREEN';
+    this.startOverlay.setFullscreenState(on);
   }
 
   /** Shows or hides the "update available" notice. */
@@ -541,37 +275,8 @@ export class HUD {
     this.updateNotice.isVisible = visible;
   }
 
-  /** On touch the start overlay's buttons sit along the bottom edge, where landscape phones have room. */
-  private layoutStartButtons(): void {
-    const touch = this.device === 'touch';
-    const fs = touch ? this.fullscreenMode : 'none';
-    this.fullscreenButton.isVisible = fs === 'toggle';
-    this.fullscreenHint.isVisible = fs === 'hint';
-    const bottom = Control.VERTICAL_ALIGNMENT_BOTTOM;
-    const center = Control.VERTICAL_ALIGNMENT_CENTER;
-    if (touch) {
-      const side = fs === 'toggle';
-      this.selectButton.verticalAlignment = bottom;
-      this.selectButton.top = fs === 'hint' ? '-44px' : '-16px';
-      this.selectButton.left = side ? '-140px' : '0px';
-      this.selectButton.width = side ? '260px' : '280px';
-      this.fullscreenButton.verticalAlignment = bottom;
-      this.fullscreenButton.top = '-16px';
-      this.fullscreenButton.left = '140px';
-      this.fullscreenHint.verticalAlignment = bottom;
-      this.fullscreenHint.top = '-14px';
-    } else {
-      this.selectButton.verticalAlignment = center;
-      this.selectButton.top = '190px';
-      this.selectButton.left = '0px';
-      this.selectButton.width = '260px';
-    }
-  }
-
   public showWin(title: string, subtitle: string): void {
-    this.winTitle.text = title;
-    this.winSubtitle.text = subtitle;
-    this.winOverlay.isVisible = true;
+    this.winOverlay.show(title, subtitle);
   }
 
   /**
@@ -579,29 +284,15 @@ export class HUD {
    * in below. Purely visual; hiding it at any point is safe.
    */
   public showEnding(title: string, body: string): void {
-    clearInterval(this.endTimer);
-    this.endTitle.text = title;
-    this.endBody.text = body;
-    this.endOverlay.alpha = 0;
-    this.endBody.alpha = 0;
-    this.endOverlay.isVisible = true;
-    const start = performance.now();
-    this.endTimer = setInterval(() => {
-      const t = (performance.now() - start) / 1000;
-      // The card waits a moment, so the light is seen coming up first.
-      this.endOverlay.alpha = Math.min(1, Math.max(0, (t - 2) / 2));
-      this.endBody.alpha = Math.min(1, Math.max(0, (t - 5) / 1.5));
-      if (t > 6.5) clearInterval(this.endTimer);
-    }, 33);
+    this.endCard.show(title, body);
   }
 
   public hideEnding(): void {
-    clearInterval(this.endTimer);
-    this.endOverlay.isVisible = false;
+    this.endCard.hide();
   }
 
   public hideWin(): void {
-    this.winOverlay.isVisible = false;
+    this.winOverlay.hide();
   }
 
   public setLevel(name: string, hint: string): void {
@@ -626,64 +317,14 @@ export class HUD {
     }, seconds * 1000);
   }
 
-  /**
-   * The attendant is printed (NARRATIVE.md): the view starts as a pale blank and the print head's line sweeps up it,
-   * leaving the chamber behind, as if the eyes were the last thing made. Under a second. With `reduced` motion it is a
-   * plain fade. `repeats` counts the starts of the same chamber in a row before this one; a repeat is quicker (see
-   * `printInDuration`).
-   */
+  /** The attendant is printed; see `PrintWipe.printIn`. */
   public printIn(reduced = false, repeats = 0): void {
-    clearInterval(this.printTimer);
-    const duration = printInDuration(reduced, repeats);
-    const start = performance.now();
-    this.printFog.isVisible = true;
-    this.printBar.isVisible = !reduced;
-    const step = () => {
-      const p = Math.min(1, (performance.now() - start) / 1000 / duration);
-      if (reduced) {
-        this.printFog.height = 1;
-        this.printFog.alpha = 0.7 * (1 - p);
-      } else {
-        // The line eases upwards; everything above it is still unprinted.
-        const done = p * p * (3 - 2 * p);
-        const left = 1 - done;
-        this.printFog.height = `${(left * 100).toFixed(2)}%`;
-        this.printFog.alpha = 0.55 + 0.35 * left;
-        this.printBar.top = `${(left * 100).toFixed(2)}%`;
-      }
-      if (p >= 1) {
-        clearInterval(this.printTimer);
-        this.printFog.isVisible = false;
-        this.printBar.isVisible = false;
-      }
-    };
-    step();
-    this.printTimer = setInterval(step, 16);
+    this.printWipe.printIn(reduced, repeats);
   }
 
-  /**
-   * The attendant is reclaimed at the exit: `printIn` run backwards. The line sweeps down from the top and leaves the
-   * pale blank behind it, which stays (faintly, under the win screen) until the next `printIn` clears it.
-   */
+  /** The attendant is reclaimed at the exit; see `PrintWipe.printOut`. */
   public printOut(reduced = false): void {
-    clearInterval(this.printTimer);
-    const duration = reduced ? 0.4 : 0.8;
-    const start = performance.now();
-    this.printFog.isVisible = true;
-    this.printBar.isVisible = !reduced;
-    const step = () => {
-      const p = Math.min(1, (performance.now() - start) / 1000 / duration);
-      const done = reduced ? 1 : p * p * (3 - 2 * p);
-      this.printFog.height = `${(done * 100).toFixed(2)}%`;
-      this.printFog.alpha = reduced ? 0.45 * p : 0.75 - 0.3 * p;
-      this.printBar.top = `${(done * 100).toFixed(2)}%`;
-      if (p >= 1) {
-        clearInterval(this.printTimer);
-        this.printBar.isVisible = false;
-      }
-    };
-    step();
-    this.printTimer = setInterval(step, 16);
+    this.printWipe.printOut(reduced);
   }
 
   public setPrompt(visible: boolean, text?: string): void {
@@ -724,9 +365,9 @@ export class HUD {
   }
 
   public dispose(): void {
-    clearInterval(this.endTimer);
+    this.endCard.dispose();
     clearTimeout(this.logTimer);
-    clearInterval(this.printTimer);
+    this.printWipe.dispose();
     this.ui.dispose();
   }
 }

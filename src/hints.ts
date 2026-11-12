@@ -82,7 +82,7 @@ export const MORE_HINTS: Record<string, [string, string]> = {
   ],
   sieve: [
     'The field stops short of the ceiling. Look at the gap above it.',
-    'Throw the low lever on the field\'s near face first. Then the one near the exit.',
+    "Throw the low lever on the field's near face first. Then the one near the exit.",
   ],
   surplus: [
     'The door wants one crate on its plate, not two. The RELEASE APERTURE can take one.',
@@ -90,7 +90,7 @@ export const MORE_HINTS: Record<string, [string, string]> = {
   ],
   tide: [
     'The pillar and the tall wall each become a floor for one shift. Look at both.',
-    'Get into the pillar\'s lane before the first sideways shift, then climb its face.',
+    "Get into the pillar's lane before the first sideways shift, then climb its face.",
   ],
   pendulum: [
     'When the sideways shift comes, the partition stops whatever is at or below its top.',

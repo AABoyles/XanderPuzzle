@@ -134,7 +134,7 @@ Gravity-driven crates, pressure plates and plate-controlled doors (`Builder.addC
 - `src/ui/PauseMenu.ts` — the pause menu: resume, restart, chamber select, fullscreen, settings and the controls reference.
 - `src/settings.ts` — Babylon-free settings model (defaults, limits, parsing, load/save), tested by Node.
 - `src/pwa/` — fullscreen helpers, service-worker registration and the offline cache policy.
-- `src/main.ts` — the composition root: scene bootstrap, chamber flow (start, advance, pick), skin switching and the frame loop.
-- `src/app/` — pieces `main.ts` wires up: the URL flags, the chamber-select list, and `Sky` (the camera in use and the space outside the chamber).
+- `src/main.ts` — the entry point: builds the game, wires it up and starts the frame loop.
+- `src/app/` — the running game: `App` (the one object holding every service and all shared state), `bootstrap` (builds it), `chamberFlow` (start, restart, advance, pick, skin), `chamberStep` (one simulated frame), `shifts` (undo and the stuck notice), `menus`, `bindings` (page events), `frame` (the loop), `Sky` (the camera in use and the space outside the chamber) and the `__debug` hook.
 - `src/title/` — the title's outside view of the cube (`TitleView.ts`: its camera and backdrop options; `titleShot.ts`: the Babylon-free maths).
 - `src/progress.ts` — Babylon-free versioned, id-keyed progress (unlock rule, best times, fewest shifts, migration, reset), tested by Node.

@@ -29,7 +29,7 @@ test('hintFor: tier 0, an unknown id and an undefined id show the base hint', ()
   assert.equal(hintFor(undefined, 'Base.', 2), 'Base.');
 });
 
-test('hintFor: tiers 1 and 2 show the chamber\'s second and third lines', () => {
+test("hintFor: tiers 1 and 2 show the chamber's second and third lines", () => {
   assert.equal(hintFor('vault', 'Base.', 1), MORE_HINTS.vault[0]);
   assert.equal(hintFor('vault', 'Base.', 2), MORE_HINTS.vault[1]);
   assert.notEqual(MORE_HINTS.vault[0], MORE_HINTS.vault[1]);

@@ -61,10 +61,7 @@ test('an index outside the list is rejected by load and ignored by preload', asy
 
 test('preload fetches in the background and swallows a failure', async () => {
   const calls = { n: 0 };
-  const loader = new ChamberLoader([
-    source('a', calls),
-    { load: () => Promise.reject(new Error('offline')) },
-  ]);
+  const loader = new ChamberLoader([source('a', calls), { load: () => Promise.reject(new Error('offline')) }]);
   loader.preload(0);
   loader.preload(1);
   await new Promise((resolve) => setTimeout(resolve, 0));

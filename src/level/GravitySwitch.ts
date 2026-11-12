@@ -27,9 +27,7 @@ const ARROW_IN_LINE = 1.0; // from the wall, on the lever's centre line, when it
  * - `sequence`: starts the level's gravity sequencer, which then cycles gravity on a timer.
  */
 export type LeverSpec =
-  | { kind: 'fixed'; target: GravityAxis }
-  | { kind: 'relative' }
-  | { kind: 'sequence'; sequencer: GravitySequencer };
+  { kind: 'fixed'; target: GravityAxis } | { kind: 'relative' } | { kind: 'sequence'; sequencer: GravitySequencer };
 
 /**
  * A wall-mounted lever that, when the player is nearby and presses E, changes gravity. A `once`
@@ -224,9 +222,7 @@ export class GravitySwitch {
     const dir = GravitySystem.axisVector(axis);
     const normal = GravitySystem.axisVector(this.wallAxis);
     const alongWall = Math.abs(Vector3.Dot(dir, normal)) < 0.0001;
-    this.arrow.position = alongWall
-      ? normal.scale(ARROW_OUT).add(dir.scale(ARROW_ALONG))
-      : normal.scale(ARROW_IN_LINE);
+    this.arrow.position = alongWall ? normal.scale(ARROW_OUT).add(dir.scale(ARROW_ALONG)) : normal.scale(ARROW_IN_LINE);
     this.arrow.rotationQuaternion = GravitySwitch.rotationFromUp(dir);
   }
 

@@ -6,7 +6,7 @@ import type { Vec3 } from '../environment/fall';
 import type { Aabb } from '../physics/boxPhysics';
 import { TITLE_CROWN, TITLE_PLANET, titleShotFrame } from './titleShot';
 
-/** The backdrop options the title's view sets; `main.ts` adds the shared ones and `dt`. */
+/** The backdrop options the title's view sets; `Sky` adds the shared ones and `dt`. */
 export type TitleFrame = Pick<
   BackdropFrame,
   'cameraPosition' | 'anchor' | 'sunDirection' | 'visibility' | 'planetDistance' | 'crownDistance' | 'speed'
@@ -14,11 +14,11 @@ export type TitleFrame = Pick<
 
 /**
  * The title's view: the cube from outside, hanging in the field with the Crown above it and the planet below (the one
- * place the whole machine is seen at once, before the attendant is printed inside it). `main.ts` decides when it is up
+ * place the whole machine is seen at once, before the attendant is printed inside it). `runFrame` decides when it is up
  * (the title, with the player still on the print bed) and switches to `camera` while it is.
  */
 export class TitleView {
-  /** The outside camera. It is not the player's, so `main.ts` makes it active only while the title shot holds. */
+  /** The outside camera. It is not the player's, so `Sky` makes it active only while the title shot holds. */
   readonly camera: TargetCamera;
   private readonly anchor = new Vector3();
   private readonly sun = new Vector3();
@@ -36,12 +36,7 @@ export class TitleView {
    * Places the camera for the chamber with `bounds`, the planet in direction `planetDir`, and returns what the backdrop
    * needs for this frame (to be spread into its `update`, with `dt` added).
    */
-  update(
-    bounds: Aabb,
-    planetDir: Readonly<Vec3>,
-    dt: number,
-    reducedMotion: boolean,
-  ): TitleFrame {
+  update(bounds: Aabb, planetDir: Readonly<Vec3>, dt: number, reducedMotion: boolean): TitleFrame {
     this.time += reducedMotion ? 0 : dt;
     const shot = titleShotFrame(bounds, planetDir, this.time);
     this.camera.position.set(shot.position[0], shot.position[1], shot.position[2]);
