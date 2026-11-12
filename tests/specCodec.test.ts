@@ -67,6 +67,9 @@ describe('spec codec', () => {
       await rejects(decodeSpec('v2.abc'));
       await rejects(decodeSpec('v1.not base64!'));
       await rejects(decodeSpec('v1.AAAA'));
+      const link = await encodeSpec(DIVIDE);
+      await rejects(decodeSpec(link.slice(0, -1))); // a truncated link
+      await rejects(decodeSpec(link.slice(0, 40) + link.slice(41))); // a character lost from the middle
     });
 
     test('a link that is too long', async () => {

@@ -51,6 +51,7 @@ const ROWS: Row[] = [
 
 type Debug = {
   levelCount(): number;
+  level(): number;
   startLevel(i: number): void;
   position(): number[];
   gravityAxis(): string;
@@ -262,22 +263,63 @@ async function throwLever(page: Page, index: number, expected: string) {
   expect(axis, `gravity after lever ${index}`).toBe(expected);
 }
 
-test('a #c= link opens the chamber it carries, alone', async ({ page }) => {
+test('a #c= link opens the chamber it carries', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   await page.goto(`/?skin=axis#c=${await encodeSpec(CHIMNEY)}`);
   await page.waitForFunction(() => '__debug' in window);
-  expect(await dbg(page, (d) => d.levelCount())).toBe(1);
+  expect(await dbg(page, (d) => d.level())).toBe(-1);
   expect(await dbg(page, (d) => d.switches().length)).toBe(CHIMNEY.levers.length);
   expect(errors, 'browser errors').toEqual([]);
 });
 
-test('a broken #c= link falls back to the test room', async ({ page }) => {
+test('a broken #c= link opens the game as usual', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   await page.goto('/?skin=axis#c=v1.nonsense');
   await page.waitForFunction(() => '__debug' in window);
-  expect(await dbg(page, (d) => d.levelCount())).toBe(1);
-  expect(await dbg(page, (d) => d.switches().length)).toBeGreaterThan(0);
+  expect(await dbg(page, (d) => d.levelCount())).toBeGreaterThan(1);
+  expect(await dbg(page, (d) => d.level())).toBe(0);
   expect(errors, 'browser errors').toEqual([]);
+});
+
+test('a shared chamber still has the chamber list: L opens it, and picking a chamber starts it in place', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  await page.goto(`/?skin=axis#c=${await encodeSpec(CHIMNEY)}`);
+  await page.waitForFunction(() => '__debug' in window);
+  await dbg(page, (d) => d.begin());
+  expect(await dbg(page, (d) => d.level())).toBe(-1);
+  await page.keyboard.press('KeyL');
+  await page.waitForFunction(() => (window as any).__debug.levelSelectOpen());
+  await page.keyboard.press('Enter'); // the highlighted row is the first chamber, always open
+  await page.waitForFunction(() => !(window as any).__debug.levelSelectOpen());
+  expect(await dbg(page, (d) => d.level())).toBe(0);
+  expect(await dbg(page, (d) => d.hasWon())).toBe(false);
+  // It is the Vault now, with the game's own two levers, not the shared chamber's one.
+  expect(await dbg(page, (d) => d.switches().length)).toBe(2);
+  expect(errors, 'browser errors').toEqual([]);
+});
+
+test('pasting a #c= link into a tab that is already open loads its chamber', async ({ page }) => {
+  await page.goto('/?skin=axis');
+  await page.waitForFunction(() => '__debug' in window);
+  expect(await dbg(page, (d) => d.level())).toBe(0);
+  const link = await encodeSpec(CHIMNEY);
+  // Only the fragment changes, as when a link is pasted into the address bar of the open page.
+  await page.evaluate((l) => (location.hash = `c=${l}`), link);
+  await page.waitForFunction(() => (window as any).__debug?.level() === -1);
+});
+
+test('leaving a shared chamber clears the link from the address bar', async ({ page }) => {
+  await page.goto(`/?skin=axis#c=${await encodeSpec(CHIMNEY)}`);
+  await page.waitForFunction(() => '__debug' in window);
+  await dbg(page, (d) => d.begin());
+  await page.keyboard.press('KeyL');
+  await page.waitForFunction(() => (window as any).__debug.levelSelectOpen());
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => !(window as any).__debug.levelSelectOpen());
+  expect(new URL(page.url()).hash).toBe('');
 });

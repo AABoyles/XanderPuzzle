@@ -6,10 +6,10 @@ import { PROMPTS } from '../ui/prompts';
 import { atPrintBed, cubeOf, persistPlaytest } from './App';
 import type { App } from './App';
 import { printIn, startLevel } from './chamberFlow';
-import { sandbox } from './flags';
+import { sandbox, shared } from './flags';
 
 export function openLevelSelect(app: App): void {
-  if (sandbox) return;
+  if (sandbox && !shared) return;
   app.game.send({ type: 'openChambers' });
 }
 
@@ -114,7 +114,7 @@ export function wireMenus(app: App): void {
     if (!was.select && now.select) {
       app.keyboardMouse.pointerLockSuspended = true;
       if (document.pointerLockElement) document.exitPointerLock();
-      app.chamberSelect.show(app.levelIndex, app.input.lastDevice);
+      app.chamberSelect.show(Math.max(0, app.levelIndex), app.input.lastDevice);
     }
     if (!was.pause && now.pause) {
       app.keyboardMouse.pointerLockSuspended = true;

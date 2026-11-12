@@ -72,7 +72,7 @@ export function runFrame(app: App): void {
     kind: app.game.kind,
     titleShot: app.game.kind === 'title' && !sandbox && atPrintBed(app),
     level: app.level,
-    levelIndex: app.levelIndex,
+    levelIndex: Math.max(0, app.levelIndex),
     levelCount: app.chambers.count,
     lightsFrom: sandbox ? -1 : LIGHTS_FROM,
     reducedMotion: reducedMotionActive(app),

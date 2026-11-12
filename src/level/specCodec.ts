@@ -227,6 +227,8 @@ const b64 = (bytes: Uint8Array): string => {
 };
 const unb64 = (text: string): Uint8Array => {
   if (!/^[A-Za-z0-9_-]*$/.test(text)) fail('not base64url');
+  // A length of 1 mod 4 is impossible for base64: characters were lost or added (a truncated or retyped link).
+  if (text.length % 4 === 1) fail('the link is damaged (truncated or altered)');
   const bin = atob(text.replace(/-/g, '+').replace(/_/g, '/'));
   return Uint8Array.from(bin, (c) => c.charCodeAt(0));
 };

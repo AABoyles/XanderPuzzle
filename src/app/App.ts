@@ -15,7 +15,7 @@ import type { GamepadInput } from '../input/GamepadInput';
 import type { InputManager } from '../input/InputManager';
 import type { KeyboardMouseInput } from '../input/KeyboardMouseInput';
 import type { TouchInput } from '../input/TouchInput';
-import type { BuiltLevel } from '../level/Builder';
+import type { BuiltLevel, LevelFactory } from '../level/Builder';
 import type { ChamberLoader } from '../level/chambers';
 import { CHAMBERS } from '../level/chambers/catalog';
 import type { CratePreview } from '../level/CratePreview';
@@ -55,6 +55,11 @@ export interface App {
   readonly gravity: GravitySystem;
   /** The chambers' code, fetched as each is needed (`?sandbox` or a shared chamber link makes it a list of one: the test room, or the shared chamber). */
   readonly chambers: ChamberLoader;
+  /**
+   * A shared chamber's factory while its page is showing it (`levelIndex` is `GUEST_INDEX`, which no catalog chamber
+   * has); undefined once the player picks a chamber from the list, or if the page never had one.
+   */
+  guest: LevelFactory | undefined;
   readonly keyboardMouse: KeyboardMouseInput;
   readonly touch: TouchInput;
   readonly gamepad: GamepadInput;
@@ -126,9 +131,11 @@ export interface App {
 }
 
 /** The chamber ids in play order: progress is keyed by them. */
+/** The `levelIndex` of a shared chamber shown as a guest: before every catalog chamber. */
+export const GUEST_INDEX = -1;
 export const CHAMBER_IDS = CHAMBERS.map((c) => c.id);
 /** `?unlockall` is a playtest flag and never writes progress; nor does the sandbox. */
-export const progressWritable = !sandbox && !unlockAll;
+export const progressWritable = (): boolean => !sandbox && !unlockAll;
 /** Lights appear on the planet from the first chamber of Act III (NARRATIVE.md). */
 export const LIGHTS_FROM = CHAMBERS.findIndex((c) => c.id === 'turnstile');
 
@@ -142,7 +149,7 @@ export const settingsStorage = (): SettingsStorage | null => {
 };
 
 export function persistProgress(app: App): void {
-  if (progressWritable) saveProgress(progressStorage(), app.progress);
+  if (progressWritable()) saveProgress(progressStorage(), app.progress);
 }
 
 export function persistPlaytest(app: App): void {
@@ -164,9 +171,9 @@ export const fullscreenMode = (): 'toggle' | 'hint' | 'none' =>
 
 /** The facility's serial for chamber `index`; the sandbox has none. */
 export const cubeOf = (index: number): string | undefined => (sandbox ? undefined : CHAMBERS[index]?.cube);
-export const finishedAll = (app: App): boolean => app.levelIndex >= app.chambers.count - 1;
-/** The chamber after this one; after the last, the first again. */
-export const nextIndex = (app: App): number => (finishedAll(app) ? 0 : app.levelIndex + 1);
+export const finishedAll = (app: App): boolean => app.guest !== undefined || app.levelIndex >= app.chambers.count - 1;
+/** The chamber after this one; after the last, the first again. A guest chamber just starts over. */
+export const nextIndex = (app: App): number => (app.guest ? GUEST_INDEX : finishedAll(app) ? 0 : app.levelIndex + 1);
 /** Whether the player is still where they were printed. */
 export const atPrintBed = (app: App): boolean =>
   Vector3.DistanceSquared(app.player.position, app.level.spawnPosition) < 1;

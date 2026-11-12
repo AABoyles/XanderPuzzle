@@ -14,8 +14,8 @@ import { GamepadInput } from '../input/GamepadInput';
 import { InputManager } from '../input/InputManager';
 import { KeyboardMouseInput } from '../input/KeyboardMouseInput';
 import { TouchInput } from '../input/TouchInput';
-import { CHAMBERS, ChamberLoader } from '../level/chambers';
-import { roomSource } from './sharedChamber';
+import { CHAMBERS, ChamberLoader, SANDBOX } from '../level/chambers';
+import { sharedGuest } from './sharedChamber';
 import { CratePreview } from '../level/CratePreview';
 import { loadFonts } from '../level/fonts';
 import { PlayerController } from '../player/PlayerController';
@@ -32,6 +32,7 @@ import {
   beep,
   CHAMBER_IDS,
   fullscreenMode,
+  GUEST_INDEX,
   persistPlaytest,
   progressStorage,
   settingsStorage,
@@ -40,7 +41,7 @@ import {
 import type { App } from './App';
 import { applySettings } from './applySettings';
 import { ChamberSelect } from './ChamberSelect';
-import { params, playtesting, sandbox, storageAvailable, store } from './flags';
+import { params, playtesting, sandbox, shared, storageAvailable, store } from './flags';
 import { Sky } from './Sky';
 
 /**
@@ -60,12 +61,18 @@ export async function createApp(): Promise<App> {
   glow.intensity = 0.7;
 
   const gravity = new GravitySystem('-Y', 22);
-  const chambers = new ChamberLoader(sandbox ? [roomSource()] : CHAMBERS);
+  // A shared chamber is a guest in the game: it is built from its spec, and the chamber list is the real one.
+  const guest = await sharedGuest();
+  const chambers = new ChamberLoader(params.has('sandbox') ? [SANDBOX] : CHAMBERS);
   const playtest = playtesting ? new PlaytestRecorder(() => new Date().toISOString()) : undefined;
   // Progress is keyed by chamber id.
   const progress = loadProgress(progressStorage(), CHAMBER_IDS);
   // Resume at the last chamber reached.
-  const levelIndex = sandbox ? 0 : Math.min(resumeIndex(progress, CHAMBER_IDS), chambers.count - 1);
+  const levelIndex = guest
+    ? GUEST_INDEX
+    : sandbox
+      ? 0
+      : Math.min(resumeIndex(progress, CHAMBER_IDS), chambers.count - 1);
   // Skin: `?skin=station|axis|monolith|draft|neon`, else the last one picked with K, else Station.
   const skinParam = params.get('skin') as SkinId | null;
   const storedSkin = Math.floor(store.get('skin') ?? SKIN_IDS.indexOf(DEFAULT_SKIN));
@@ -79,7 +86,7 @@ export async function createApp(): Promise<App> {
   // Placards draw at once in fallback fonts and redraw when the bundled ones arrive.
   void loadFonts();
   // The first chamber's code is fetched before anything is built; the rest arrive as they are needed.
-  const level = (await chambers.load(levelIndex))(scene, skin);
+  const level = (guest ?? (await chambers.load(levelIndex)))(scene, skin);
   const keyboardMouse = new KeyboardMouseInput(canvas);
   const touch = new TouchInput();
   const gamepad = new GamepadInput();
@@ -132,7 +139,7 @@ export async function createApp(): Promise<App> {
         }
       : undefined,
     fullscreen: () => ({ kind: fullscreenMode(), on: isFullscreen() }),
-    hasChamberSelect: !sandbox,
+    hasChamberSelect: !sandbox || shared,
   });
   pauseMenu.setDevice(input.lastDevice);
   input.onDeviceChange = (device) => {
@@ -179,6 +186,7 @@ export async function createApp(): Promise<App> {
     hints: new HintLadder(),
     undoStack: new UndoStack<ChamberSnapshot>(),
     cratePreview: new CratePreview(),
+    guest,
     chamberSelect: new ChamberSelect(
       hud,
       () => app.progress,
