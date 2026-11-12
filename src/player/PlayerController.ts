@@ -8,6 +8,7 @@ import { UniversalCamera } from '@babylonjs/core/Cameras/universalCamera';
 import { GravitySystem } from '../gravity/GravitySystem';
 import type { InputManager } from '../input/InputManager';
 import type { InputFrame } from '../input/InputSource';
+import { JumpAssist } from './jumpAssist';
 
 const RADIUS = 0.5;
 const EYE_OFFSET = 0.35; // above the collider center
@@ -46,7 +47,7 @@ export class PlayerController {
   private verticalSpeed = 0;
   private grounded = false;
 
-  private jumpQueued = false;
+  private readonly jumpAssist = new JumpAssist();
   private interactQueued = false;
 
   constructor(scene: Scene, gravity: GravitySystem, spawnPosition: Vector3, input: InputManager) {
@@ -90,7 +91,7 @@ export class PlayerController {
     this.yaw = 0;
     this.pitch = 0;
     this.verticalSpeed = 0;
-    this.jumpQueued = false;
+    this.jumpAssist.reset();
     this.interactQueued = false;
     // Drain pending edges and look deltas so a queued press doesn't fire after the restart.
     this.input.drain();
@@ -146,7 +147,6 @@ export class PlayerController {
     const up = rotate(Vector3.Up(), this.alignRot);
 
     // --- Look ------------------------------------------------------------------------------------
-    if (input.jump) this.jumpQueued = true;
     if (input.interact) this.interactQueued = true;
     this.yaw += input.lookX;
     this.pitch = Scalar.Clamp(this.pitch + input.lookY, -PITCH_LIMIT, PITCH_LIMIT);
@@ -174,15 +174,14 @@ export class PlayerController {
     }
 
     // --- Vertical (gravity + jump) -------------------------------------------------------------
-    if (this.grounded && this.verticalSpeed <= 0) {
+    const rising = this.verticalSpeed > 0;
+    if (this.jumpAssist.step(dt, this.grounded, input.jump, rising)) {
+      this.verticalSpeed = JUMP_SPEED;
+    } else if (this.grounded && this.verticalSpeed <= 0) {
       this.verticalSpeed = 0;
-      if (this.jumpQueued) {
-        this.verticalSpeed = JUMP_SPEED;
-      }
     } else {
       this.verticalSpeed -= this.gravity.magnitude * dt;
     }
-    this.jumpQueued = false;
 
     const displacement = horizontal.scale(dt).add(up.scale(this.verticalSpeed * dt));
     this.collider.moveWithCollisions(displacement);
