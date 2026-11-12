@@ -245,6 +245,29 @@ for (const [index, chamber] of CHAMBERS.entries()) {
   });
 }
 
+test('a crate chamber with its crate preview shown disposes everything, the ghosts included', async () => {
+  const { GravitySystem } = await import('../src/gravity/GravitySystem.ts');
+  const crateChamber = CHAMBERS.find((c) => {
+    const level = c.build(scene, skin);
+    try {
+      return level.dynamics.crates.length > 0;
+    } finally {
+      level.dispose();
+    }
+  });
+  assert.ok(crateChamber, 'some chamber has crates');
+  const before = counts();
+  const level = crateChamber.build(scene, skin);
+  // Ghosts are made lazily, so ask for one per crate, a little above where each crate rests, so each one shows.
+  const shifted = level.dynamics.crates.map((c) => [c.body.center[0], c.body.center[1] + 1, c.body.center[2]] as const);
+  const predicted = level.dynamics.predict(GravitySystem.axisVector('-Y').scale(22), level.spawnPosition);
+  level.dynamics.showPreview(shifted.map((p) => [...p]));
+  assert.ok(predicted.length === level.dynamics.crates.length);
+  assert.ok(scene.meshes.some((m) => m.name === 'crateGhost'), 'a ghost was made');
+  level.dispose();
+  assert.deepEqual(counts(), before);
+});
+
 test('building and disposing every chamber in sequence leaves the scene clean', () => {
   const before = counts();
   for (const c of CHAMBERS) c.build(scene, skin).dispose();

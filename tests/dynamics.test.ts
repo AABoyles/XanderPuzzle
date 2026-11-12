@@ -87,6 +87,68 @@ test('an inverted plate is satisfied while clear, and a door needs every plate s
   }
 });
 
+test('predict returns where a crate actually comes to rest, and does not move the real crates', () => {
+  const dyn = new LevelDynamics(room());
+  const crate = new Crate(scene, V(-2, 4, 1), 1.5);
+  const other = new Crate(scene, V(1, 6, -1), 1.5);
+  dyn.crates.push(crate, other);
+  try {
+    const before = JSON.stringify(dyn.snapshot());
+    const predicted = dyn.predict(DOWN, FAR);
+    assert.equal(JSON.stringify(dyn.snapshot()), before, 'predict moved the real crates');
+
+    // Stepping the real crates for several seconds reaches the same resting places.
+    run(dyn, DOWN, 6);
+    assert.equal(predicted.length, 2);
+    predicted.forEach((p, i) => {
+      dyn.crates[i].body.center.forEach((c, a) => assert.ok(Math.abs(p[a] - c) < 1e-3, `crate ${i} axis ${a}`));
+    });
+  } finally {
+    dyn.dispose();
+  }
+});
+
+test('predict skips a lost crate and reports its current centre', () => {
+  const dyn = new LevelDynamics(room());
+  const lost = new Crate(scene, V(0, 0.75, 0), 1.5);
+  const live = new Crate(scene, V(3, 5, 0), 1.5);
+  dyn.crates.push(lost, live);
+  try {
+    lost.lost = true;
+    const predicted = dyn.predict(V(22, 0, 0), FAR);
+    assert.deepEqual(predicted[0], [0, 0.75, 0], 'a lost crate stays where it is');
+    assert.ok(Math.abs(predicted[1][0] - 3) > 1, 'the live crate moves under sideways gravity');
+  } finally {
+    dyn.dispose();
+  }
+});
+
+test('showPreview shows a ghost only where a crate would move, and dispose() releases the ghosts', () => {
+  // Babylon makes its shared edge and default materials on first use. Warm them up so the baseline excludes them.
+  const warm = new LevelDynamics(room());
+  warm.crates.push(new Crate(scene, V(0, 5, 0), 1.5));
+  warm.showPreview([[0, 0.75, 0]]);
+  warm.dispose();
+  const materials = scene.materials.length;
+  const dyn = new LevelDynamics(room());
+  const crate = new Crate(scene, V(0, 5, 0), 1.5);
+  dyn.crates.push(crate);
+  try {
+    dyn.showPreview([[0, 0.75, 0]]);
+    const ghost = scene.meshes.find((m) => m.name === 'crateGhost');
+    assert.ok(ghost?.isEnabled(), 'a ghost shows where the crate will land');
+    assert.ok(!ghost.isPickable && !ghost.checkCollisions);
+    dyn.showPreview([[0, 5, 0]]);
+    assert.ok(!ghost.isEnabled(), 'no ghost where the crate would not move');
+    dyn.showPreview(null);
+    assert.ok(!ghost.isEnabled());
+  } finally {
+    dyn.dispose();
+  }
+  assert.equal(scene.meshes.filter((m) => m.name === 'crateGhost').length, 0);
+  assert.equal(scene.materials.length, materials, 'the ghost material and the crate material are both released');
+});
+
 test('restore puts a crate back where it was, and a crate lost since is shown and simulated again', () => {
   const dyn = new LevelDynamics(room());
   const crate = new Crate(scene, V(0, 0.75, 0), 1.5);

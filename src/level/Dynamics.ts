@@ -13,6 +13,21 @@ const MAX_STEP = 1 / 20;
 export const CRATE_LOST_MARGIN = 12;
 
 const arr = (v: Vector3): Vec3 => [v.x, v.y, v.z];
+const playerBox = (p: Vector3): Aabb => ({
+  min: [p.x - PLAYER_HALF, p.y - PLAYER_HALF, p.z - PLAYER_HALF],
+  max: [p.x + PLAYER_HALF, p.y + PLAYER_HALF, p.z + PLAYER_HALF],
+});
+const distance = (a: Vec3, b: Vec3): number => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+
+function makeGhostMaterial(scene: Scene): StandardMaterial {
+  const mat = new StandardMaterial('crateGhostMat', scene);
+  mat.diffuseColor = new Color3(1, 0.7, 0.3);
+  mat.emissiveColor = new Color3(1, 0.7, 0.3);
+  mat.specularColor = new Color3(0, 0, 0);
+  mat.alpha = 0.18;
+  mat.backFaceCulling = false;
+  return mat;
+}
 
 /** A box that falls whichever way gravity points. Nothing but gravity moves it. */
 export class Crate {
@@ -170,27 +185,108 @@ export class LevelDynamics {
   /** The level's bounds, from its statics; worked out on first use, once the level is fully built. */
   private bounds?: Aabb;
 
+  /** The ghost outlines `showPreview` draws, one per crate once made; created on first use. */
+  private ghosts: Mesh[] = [];
+  private ghostMat?: StandardMaterial;
+
+  /**
+   * One sub-step of `dt` (at most MAX_STEP) for the given crate bodies, against the statics, the closed doors, the
+   * player's box and each other. The one place crates are stepped: `update` and `predict` both use it.
+   * Returns the hardest impact (units/s).
+   */
+  private stepCrates(bodies: Body[], dt: number, g: Vec3, player: Aabb): number {
+    const fixed = [...this.statics, ...this.doors.filter((d) => !d.isOpen).map((d) => d.aabb), player];
+    let impact = 0;
+    for (const body of bodies) {
+      const others = bodies.filter((b) => b !== body).map(bodyAabb);
+      const r = stepBody(body, g, dt, [...fixed, ...others]);
+      impact = Math.max(impact, r.impactSpeed);
+    }
+    return impact;
+  }
+
+  /**
+   * Where each crate would come to rest if gravity pointed along `gravity` now, in the order of `crates`. Runs on
+   * copies, so the real bodies are not touched. Stops early once every copy has stopped moving, and runs for at most
+   * `seconds` of simulated time.
+   *
+   * An approximation: the doors keep their CURRENT open state for the whole slide (a door that would open or close
+   * during it is not modelled), the player stays where they are (their box is an obstacle, as in `update`), and a
+   * crate that leaves the level is reported wherever it is after `seconds`. A lost crate reports its current centre.
+   */
+  public predict(gravity: Vector3, playerPos: Vector3, seconds = 6): Vec3[] {
+    const g = arr(gravity);
+    const player = playerBox(playerPos);
+    const copies: Body[] = [];
+    // For each crate, its copy's index in `copies`, or -1 for a lost crate.
+    const copyIndex = this.crates.map((c) => {
+      if (c.lost) return -1;
+      copies.push({ center: [...c.body.center], half: [...c.body.half], velocity: [...c.body.velocity] });
+      return copies.length - 1;
+    });
+    const steps = Math.ceil(seconds / MAX_STEP);
+    for (let i = 0; i < steps && copies.length; i++) {
+      const before = copies.map((b) => [...b.center]);
+      this.stepCrates(copies, MAX_STEP, g, player);
+      const settled = copies.every((b, k) =>
+        [0, 1, 2].every((a) => Math.abs(b.center[a] - before[k][a]) < 1e-4 && Math.abs(b.velocity[a]) < 1e-4),
+      );
+      if (settled) break;
+    }
+    return this.crates.map((c, i) => (copyIndex[i] < 0 ? [...c.body.center] : [...copies[copyIndex[i]].center]));
+  }
+
+  /**
+   * Shows a faint ghost of each crate at its predicted resting place (see `predict`); `null` hides them all. A ghost
+   * is hidden where the crate would not move, or once the crate is lost. Ghosts are not pickable and collide with
+   * nothing, and are in no statics list.
+   */
+  public showPreview(centers: Vec3[] | null): void {
+    this.crates.forEach((crate, i) => {
+      const center = centers?.[i];
+      const show = center !== undefined && !crate.lost && distance(center, crate.body.center) >= 0.05;
+      if (!show && !this.ghosts[i]) return;
+      const ghost = (this.ghosts[i] ??= this.makeGhost(crate));
+      if (show) ghost.position.set(center[0], center[1], center[2]);
+      ghost.setEnabled(show);
+    });
+  }
+
+  private makeGhost(crate: Crate): Mesh {
+    const h = crate.body.half;
+    const ghost = CreateBox(
+      'crateGhost',
+      { width: h[0] * 2, height: h[1] * 2, depth: h[2] * 2 },
+      crate.mesh.getScene(),
+    );
+    // One material is shared by every ghost. It is disposed once, in `dispose`, so the meshes must not take it along.
+    this.ghostMat ??= makeGhostMaterial(crate.mesh.getScene());
+    ghost.material = this.ghostMat;
+    ghost.isPickable = false;
+    ghost.checkCollisions = false;
+    ghost.enableEdgesRendering();
+    ghost.edgesWidth = 1.5;
+    ghost.edgesColor.set(1, 0.7, 0.3, 0.6);
+    return ghost;
+  }
+
   public update(dt: number, gravity: Vector3, playerPos: Vector3): DynamicsEvents {
     const events: DynamicsEvents = { impact: 0, plateChanged: false, doorChanged: false, crateLost: false };
     if (!this.crates.length && !this.plates.length && !this.doors.length) return events;
 
     const g = arr(gravity);
-    const p = arr(playerPos);
-    const player: Aabb = {
-      min: [p[0] - PLAYER_HALF, p[1] - PLAYER_HALF, p[2] - PLAYER_HALF],
-      max: [p[0] + PLAYER_HALF, p[1] + PLAYER_HALF, p[2] + PLAYER_HALF],
-    };
+    const player = playerBox(playerPos);
 
     let live = this.crates.filter((c) => !c.lost);
     // Crates: sub-step long frames so stacks settle the same at any frame rate.
     for (let remaining = Math.min(dt, 0.25); remaining > 1e-6; remaining -= MAX_STEP) {
-      const step = Math.min(remaining, MAX_STEP);
-      const fixed = [...this.statics, ...this.doors.filter((d) => !d.isOpen).map((d) => d.aabb), player];
-      for (const crate of live) {
-        const others = live.filter((c) => c !== crate).map((c) => c.aabb);
-        const r = stepBody(crate.body, g, step, [...fixed, ...others]);
-        events.impact = Math.max(events.impact, r.impactSpeed);
-      }
+      const impact = this.stepCrates(
+        live.map((c) => c.body),
+        Math.min(remaining, MAX_STEP),
+        g,
+        player,
+      );
+      events.impact = Math.max(events.impact, impact);
     }
     // A crate that has fallen out through a hole in the shell is gone: nothing brings it back but a restart.
     this.bounds ??= boundsOf(this.statics);
@@ -248,5 +344,9 @@ export class LevelDynamics {
 
   public dispose(): void {
     [...this.crates, ...this.plates, ...this.doors].forEach((o) => o.mesh.dispose(false, true));
+    this.ghosts.forEach((g) => g.dispose(false, false));
+    this.ghosts = [];
+    this.ghostMat?.dispose();
+    this.ghostMat = undefined;
   }
 }

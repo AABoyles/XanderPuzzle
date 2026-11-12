@@ -451,6 +451,25 @@ const TEXT: Record<InputDevice, Prompts> = {
   },
 };
 
+/** The crate preview last worked out, so it is not recomputed every frame (see `refreshCratePreview`). */
+let previewCache: { lever: (typeof level.switches)[number]; axis: GravityAxis; time: number } | undefined;
+const PREVIEW_INTERVAL = 0.25;
+
+/** Shows where crates would rest if the lever in reach were thrown now. Not for a sequence lever, which cycles. */
+function refreshCratePreview(target: (typeof level.switches)[number] | undefined): void {
+  const next = target && target.spec.kind !== 'sequence' ? target.targetFor(gravity.axis) : null;
+  if (!target || !next || !level.dynamics.crates.length || fall.falling) {
+    level.dynamics.showPreview(null);
+    previewCache = undefined;
+    return;
+  }
+  const c = previewCache;
+  if (c && c.lever === target && c.axis === gravity.axis && simClock - c.time < PREVIEW_INTERVAL) return;
+  const vector = GravitySystem.axisVector(next).scale(gravity.magnitude);
+  level.dynamics.showPreview(level.dynamics.predict(vector, player.position));
+  previewCache = { lever: target, axis: gravity.axis, time: simClock };
+}
+
 function startLevel(index: number): void {
   level.dispose();
   repeatStarts = index === levelIndex ? repeatStarts + 1 : 0;
@@ -484,6 +503,7 @@ function startLevel(index: number): void {
   levelTime = 0;
   shifts = 0;
   undoStack.clear();
+  previewCache = undefined;
   outOfTrim = false;
   arrival = 0;
   reclaimHold = 0;
@@ -842,12 +862,14 @@ engine.runRenderLoop(() => {
       if (!sw.isInRange(player.position) || !sw.canUse(gravity.axis)) continue;
       if (!target || sw.distanceTo(player.position) < target.distanceTo(player.position)) target = sw;
     }
+    refreshCratePreview(target);
     // Saved before the throw, so undo can take it back. Only a throw that fires is kept: `canFire` mirrors `update`.
     const saved =
       interactPressed && target?.canFire(gravity.axis, player.position) && !level.ending ? takeSnapshot() : undefined;
     for (const sw of level.switches) {
       if (sw.update(dt, gravity, player.position, interactPressed && sw === target)) {
         if (saved) undoStack.push(saved);
+        previewCache = undefined;
         // Taking gravity back by hand stops a running sequence.
         if (sw.spec.kind !== 'sequence') level.sequencer?.stop();
         shifts++;
