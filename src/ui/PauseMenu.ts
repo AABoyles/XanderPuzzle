@@ -95,6 +95,10 @@ export interface PauseMenuOptions {
   onSettingsChange: (next: Settings, changed?: keyof Settings) => void;
   /** Erases saved progress and best times (the menu asks for confirmation first). */
   onResetProgress?: () => void;
+  /** Playtest mode only: downloads the playtest log. Shown on the main page when given. */
+  onSavePlaytest?: () => void;
+  /** Playtest mode only: empties the playtest log (the menu asks for confirmation first). */
+  onClearPlaytest?: () => void;
   fullscreen: () => FullscreenState;
   /** False in the sandbox, which has a single room. */
   hasChamberSelect: boolean;
@@ -128,6 +132,8 @@ export class PauseMenu {
   private mainFocus = 0;
   /** The 'Erase saved progress' row has been pressed once and awaits a second press. */
   private confirmErase = false;
+  /** The 'Clear playtest log' row has been pressed once and awaits a second press. */
+  private confirmClear = false;
 
   constructor(opts: PauseMenuOptions) {
     this.opts = opts;
@@ -256,6 +262,7 @@ export class PauseMenu {
     if (this.page === 'main') this.mainFocus = this.focus;
     this.page = page;
     this.confirmErase = false;
+    this.confirmClear = false;
     if (page === 'controls') this.controlsTab = this.device;
     this.render(page === 'main' ? this.mainFocus : 0);
   }
@@ -267,6 +274,9 @@ export class PauseMenu {
     if (this.updateReady) rows.push({ kind: 'button', label: 'Update and reload', run: () => this.onUpdate() });
     rows.push({ kind: 'button', label: 'Restart chamber', run: () => this.onRestart() });
     if (this.opts.hasChamberSelect) rows.push({ kind: 'button', label: 'Chamber select', run: () => this.onChambers() });
+    if (this.opts.onSavePlaytest) {
+      rows.push({ kind: 'button', label: 'Save playtest log', run: () => this.opts.onSavePlaytest?.() });
+    }
     const fs = this.opts.fullscreen();
     if (fs.kind === 'toggle') {
       rows.push({
@@ -333,6 +343,7 @@ export class PauseMenu {
         },
       },
       ...this.eraseRows(),
+      ...this.clearPlaytestRows(),
       { kind: 'button', label: 'Back', run: () => this.goto('main') },
     ];
   }
@@ -350,6 +361,25 @@ export class PauseMenu {
             this.confirmErase = false;
             this.opts.onResetProgress?.();
           } else this.confirmErase = true;
+          this.updateValues();
+        },
+      },
+    ];
+  }
+
+  /** Clearing the playtest log needs two presses, like erasing progress. Playtest mode only. */
+  private clearPlaytestRows(): Row[] {
+    if (!this.opts.onClearPlaytest) return [];
+    return [
+      {
+        kind: 'button',
+        label: 'Clear playtest log',
+        value: () => (this.confirmClear ? 'PRESS AGAIN' : ''),
+        run: () => {
+          if (this.confirmClear) {
+            this.confirmClear = false;
+            this.opts.onClearPlaytest?.();
+          } else this.confirmClear = true;
           this.updateValues();
         },
       },
@@ -516,8 +546,9 @@ export class PauseMenu {
   }
 
   private setFocus(index: number): void {
-    if (this.confirmErase && index !== this.focus) {
+    if ((this.confirmErase || this.confirmClear) && index !== this.focus) {
       this.confirmErase = false;
+      this.confirmClear = false;
       this.updateValues();
     }
     this.focus = index;

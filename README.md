@@ -80,6 +80,10 @@ The story is told by the facility's own log lines and placards, and by the notes
 
 Press **L** (or the button on the start screen, or Back/Select on a gamepad) for the chamber select, which lists every chamber with your best time and, beside it, your fewest shifts against par (`3/3 shifts`). You can replay any chamber you've cleared and try the next one; the rest stay locked. Progress, best times and fewest shifts are kept in `localStorage` (`shiftbound.progress`, keyed by chamber id, so reordering chambers never moves your times; saves from older versions are migrated automatically). Pause menu > Settings > Erase saved progress (press twice to confirm) wipes them. Add `?unlockall` to the URL to open every chamber for playtesting; it never saves progress or resume points. If storage is unavailable, everything is unlocked.
 
+### Playtesting
+
+Add `?playtest` to the URL to record each chamber visit: simulated time, gravity shifts, restarts, falls out of the cube, undos, no-trim notices, and whether the chamber was cleared (with the winning attempt's time and shifts). The log stays in this browser (`localStorage`, `shiftbound.playtest`) and nothing is sent anywhere. Pause menu > Save playtest log downloads it as a JSON file; Clear playtest log (press twice) empties it. It works on the deployed site, so a link with `?playtest` can be sent to a tester, who saves the file and sends it back.
+
 ### Sound
 
 A dark drone loops under the whole game. The printer and the reclaimer crack with a coil's spark (the reclaimer's is the printer's played backwards), the hull groans each time the cube turns, ballast masses land with a slam, and a fall starts in silence and fills with rushing air as the planet comes up. Master and music volume are in the pause menu's settings. Every recording is CC0 from OpenGameArt.org, credited in [`public/audio/CREDITS.md`](public/audio/CREDITS.md); the wind is synthesized.

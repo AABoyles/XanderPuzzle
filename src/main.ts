@@ -53,6 +53,8 @@ import {
 } from './progress';
 import { HUD } from './ui/HUD';
 import { PauseMenu } from './ui/PauseMenu';
+import { PlaytestRecorder, loadPlaytest, playtestFileName, savePlaytest } from './playtest';
+import { downloadText } from './ui/download';
 
 const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement;
 const engine = new Engine(canvas, true, { stencil: true, preserveDrawingBuffer: true }, true);
@@ -99,6 +101,11 @@ const storageAvailable = (() => {
   }
 })();
 const unlockAll = params.has('unlockall') || !storageAvailable;
+// `?playtest` records each chamber visit for the designer (src/playtest.ts). Kept in this browser; not in the sandbox.
+const playtest = params.has('playtest') && !sandbox ? new PlaytestRecorder(() => new Date().toISOString()) : undefined;
+const persistPlaytest = () => {
+  if (playtest) savePlaytest(playtest.toJSON());
+};
 // Progress is keyed by chamber id. `?unlockall` is a playtest flag and never writes it (see `progressWritable`).
 const CHAMBER_IDS = CHAMBERS.map((c) => c.id);
 const progressStorage = (): ProgressStorage | null => (storageAvailable ? localStorage : null);
@@ -127,6 +134,10 @@ const player = new PlayerController(scene, gravity, level.spawnPosition, input);
 
 const hud = new HUD();
 hud.setDevice(input.lastDevice);
+// The log continues a stored one, so a reload keeps its visits; the first chamber's visit starts at once.
+playtest?.begin(input.lastDevice, SKIN_IDS[skinIndex], loadPlaytest() ?? undefined);
+playtest?.enter(CHAMBERS[levelIndex].id);
+persistPlaytest();
 
 // Sound: music, recorded effects and the wind of a fall. Browsers only allow it after the player has acted, so the
 // first click, key or tap unlocks it.
@@ -189,6 +200,21 @@ const pauseMenu = new PauseMenu({
   onResetProgress: () => {
     progress = resetProgress(progressStorage());
   },
+  onSavePlaytest: playtest
+    ? () => {
+        const name = playtestFileName(new Date());
+        downloadText(name, JSON.stringify(playtest.toJSON(), null, 2));
+        pauseMenu.setHint(`Saved ${name}`);
+      }
+    : undefined,
+  onClearPlaytest: playtest
+    ? () => {
+        playtest.reset();
+        playtest.enter(CHAMBERS[levelIndex].id);
+        persistPlaytest();
+        pauseMenu.setHint('Playtest log cleared');
+      }
+    : undefined,
   fullscreen: () => ({ kind: fullscreenMode(), on: isFullscreen() }),
   hasChamberSelect: !sandbox,
 });
@@ -325,6 +351,7 @@ function undoLastShift(): boolean {
   if (!s) return false;
   restoreSnapshot(s);
   hud.log(SHIFT_REVERTED);
+  playtest?.undo();
   beep(300, 220, 0.12, 'triangle', 0.06);
   syncPrinter();
   checkTrim();
@@ -353,6 +380,7 @@ function checkTrim(): void {
     );
   if (exhausted && !outOfTrim) {
     hud.log(`${NO_TRIM}\n${TEXT[input.lastDevice].stuck}`, 12);
+    playtest?.stuck();
     beep(140, 90, 0.15, 'square', 0.08);
   }
   outOfTrim = exhausted;
@@ -361,7 +389,9 @@ function checkTrim(): void {
 /** Restarts the chamber; if the player was falling, the facility logs the lost attendant's replacement. */
 function restartLevel(): void {
   const lost = fall.falling;
+  lost ? playtest?.fall() : playtest?.restart();
   startLevel(levelIndex);
+  persistPlaytest();
   if (lost) hud.log(recoveryLine(++recoveries));
 }
 
@@ -417,6 +447,8 @@ function startLevel(index: number): void {
   level.dispose();
   repeatStarts = index === levelIndex ? repeatStarts + 1 : 0;
   levelIndex = index;
+  playtest?.enter(CHAMBERS[index].id);
+  persistPlaytest();
   if (progressWritable) {
     setResume(progress, CHAMBERS[index].id);
     persistProgress();
@@ -471,6 +503,8 @@ function beginDescent(): void {
     recordWin(progress, chamberId, levelTime, shifts);
     persistProgress();
   }
+  playtest?.clear(levelTime, shifts);
+  persistPlaytest();
   hud.setSequence(null);
   game.send({ type: 'descend' });
 }
@@ -544,7 +578,9 @@ pauseMenu.onResume = () => resumePlay(gamepadActing);
 pauseMenu.onRestart = () => {
   // Refused during the final fall, which is final.
   if (!transition(game.state, { type: 'restart' })) return;
+  playtest?.restart();
   startLevel(levelIndex);
+  persistPlaytest();
   game.send({ type: 'restart' });
   resumePlay(gamepadActing);
 };
@@ -575,6 +611,7 @@ game.onChange = (prev: State, next: State) => {
   if (was.win && !now.win) hud.hideWin();
   if (was.title && !now.title) {
     hud.hideStartOverlay();
+    if (playtest && next.kind === 'playing') hud.log('PLAYTEST LOG ON · save it from the pause menu', 8);
     // Play begins: the attendant is printed, and the facility logs it.
     if (next.kind === 'playing' && atPrintBed()) {
       const cube = cubeOf(levelIndex);
@@ -768,6 +805,7 @@ engine.runRenderLoop(() => {
   const frozen = isFrozen(game.state, input.lastDevice);
   if (dt > 0 && !consumed && simulates(game.state, input.lastDevice)) {
     levelTime += dt;
+    playtest?.tick(dt);
     simClock += dt;
     const wasGrounded = player.isGrounded;
     player.update(dt, frame);
@@ -789,6 +827,7 @@ engine.runRenderLoop(() => {
         // Taking gravity back by hand stops a running sequence.
         if (sw.spec.kind !== 'sequence') level.sequencer?.stop();
         shifts++;
+        playtest?.shift();
         shiftSound(gravity.axis);
         checkTrim();
         // In the Descent, the facility objects to every throw.
@@ -815,6 +854,7 @@ engine.runRenderLoop(() => {
       if (next) {
         gravity.setAxis(next);
         shifts++;
+        playtest?.shift();
         shiftSound(next);
       } else if (seq.remaining < 3 && Math.ceil(seq.remaining) !== Math.ceil(seq.remaining + dt)) {
         // Tick on each of the last three seconds.
@@ -876,6 +916,8 @@ engine.runRenderLoop(() => {
         recordWin(progress, chamberId, levelTime, shifts);
         persistProgress();
       }
+      playtest?.clear(levelTime, shifts);
+      persistPlaytest();
       const last = finishedAll();
       const cube = cubeOf(levelIndex);
       const par = CHAMBERS[levelIndex]?.par;
@@ -1062,5 +1104,7 @@ if (import.meta.env.DEV) {
     levelCount: () => LEVELS.length,
     /** `button` is where to stand on the reclaimer's plate, which is what wins the chamber. */
     exit: () => ({ center: level.exitCenter.asArray(), radius: level.exitRadius, button: level.reclaimer?.stand }),
+    /** The playtest log, when the page was opened with `?playtest` (undefined otherwise). */
+    playtest: () => playtest?.toJSON(),
   };
 }

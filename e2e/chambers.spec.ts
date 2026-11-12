@@ -201,6 +201,18 @@ test.describe('chambers', () => {
   });
 });
 
+test('?playtest opens with one visit for the first chamber, before anything is played', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  await page.goto('/?skin=axis&playtest');
+  await page.waitForFunction(() => '__debug' in window);
+  const log = await page.evaluate(() => (window as any).__debug.playtest());
+  expect(log.visits).toHaveLength(1);
+  expect(log.visits[0].id).toBe('vault');
+  expect(log.visits[0].cleared).toBe(false);
+  expect(errors, 'browser errors').toEqual([]);
+});
+
 test('Z (undo) takes back the last lever thrown by hand', async ({ page }) => {
   const errors: string[] = [];
   await boot(page, errors);
