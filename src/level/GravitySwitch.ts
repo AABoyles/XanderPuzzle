@@ -148,6 +148,14 @@ export class GravitySwitch {
     return Vector3.Distance(playerPos, this.position) <= INTERACT_RANGE;
   }
 
+  /**
+   * Whether `update` would throw this lever with `activate` set: in range, off cooldown and usable from `current`.
+   * Mirrors the condition in `update`, so a caller can save the state just before a throw.
+   */
+  public canFire(current: GravityAxis, playerPos: Vector3): boolean {
+    return this.isInRange(playerPos) && this.cooldown <= 0 && this.targetFor(current) !== null;
+  }
+
   /** Throws the lever if `activate` and it is usable. Returns true if it fired. */
   public update(dt: number, gravity: GravitySystem, playerPos: Vector3, activate: boolean): boolean {
     if (this.cooldown > 0) this.cooldown -= dt;
@@ -185,6 +193,13 @@ export class GravitySwitch {
     this.glowMat.diffuseColor = SPENT_COLOR;
     this.glowMat.emissiveColor = Color3.Black();
     this.arrow.setEnabled(false);
+  }
+
+  /** Undoes `burnOut`: a one-shot lever comes back to life, its colours and arrow restored. */
+  public revive(): void {
+    this.spent = false;
+    this.shownAxis = undefined;
+    this.showTarget(this.spec.kind === 'fixed' ? this.spec.target : null);
   }
 
   public dispose(): void {

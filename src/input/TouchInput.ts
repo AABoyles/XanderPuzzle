@@ -40,8 +40,9 @@ const CSS = `
   top: calc(12px + env(safe-area-inset-top)); width: 48px; height: 48px; font-size: 22px;
 }
 .sb-restart { right: calc(12px + env(safe-area-inset-right)); }
-.sb-chambers { right: calc(68px + env(safe-area-inset-right)); font-size: 18px; }
-.sb-pause { right: calc(124px + env(safe-area-inset-right)); font-size: 18px; }
+.sb-undo { right: calc(68px + env(safe-area-inset-right)); font-size: 22px; }
+.sb-chambers { right: calc(124px + env(safe-area-inset-right)); font-size: 18px; }
+.sb-pause { right: calc(180px + env(safe-area-inset-right)); font-size: 18px; }
 .sb-rotate {
   display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.88); color: #fff; z-index: 5;
   align-items: center; justify-content: center; text-align: center; padding: 24px; font: 20px system-ui, sans-serif;
@@ -79,6 +80,7 @@ export class TouchInput implements InputSource {
   private jumpQueued = false;
   private interactQueued = false;
   private restartQueued = false;
+  private undoQueued = false;
   private sprint = false;
 
   private readonly style: HTMLStyleElement;
@@ -112,9 +114,12 @@ export class TouchInput implements InputSource {
     this.useBtn = this.el('div', 'sb-btn sb-use', 'USE');
     this.runBtn = this.el('div', 'sb-btn sb-run', 'RUN');
     const restart = this.el('div', 'sb-btn sb-small sb-restart', '↻');
+    const undo = this.el('div', 'sb-btn sb-small sb-undo', '↶');
     const chambers = this.el('div', 'sb-btn sb-small sb-chambers', '☰');
     const pause = this.el('div', 'sb-btn sb-small sb-pause', '\u23F8');
-    this.root.append(moveZone, lookZone, this.stick, jump, this.useBtn, this.runBtn, restart, chambers, pause, rotate);
+    this.root.append(
+      moveZone, lookZone, this.stick, jump, this.useBtn, this.runBtn, restart, undo, chambers, pause, rotate,
+    );
     document.body.appendChild(this.root);
 
     this.zone(moveZone, 'move');
@@ -126,6 +131,7 @@ export class TouchInput implements InputSource {
       this.runBtn.classList.toggle('sb-toggled', this.sprint);
     });
     this.button(restart, () => (this.restartQueued = true));
+    this.button(undo, () => (this.undoQueued = true));
     this.button(chambers, () => this.onChambers());
     this.button(pause, () => this.onPause());
 
@@ -178,8 +184,9 @@ export class TouchInput implements InputSource {
     f.jump = this.jumpQueued;
     f.interact = this.interactQueued;
     f.restart = this.restartQueued;
+    f.undo = this.undoQueued;
     this.lookDX = this.lookDY = 0;
-    this.jumpQueued = this.interactQueued = this.restartQueued = false;
+    this.jumpQueued = this.interactQueued = this.restartQueued = this.undoQueued = false;
     return f;
   }
 
@@ -282,7 +289,7 @@ export class TouchInput implements InputSource {
     this.buttonPointers.clear();
     this.endStick();
     this.lookDX = this.lookDY = 0;
-    this.jumpQueued = this.interactQueued = this.restartQueued = false;
+    this.jumpQueued = this.interactQueued = this.restartQueued = this.undoQueued = false;
     this.sprint = false;
     this.runBtn.classList.remove('sb-toggled');
   }

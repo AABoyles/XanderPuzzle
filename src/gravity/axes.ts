@@ -88,6 +88,17 @@ export class GravitySequencer {
     this.active = false;
   }
 
+  /** The clock's state, for undo: restored by `restore`. */
+  public snapshot(): { active: boolean; remaining: number; index: number } {
+    return { active: this.active, remaining: this.remaining, index: this.index };
+  }
+
+  public restore(s: { active: boolean; remaining: number; index: number }): void {
+    this.active = s.active;
+    this.remaining = s.remaining;
+    this.index = s.index;
+  }
+
   /** The axis the next change will switch to. */
   public get next(): GravityAxis {
     return this.axes[(this.index + 1) % this.axes.length];

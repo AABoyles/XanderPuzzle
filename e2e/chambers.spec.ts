@@ -201,6 +201,24 @@ test.describe('chambers', () => {
   });
 });
 
+test('Z (undo) takes back the last lever thrown by hand', async ({ page }) => {
+  const errors: string[] = [];
+  await boot(page, errors);
+  await load(page, 0);
+  // Undo works in play, so leave the title as a tap would.
+  await dbg(page, (d) => d.begin());
+  const entrance = await dbg(page, (d) => d.gravityAxis());
+  expect(await dbg(page, (d) => d.undoDepth())).toBe(0);
+  expect(await dbg(page, (d) => d.undo()), 'nothing to undo before a throw').toBe(false);
+
+  await throwLever(page, 0, '+Z');
+  expect(await dbg(page, (d) => d.undoDepth())).toBe(1);
+  expect(await dbg(page, (d) => d.undo())).toBe(true);
+  expect(await dbg(page, (d) => d.gravityAxis())).toBe(entrance);
+  expect(await dbg(page, (d) => d.undoDepth())).toBe(0);
+  expect(errors, 'browser errors').toEqual([]);
+});
+
 /** Waits until no crate has moved for 0.6 s of game time, so the next lever is thrown after the crates have slid home. */
 async function settleCrates(page: Page) {
   let last = '';

@@ -86,3 +86,35 @@ test('an inverted plate is satisfied while clear, and a door needs every plate s
     dyn.dispose();
   }
 });
+
+test('restore puts a crate back where it was, and a crate lost since is shown and simulated again', () => {
+  const dyn = new LevelDynamics(room());
+  const crate = new Crate(scene, V(0, 0.75, 0), 1.5);
+  dyn.crates.push(crate);
+  const plate = new PressurePlate(scene, V(0, 0, 0), V(0, 1, 0), 2.5, true);
+  dyn.plates.push(plate);
+  try {
+    run(dyn, DOWN, 1);
+    const center = [...crate.body.center];
+    const saved = dyn.snapshot();
+    // Sideways gravity slides it out through the open edge: it is lost.
+    assert.equal(run(dyn, V(22, 0, 0), 5), 1);
+    assert.ok(crate.lost && !crate.mesh.isEnabled());
+    dyn.restore(saved);
+    assert.ok(!crate.lost, 'the crate is no longer lost');
+    assert.ok(crate.mesh.isEnabled() && crate.mesh.checkCollisions);
+    assert.deepEqual(crate.body.center, center);
+    assert.deepEqual(crate.body.velocity, [0, 0, 0]);
+    assert.equal(crate.mesh.position.x, center[0]);
+    assert.ok(plate.pressed, 'the plate state comes back with the crate');
+
+    // A crate that is moving when saved: its velocity comes back too.
+    crate.body.velocity = [1, 2, 3];
+    const moving = dyn.snapshot();
+    crate.body.velocity = [0, 0, 0];
+    dyn.restore(moving);
+    assert.deepEqual(crate.body.velocity, [1, 2, 3]);
+  } finally {
+    dyn.dispose();
+  }
+});

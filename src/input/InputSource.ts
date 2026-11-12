@@ -18,6 +18,8 @@ export interface InputFrame {
   interact: boolean;
   /** Edge-triggered: restart the chamber. */
   restart: boolean;
+  /** Edge-triggered: undo the last gravity shift. */
+  undo: boolean;
   /** Edge-triggered: pause / resume. */
   pause: boolean;
   /** Set when the device was touched in some way the fields above don't show (e.g. a menu button). */
@@ -33,7 +35,7 @@ export interface InputSource {
 
 export function emptyFrame(): InputFrame {
   return { moveX: 0, moveZ: 0, lookX: 0, lookY: 0, sprint: false, jump: false, interact: false,
-    restart: false, pause: false, activity: false };
+    restart: false, undo: false, pause: false, activity: false };
 }
 
 /** Combines several sources: movement is summed then limited to unit length, look is summed, buttons are ORed. */
@@ -48,6 +50,7 @@ export function mergeFrames(frames: InputFrame[]): InputFrame {
     out.jump = out.jump || f.jump;
     out.interact = out.interact || f.interact;
     out.restart = out.restart || f.restart;
+    out.undo = out.undo || f.undo;
     out.pause = out.pause || f.pause;
     out.activity = out.activity || f.activity;
   }
@@ -79,7 +82,7 @@ export function stickVector(dx: number, dy: number, radius: number, deadzone: nu
  */
 export function frameHasInput(f: InputFrame): boolean {
   return f.moveX !== 0 || f.moveZ !== 0 || f.lookX !== 0 || f.lookY !== 0
-    || f.jump || f.interact || f.restart || f.pause || f.activity;
+    || f.jump || f.interact || f.restart || f.undo || f.pause || f.activity;
 }
 
 /**

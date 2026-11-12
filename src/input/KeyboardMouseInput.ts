@@ -3,7 +3,7 @@ import type { InputDevice, InputFrame, InputSource } from './InputSource.ts';
 
 const MOUSE_SENSITIVITY = 0.0022;
 
-/** WASD + Shift + Space + E + R (restart), and mouse look while the pointer is locked to the canvas. */
+/** WASD + Shift + Space + E + R (restart) + Z (undo), and mouse look while the pointer is locked to the canvas. */
 export class KeyboardMouseInput implements InputSource {
   public readonly device: InputDevice = 'keyboard';
   /** While true (e.g. a menu is open), clicking the canvas doesn't grab the pointer. */
@@ -15,6 +15,7 @@ export class KeyboardMouseInput implements InputSource {
   private jumpQueued = false;
   private interactQueued = false;
   private restartQueued = false;
+  private undoQueued = false;
   private mouseDX = 0;
   private mouseDY = 0;
 
@@ -23,12 +24,13 @@ export class KeyboardMouseInput implements InputSource {
     if (e.code === 'Space') this.jumpQueued = true;
     if (e.code === 'KeyE') this.interactQueued = true;
     if (e.code === 'KeyR' && !e.repeat) this.restartQueued = true;
+    if (e.code === 'KeyZ' && !e.repeat) this.undoQueued = true;
   };
   private readonly onKeyUp = (e: KeyboardEvent) => this.keys.delete(e.code);
   /** Drops held keys and queued presses, so nothing sticks when the window loses focus. */
   private readonly reset = () => {
     this.keys.clear();
-    this.jumpQueued = this.interactQueued = this.restartQueued = false;
+    this.jumpQueued = this.interactQueued = this.restartQueued = this.undoQueued = false;
   };
   private readonly onVisibility = () => {
     if (document.hidden) this.reset();
@@ -70,12 +72,14 @@ export class KeyboardMouseInput implements InputSource {
       jump: this.jumpQueued,
       interact: this.interactQueued,
       restart: this.restartQueued,
+      undo: this.undoQueued,
     };
     this.mouseDX = 0;
     this.mouseDY = 0;
     this.jumpQueued = false;
     this.interactQueued = false;
     this.restartQueued = false;
+    this.undoQueued = false;
     return frame;
   }
 

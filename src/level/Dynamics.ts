@@ -142,6 +142,13 @@ export class Door {
   }
 }
 
+/** The state of a level's crates, plates and doors, as `LevelDynamics.snapshot` saves it. */
+export interface DynamicsSnapshot {
+  crates: Array<{ center: Vec3; velocity: Vec3; lost: boolean }>;
+  plates: boolean[];
+  doors: boolean[];
+}
+
 export interface DynamicsEvents {
   /** Hardest crate impact this frame, units/s. */
   impact: number;
@@ -212,6 +219,31 @@ export class LevelDynamics {
       if (want !== door.isOpen && (want || !blocked) && door.setOpen(want)) events.doorChanged = true;
     }
     return events;
+  }
+
+  /** Saves every crate's position, velocity and lost state, and each plate's and door's state. */
+  public snapshot(): DynamicsSnapshot {
+    return {
+      crates: this.crates.map((c) => ({ center: [...c.body.center], velocity: [...c.body.velocity], lost: c.lost })),
+      plates: this.plates.map((p) => p.pressed),
+      doors: this.doors.map((d) => d.isOpen),
+    };
+  }
+
+  /** Puts back what `snapshot` saved. A crate lost since is shown and simulated again. */
+  public restore(s: DynamicsSnapshot): void {
+    this.crates.forEach((c, i) => {
+      const saved = s.crates[i];
+      if (!saved) return;
+      c.body.center = [...saved.center];
+      c.body.velocity = [...saved.velocity];
+      c.lost = saved.lost;
+      c.mesh.setEnabled(!saved.lost);
+      c.mesh.checkCollisions = !saved.lost;
+      c.sync();
+    });
+    this.plates.forEach((p, i) => p.setPressed(s.plates[i] ?? p.pressed));
+    this.doors.forEach((d, i) => d.setOpen(s.doors[i] ?? d.isOpen));
   }
 
   public dispose(): void {

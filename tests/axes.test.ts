@@ -68,3 +68,24 @@ test('GravitySequencer advances at most one axis per call and keeps its period u
   for (let i = 0; i < frames; i++) if (seq.update(MAX_SIM_DELTA)) changes++;
   assert.ok(changes === 2 || changes === 3, `got ${changes}`);
 });
+
+test('GravitySequencer restore brings back its clock, its place in the cycle and whether it runs', () => {
+  const seq = new GravitySequencer(['+Y', '+X', '-Y', '-X'], 4);
+  seq.start('+Y');
+  seq.update(1);
+  const saved = seq.snapshot();
+  const next = seq.next;
+  // Run on past two more changes, then stop it.
+  seq.update(10);
+  seq.update(10);
+  seq.stop();
+  seq.restore(saved);
+  assert.equal(seq.active, true);
+  assert.equal(seq.remaining, saved.remaining);
+  assert.equal(seq.next, next);
+  // Restoring an idle sequencer leaves it idle.
+  seq.stop();
+  seq.restore({ active: false, remaining: 0, index: 0 });
+  assert.equal(seq.active, false);
+  assert.equal(seq.update(100), null);
+});

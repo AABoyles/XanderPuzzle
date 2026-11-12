@@ -104,7 +104,9 @@ export class GamepadInput implements InputSource {
       const downDir = edge('down', down(BTN.DOWN) || stick(1) > MENU_STICK);
       const left = edge('left', down(BTN.LEFT) || stick(0) < -MENU_STICK);
       const right = edge('right', down(BTN.RIGHT) || stick(0) > MENU_STICK);
+      // B is undo during play and back in menus; main.ts reads `undo` only while playing, so menus are unaffected.
       const back = edge('b', down(BTN.B));
+      f.undo = back;
       const select = edge('select', down(BTN.SELECT));
       menu.up ||= up;
       menu.down ||= downDir;

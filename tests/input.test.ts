@@ -50,9 +50,10 @@ test('stickVector clamps to unit length and rescales past the deadzone', () => {
   assert.ok(Math.abs(mid.x - 0.5) < 1e-9);
 });
 
-test('mergeFrames ORs restart and pause', () => {
+test('mergeFrames ORs restart, undo and pause', () => {
   const m = mergeFrames([{ ...emptyFrame(), restart: true }, { ...emptyFrame(), pause: true }]);
-  assert.ok(m.restart && m.pause);
+  assert.ok(m.restart && m.pause && !m.undo);
+  assert.ok(mergeFrames([emptyFrame(), { ...emptyFrame(), undo: true }]).undo);
 });
 
 test('radialDeadzone zeroes small input and rescales the rest', () => {
@@ -111,6 +112,7 @@ test('InputManager tracks the last-used device', () => {
 test('sprint alone does not count as device use', () => {
   assert.equal(frameHasInput({ ...emptyFrame(), sprint: true }), false);
   assert.equal(frameHasInput({ ...emptyFrame(), lookX: 0.01 }), true);
+  assert.equal(frameHasInput({ ...emptyFrame(), undo: true }), true);
   const m = new InputManager([fake('touch', { sprint: true })]);
   m.read(0);
   assert.equal(m.lastDevice, 'keyboard');
@@ -154,6 +156,17 @@ test('GamepadInput buttons are edge-triggered, sprint is held', () => {
   assert.ok(!again.jump && !again.interact && !again.restart && !again.pause && again.sprint);
   p = pad([0, 0, 0, 0], [], { 6: 0.8 });
   assert.ok(g.read(0.016).sprint);
+});
+
+test('GamepadInput reads B as undo, edge-triggered, and still reports it as back in menus', () => {
+  let p = pad([0, 0, 0, 0]);
+  const g = new GamepadInput(() => [p]);
+  g.read(0.016);
+  p = pad([0, 0, 0, 0], [1]);
+  const f = g.read(0.016);
+  assert.ok(f.undo);
+  assert.ok(g.menu.back);
+  assert.ok(!g.read(0.016).undo, 'held B is not a second press');
 });
 
 test('GamepadInput ignores buttons already held when a pad appears, and survives pads vanishing', () => {

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ATTENDANT, CUBE_SERIAL, cubeLabel, darkFraction, descentAlarm, dutyLine, endCard, MASS_RELEASED, NOT_RECOVERED,
-  planetLights, PREDECESSOR, stormLine, MARGIN_SIGN, recoveryLine, winTitle, workLog,
+  planetLights, PREDECESSOR, SHIFT_REVERTED, stormLine, MARGIN_SIGN, recoveryLine, winTitle, workLog,
 } from '../src/narrative.ts';
 
 test('the attendant serial stays AT-0417, one above the reveal crate', () => {
@@ -63,6 +63,7 @@ test('the Descent: alarms escalate with each lever, then the attendant is not re
   assert.equal(descentAlarm(5, '0147'), descentAlarm(1, '0147'));
   assert.equal(NOT_RECOVERED, 'ATTENDANT NOT RECOVERED.');
   assert.equal(MASS_RELEASED, 'BALLAST MASS RELEASED. REPLACEMENT NOT SCHEDULED.');
+  assert.equal(SHIFT_REVERTED, 'TRIM RESTORED TO LAST SETTING.');
   assert.equal(endCard(3, '0147'), 'CUBE 0147 DARK.\nRECOVERIES THIS CYCLE: 3\nLIGHTS ON THE SURFACE: ONE MORE.');
   assert.equal(endCard(0), 'RECOVERIES THIS CYCLE: 0\nLIGHTS ON THE SURFACE: ONE MORE.');
 });

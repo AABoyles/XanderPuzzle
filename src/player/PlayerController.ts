@@ -107,6 +107,11 @@ export class PlayerController {
     this.camera.rotationQuaternion = this.alignRot.multiply(look);
   }
 
+  /** The view direction relative to the current up (radians; positive pitch looks down). */
+  public getLook(): { yaw: number; pitch: number } {
+    return { yaw: this.yaw, pitch: this.pitch };
+  }
+
   /** Sets the view direction relative to the current up (radians; positive pitch looks down). */
   public setLook(yaw: number, pitch: number): void {
     this.yaw = yaw;

@@ -15,14 +15,14 @@ On touch devices the controls appear automatically (desktop is unchanged); play 
 - **Left half:** drag to move (a floating joystick appears under your thumb).
 - **Right half:** drag to look.
 - **JUMP** and **USE** (bottom right; USE lights up when a lever is in reach), **RUN** (toggle, bottom left).
-- **↻** restarts the chamber, **☰** opens the chamber select and **⏸** opens the pause menu (top right).
+- **↶** undoes the last gravity shift, **↻** restarts the chamber, **☰** opens the chamber select and **⏸** opens the pause menu (top right).
 
 ### Gamepad controls
 
 Any standard-mapping controller works; no pointer lock is needed. Press **A** or **Start** to begin.
 
 - **Left stick** moves, **right stick** looks, **LT** (or pressing the left stick) runs.
-- **A** jumps, **X** uses a lever, **Y** restarts the chamber.
+- **A** jumps, **X** uses a lever, **Y** restarts the chamber, **B** undoes the last gravity shift (in menus, **B** goes back).
 - **Start** pauses and resumes (in the menu: D-pad or left stick to choose, left/right to adjust, **A** to select, **B** to go back), **Back/Select** opens the chamber select (D-pad or left stick to choose, **A** to play, **B** to go back).
 - **A** also advances from the win screen. On-screen prompts follow whichever device you used last.
 
@@ -66,9 +66,9 @@ Twenty-one chambers ship with the game, each teaching or testing one idea:
 20. **The Orrery** (all six) — the finale: a crate, a relative lever and a one-shot lever, leaving through the entrance corridor's ceiling. One lever on the way parks the crate where it can never reach its plate.
 21. **The Descent** (`-Y → +X → +Y`) — the epilogue: two one-shot levers and no door. The only way out is a hole in the ceiling, and the fall through it ends the game.
 
-Each lever carries an arrow pointing the way "down" will be once it is thrown. White levers with a ring are **relative**: they turn gravity a quarter turn clockwise as you face their wall, so the arrow changes with your orientation. A lever that goes dark after use is **one-shot**. A gold lever with four studs starts a **timed cycle**, with a countdown to the next shift on the HUD. **Shift** runs, **R** restarts the chamber, and clearing one shows your time and number of gravity shifts before moving on.
+Each lever carries an arrow pointing the way "down" will be once it is thrown. White levers with a ring are **relative**: they turn gravity a quarter turn clockwise as you face their wall, so the arrow changes with your orientation. A lever that goes dark after use is **one-shot**. A gold lever with four studs starts a **timed cycle**, with a countdown to the next shift on the HUD. **Shift** runs, **R** restarts the chamber, **Z** undoes the last gravity shift, and clearing one shows your time and number of gravity shifts before moving on.
 
-Some chambers have **trap holes** in their shell, placed where a wrong move puts you: under the lever that leads nowhere, at the bottom of the pit you failed to steer out of. Seen from inside, a hole is pitch black, unless it is in the floor you are standing on: then you can see the planet below. Fall through one and you drop out into open space, past the other cubes of the ballast field, towards a planet that always lies the way gravity points; after a few seconds (or on **R**) a replacement is printed at the chamber entrance, and the facility logs the recovery. Crates fall out of holes too, and a crate that does is gone until the chamber restarts.
+Some chambers have **trap holes** in their shell, placed where a wrong move puts you: under the lever that leads nowhere, at the bottom of the pit you failed to steer out of. Seen from inside, a hole is pitch black, unless it is in the floor you are standing on: then you can see the planet below. Fall through one and you drop out into open space, past the other cubes of the ballast field, towards a planet that always lies the way gravity points; after a few seconds (or on **R**) a replacement is printed at the chamber entrance, and the facility logs the recovery. Crates fall out of holes too, and a crate that does is gone until the chamber restarts. **Z** takes back the last lever you threw: you and the crates go back to where they were, and burnt-out levers light again, so a wrong throw costs a few seconds rather than the chamber. Repeat it to step back further, up to 32 throws. The clock keeps running, and the Descent's levers cannot be undone.
 
 The story is told by the facility's own log lines and placards, and by the notes an earlier attendant, 416, left on the walls: see [NARRATIVE.md](NARRATIVE.md). In short:
 

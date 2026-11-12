@@ -27,11 +27,13 @@ import { canFullscreen, isFullscreen, isIOS, isStandalone, onFullscreenChange, t
 import { loadFonts } from './level/fonts';
 import {
   darkFraction, DESCENT_OUT_OF_TRIM, descentAlarm, dutyLine, endCard, MASS_RELEASED, NOT_RECOVERED, planetLights,
-  recoveryLine, stormLine, winTitle, workLog,
+  recoveryLine, SHIFT_REVERTED, stormLine, winTitle, workLog,
 } from './narrative';
 import { registerServiceWorker } from './pwa/register';
 import { shiftTone } from './gravity/shiftSound';
 import { simDelta } from './time';
+import { UndoStack } from './game/undo';
+import type { DynamicsSnapshot } from './level/Dynamics';
 import { fovToRadians, loadSettings, masterGain, musicGain, saveSettings } from './settings';
 import type { Settings, SettingsStorage } from './settings';
 import { createSkin, DEFAULT_SKIN, SKIN_IDS, SKIN_LABELS, SkinId } from './skins/Skin';
@@ -263,6 +265,65 @@ const cubeOf = (index: number): string | undefined => (sandbox ? undefined : CHA
  */
 let repeatStarts = 0;
 
+/** The chamber just before a lever the player threw by hand, enough to put it back (see `undoLastShift`). */
+interface ChamberSnapshot {
+  position: Vector3;
+  look: { yaw: number; pitch: number };
+  gravity: GravityAxis;
+  dynamics: DynamicsSnapshot;
+  /** Whether each lever in `level.switches` was spent. */
+  spent: boolean[];
+  sequencer?: { active: boolean; remaining: number; index: number };
+  shifts: number;
+}
+
+/** The chambers to step back through, newest last. Cleared whenever a chamber starts. */
+const undoStack = new UndoStack<ChamberSnapshot>();
+
+function takeSnapshot(): ChamberSnapshot {
+  return {
+    position: player.position.clone(),
+    look: player.getLook(),
+    gravity: gravity.axis,
+    dynamics: level.dynamics.snapshot(),
+    spent: level.switches.map((sw) => sw.spent),
+    sequencer: level.sequencer?.snapshot(),
+    shifts,
+  };
+}
+
+function restoreSnapshot(s: ChamberSnapshot): void {
+  // Gravity first: the player's orientation follows it when they are reset.
+  gravity.setAxis(s.gravity);
+  player.reset(s.position);
+  player.setLook(s.look.yaw, s.look.pitch);
+  level.dynamics.restore(s.dynamics);
+  level.switches.forEach((sw, i) => {
+    if (sw.spent && !s.spent[i]) sw.revive();
+    else if (!sw.spent && s.spent[i]) sw.burnOut();
+  });
+  if (s.sequencer) level.sequencer?.restore(s.sequencer);
+  shifts = s.shifts;
+  lastPosition.copyFrom(player.position);
+  // The fall, if there was one, is over: the player is back in the chamber.
+  fall.reset();
+}
+
+/**
+ * Steps back to the moment before the last hand-thrown lever. Refused in an ending chamber, whose levers are the story,
+ * and when there is nothing to undo. Returns whether anything was undone.
+ */
+function undoLastShift(): boolean {
+  if (level.ending) return false;
+  const s = undoStack.pop();
+  if (!s) return false;
+  restoreSnapshot(s);
+  hud.log(SHIFT_REVERTED);
+  beep(300, 220, 0.12, 'triangle', 0.06);
+  syncPrinter();
+  return true;
+}
+
 /** Restarts the chamber; if the player was falling, the facility logs the lost attendant's replacement. */
 function restartLevel(): void {
   const lost = fall.falling;
@@ -331,6 +392,7 @@ function startLevel(index: number): void {
   if (cube !== undefined) hud.log(dutyLine(cube));
   levelTime = 0;
   shifts = 0;
+  undoStack.clear();
   arrival = 0;
   reclaimHold = 0;
   // Behind the title the view is outside the cube; the print-in plays when the title lifts.
@@ -634,6 +696,9 @@ engine.runRenderLoop(() => {
     restartLevel();
     game.send({ type: 'restart' });
     consumed = true;
+  } else if (frame.undo && (game.kind === 'playing' || game.kind === 'falling')) {
+    if (undoLastShift()) consumed = true;
+    else beep(140, 90, 0.15, 'square', 0.08);
   } else if (game.kind === 'won' || game.kind === 'ended') {
     if (pad.confirm) {
       advance();
@@ -667,8 +732,12 @@ engine.runRenderLoop(() => {
       if (!sw.isInRange(player.position) || !sw.canUse(gravity.axis)) continue;
       if (!target || sw.distanceTo(player.position) < target.distanceTo(player.position)) target = sw;
     }
+    // Saved before the throw, so undo can take it back. Only a throw that fires is kept: `canFire` mirrors `update`.
+    const saved =
+      interactPressed && target?.canFire(gravity.axis, player.position) && !level.ending ? takeSnapshot() : undefined;
     for (const sw of level.switches) {
       if (sw.update(dt, gravity, player.position, interactPressed && sw === target)) {
+        if (saved) undoStack.push(saved);
         // Taking gravity back by hand stops a running sequence.
         if (sw.spec.kind !== 'sequence') level.sequencer?.stop();
         shifts++;
@@ -911,6 +980,9 @@ if (import.meta.env.DEV) {
       startLevel(index);
       game.send({ type: 'restart' });
     },
+    /** Undoes the last hand-thrown lever, as Z does. Returns whether anything was undone. */
+    undo: () => (game.kind === 'playing' || game.kind === 'falling') && undoLastShift(),
+    undoDepth: () => undoStack.size,
     openPause: () => game.send({ type: 'pause' }),
     pauseOpen: () => game.kind === 'paused',
     openLevelSelect,

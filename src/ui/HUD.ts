@@ -39,9 +39,9 @@ const TOUCH_SUBTITLE =
 const GAMEPAD_SUBTITLE =
   'Left stick move  \u2022  Right stick look  \u2022  LT run  \u2022  A jump\nWalk up to a lever and press X to rotate gravity 90\u00B0\nY restarts  \u2022  Back opens chamber select  \u2022  Start pauses\n\nPress A to begin';
 const KEYS_LABEL: Record<InputDevice, string> = {
-  keyboard: 'WASD move \u00B7 Shift run \u00B7 Space jump \u00B7 E use \u00B7 R restart \u00B7 L chambers \u00B7 K skin',
+  keyboard: 'WASD move \u00B7 Shift run \u00B7 Space jump \u00B7 E use \u00B7 R restart \u00B7 Z undo \u00B7 L chambers \u00B7 K skin',
   touch: '',
-  gamepad: 'L-stick move \u00B7 R-stick look \u00B7 LT run \u00B7 A jump \u00B7 X use \u00B7 Y restart \u00B7 Back chambers',
+  gamepad: 'L-stick move \u00B7 R-stick look \u00B7 LT run \u00B7 A jump \u00B7 X use \u00B7 Y restart \u00B7 B undo \u00B7 Back chambers',
 };
 const SUBTITLES: Record<InputDevice, string> = {
   keyboard: DESKTOP_SUBTITLE,
