@@ -2,6 +2,7 @@ import { AdvancedDynamicTexture } from '@babylonjs/gui/2D/advancedDynamicTexture
 import { Button } from '@babylonjs/gui/2D/controls/button';
 import { Control } from '@babylonjs/gui/2D/controls/control';
 import { Rectangle } from '@babylonjs/gui/2D/controls/rectangle';
+import { StackPanel } from '@babylonjs/gui/2D/controls/stackPanel';
 import { TextBlock } from '@babylonjs/gui/2D/controls/textBlock';
 import type { InputDevice } from '../../input/InputSource';
 
@@ -17,6 +18,27 @@ const SUBTITLES: Record<InputDevice, string> = {
   gamepad: GAMEPAD_SUBTITLE,
 };
 
+/**
+ * The wordmark matches the boot splash in `index.html` (`#boot`): same colour, weight, font, letter spacing and bar, so
+ * the logo does not change when the game takes over. Keep the two in step. Sizes are CSS pixels, scaled to the GUI
+ * texture's device pixels in `layoutLogo`.
+ */
+const LOGO_TEXT = 'SHIFTBOUND';
+const LOGO_COLOR = '#ffa033';
+const LOGO_FONT = "'Segoe UI', system-ui, -apple-system, sans-serif";
+/** `clamp(1.4rem, 4vw, 2.4rem)` in the splash, with 1rem = 16px. */
+const LOGO_MIN_PX = 22.4;
+const LOGO_MAX_PX = 38.4;
+const LOGO_VW = 0.04;
+/** The splash's `letter-spacing: 0.5em`, which also pads its left edge so the word stays centred. */
+const LOGO_SPACING_EM = 0.5;
+/** The splash's `gap: 1.2rem` and its 6rem by 2px bar at 60% opacity. */
+const LOGO_GAP_PX = 19.2;
+const LOGO_BAR_WIDTH_PX = 96;
+const LOGO_BAR_HEIGHT_PX = 2;
+/** The splash centres the logo and pads its bottom by 160px, which lifts the group by half of that. */
+const LOGO_LIFT_PX = 80;
+
 /** What the start overlay reports back to the game. */
 export interface StartOverlayHandlers {
   /** The chamber select button was pressed. */
@@ -28,7 +50,12 @@ export interface StartOverlayHandlers {
 /** The title card shown before the first chamber: the name, the controls for the device in use, and the start buttons. */
 export class StartOverlay {
   private readonly handlers: StartOverlayHandlers;
+  private readonly ui: AdvancedDynamicTexture;
   private readonly overlay: Rectangle;
+  private readonly logo = new StackPanel('logo');
+  private readonly logoLetters: TextBlock[] = [];
+  private readonly logoGap = new Rectangle('logoGap');
+  private readonly logoBar = new Rectangle('logoBar');
   private readonly subtitle: TextBlock;
   private readonly selectButton: Button;
   private readonly fullscreenButton: Button;
@@ -46,13 +73,8 @@ export class StartOverlay {
     this.overlay.background = 'rgba(0,0,0,0.6)';
     ui.addControl(this.overlay);
 
-    const title = new TextBlock('title', 'SHIFTBOUND');
-    title.color = 'white';
-    title.fontSize = 52;
-    title.fontFamily = 'Segoe UI, sans-serif';
-    title.top = '-90px';
-    title.fontWeight = 'bold';
-    this.overlay.addControl(title);
+    this.ui = ui;
+    this.buildLogo();
 
     this.subtitle = new TextBlock('subtitle', DESKTOP_SUBTITLE);
     this.subtitle.color = '#d8e6ff';
@@ -100,6 +122,55 @@ export class StartOverlay {
     this.fullscreenHint.top = '244px';
     this.fullscreenHint.isVisible = false;
     this.overlay.addControl(this.fullscreenHint);
+  }
+
+  /** The wordmark and the bar under it, laid out like the splash's flex column. */
+  private buildLogo(): void {
+    const word = new StackPanel('logoWord');
+    word.isVertical = false;
+    word.adaptWidthToChildren = true;
+    word.adaptHeightToChildren = true;
+    for (const letter of LOGO_TEXT) {
+      const block = new TextBlock(`logo_${this.logoLetters.length}`, letter);
+      block.color = LOGO_COLOR;
+      block.fontFamily = LOGO_FONT;
+      block.fontWeight = '600';
+      block.resizeToFit = true;
+      this.logoLetters.push(block);
+      word.addControl(block);
+    }
+    this.logoGap.thickness = 0;
+    this.logoBar.thickness = 0;
+    this.logoBar.background = LOGO_COLOR;
+    this.logoBar.alpha = 0.6;
+    this.logo.adaptWidthToChildren = true;
+    this.logo.adaptHeightToChildren = true;
+    this.logo.addControl(word);
+    this.logo.addControl(this.logoGap);
+    this.logo.addControl(this.logoBar);
+    this.overlay.addControl(this.logo);
+    this.layoutLogo();
+    this.ui
+      .getScene()
+      ?.getEngine()
+      .onResizeObservable.add(() => this.layoutLogo());
+  }
+
+  /** Sizes the logo as the splash is sized: in CSS pixels, converted to the texture's pixels. */
+  private layoutLogo(): void {
+    const cssWidth = window.innerWidth || 1;
+    const scale = this.ui.getSize().width / cssWidth;
+    const size = Math.min(LOGO_MAX_PX, Math.max(LOGO_MIN_PX, cssWidth * LOGO_VW)) * scale;
+    const spacing = size * LOGO_SPACING_EM;
+    this.logoLetters.forEach((block, i) => {
+      block.fontSize = size;
+      block.paddingRight = `${spacing}px`;
+      block.paddingLeft = i === 0 ? `${spacing}px` : '0px';
+    });
+    this.logoGap.height = `${LOGO_GAP_PX * scale}px`;
+    this.logoBar.width = `${LOGO_BAR_WIDTH_PX * scale}px`;
+    this.logoBar.height = `${LOGO_BAR_HEIGHT_PX * scale}px`;
+    this.logo.top = `${-LOGO_LIFT_PX * scale}px`;
   }
 
   public get isVisible(): boolean {

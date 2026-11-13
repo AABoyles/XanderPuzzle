@@ -19,4 +19,6 @@ app.chambers.preload(nextIndex(app));
 wireMenus(app);
 bindEvents(app);
 app.engine.runRenderLoop(() => runFrame(app));
+// The plain page in `index.html` stays up until the first frame is on the canvas.
+app.scene.onAfterRenderObservable.addOnce(() => document.getElementById('boot')?.remove());
 if (import.meta.env.DEV) installDebugHook(app);

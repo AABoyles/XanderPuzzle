@@ -50,14 +50,21 @@ import { Sky } from './Sky';
  * as one `App`. It waits for the first chamber's code; the others arrive as they are needed. Nothing here runs the
  * game: `main.ts` wires the handlers and starts the frame loop.
  */
+/** Ends the current task so the browser can paint or handle input; start-up is split into several short ones. */
+const yieldToMain = () => new Promise<void>((resolve) => setTimeout(resolve));
+
 export async function createApp(): Promise<App> {
   const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement;
   const engine = new Engine(canvas, true, { stencil: true, preserveDrawingBuffer: true }, true);
+  // Babylon's default of 1 puts the canvas ahead of everything in the tab order; 0 keeps it in document order.
+  engine.canvasTabIndex = 0;
 
+  await yieldToMain();
   const scene = new Scene(engine);
   scene.clearColor = new Color4(0.01, 0.012, 0.02, 1);
   scene.collisionsEnabled = true;
 
+  await yieldToMain();
   const glow = new GlowLayer('glow', scene);
   glow.intensity = 0.7;
 
@@ -89,11 +96,13 @@ export async function createApp(): Promise<App> {
       : ((storedSkin % SKIN_IDS.length) + SKIN_IDS.length) % SKIN_IDS.length;
   // The colour-blind palette is read at start-up from the same saved settings `applySettings` uses.
   const skinColorAssist = loadSettings(storageAvailable ? localStorage : null).colorAssist;
+  await yieldToMain();
   const skin = createSkin(SKIN_IDS[skinIndex], scene, glow, skinColorAssist);
   // Placards draw at once in fallback fonts and redraw when the bundled ones arrive.
   void loadFonts();
   // The first chamber's code is fetched before anything is built; the rest arrive as they are needed.
   const level = (guest ?? (await chambers.load(levelIndex)))(scene, skin);
+  await yieldToMain();
   const keyboardMouse = new KeyboardMouseInput(canvas);
   const touch = new TouchInput();
   const gamepad = new GamepadInput();
@@ -161,6 +170,7 @@ export async function createApp(): Promise<App> {
     hud.flashGravityChange();
   });
 
+  await yieldToMain();
   const backdrop = new SpaceBackdrop(scene, glow);
   backdrop.setChamber(level.bounds);
   const fall = new FallTracker();

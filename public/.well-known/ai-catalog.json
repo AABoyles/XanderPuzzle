@@ -1,0 +1,17 @@
+{
+  "specVersion": "1.0",
+  "entries": [
+    {
+      "identifier": "urn:air:aaboyles.github.io:game:shiftbound",
+      "displayName": "Shiftbound",
+      "type": "text/html",
+      "url": "https://aaboyles.github.io/XanderPuzzle/",
+      "description": "A first-person gravity puzzle in the browser: levers turn gravity onto any of six directions to find the way out of each chamber.",
+      "tags": ["game", "puzzle", "webgl"],
+      "representativeQueries": [
+        "play a first-person gravity puzzle game in the browser",
+        "browser puzzle game where you rotate gravity with levers"
+      ]
+    }
+  ]
+}
