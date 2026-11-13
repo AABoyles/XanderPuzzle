@@ -2,13 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 fill=%27%230a1420%27/%3E%3Cpath d=%27M8 3v8M4.5 8L8 12l3.5-4%27 stroke=%27%23ffa033%27 stroke-width=%272%27 fill=%27none%27/%3E%3C/svg%3E"
+    />
+    <meta
+      name="description"
+      content="Shiftbound is a first-person gravity puzzle in your browser: throw levers to turn gravity onto any of six directions and find the way out of each chamber."
     />
     <meta name="theme-color" content="#0a1420" />
     <link rel="manifest" href="manifest.webmanifest" />
@@ -39,6 +40,83 @@
           -apple-system,
           sans-serif;
       }
+      /* Painted from the HTML alone, before any script runs; main.ts removes it when the first frame is drawn. */
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 5;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.2rem;
+        /* The game's logo sits this far above centre; see StartOverlay.ts. */
+        padding-bottom: 160px;
+        /* The title's backdrop is nearly black space with the planet's rim at the bottom; this stands in for it. */
+        background: radial-gradient(ellipse 34% 16% at 50% 106%, #2b6a86 0%, #10303f 50%, transparent 100%), #030306;
+        color: #ffa033;
+        pointer-events: none;
+      }
+      #boot b {
+        font-weight: 600;
+        font-size: clamp(1.4rem, 4vw, 2.4rem);
+        letter-spacing: 0.5em;
+        padding-left: 0.5em;
+      }
+      #boot i {
+        display: block;
+        width: 6rem;
+        height: 2px;
+        background: currentColor;
+        opacity: 0.6;
+        animation: boot-pulse 1.2s ease-in-out infinite alternate;
+      }
+      /* A dim stand-in for the title's instructions and button, so the swap to the real title changes little. */
+      #boot p,
+      #boot u {
+        position: absolute;
+        left: 0;
+        right: 0;
+        margin: 0;
+        text-align: center;
+        color: #dfe6f5;
+        font-size: 20px;
+        line-height: 29px;
+        opacity: 0.35;
+      }
+      #boot p {
+        top: calc(50% - 50px);
+      }
+      #boot u {
+        top: calc(50% + 168px);
+        left: 50%;
+        right: auto;
+        width: 258px;
+        height: 42px;
+        margin-left: -130px;
+        border: 1px solid #fff;
+        border-radius: 8px;
+        text-decoration: none;
+      }
+      @media (max-width: 700px) {
+        #boot p,
+        #boot u {
+          display: none;
+        }
+      }
+      @keyframes boot-pulse {
+        from {
+          transform: scaleX(0.2);
+        }
+        to {
+          transform: scaleX(1);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot i {
+          animation: none;
+        }
+      }
       #renderCanvas {
         width: 100%;
         height: 100%;
@@ -50,7 +128,16 @@
     </style>
   </head>
   <body>
-    <canvas id="renderCanvas"></canvas>
+    <div id="boot" role="status" aria-label="Loading Shiftbound">
+      <b>SHIFTBOUND</b><i></i>
+      <p aria-hidden="true">
+        Click to look around &nbsp;•&nbsp; WASD to move &nbsp;•&nbsp; Shift to run &nbsp;•&nbsp; Space to jump<br />Walk
+        up to a lever and press E to rotate gravity 90°<br />R restarts the chamber &nbsp;•&nbsp; L opens chamber
+        select<br /><br />Click anywhere to begin
+      </p>
+      <u aria-hidden="true"></u>
+    </div>
+    <main><canvas id="renderCanvas"></canvas></main>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

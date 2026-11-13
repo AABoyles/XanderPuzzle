@@ -1,0 +1,13 @@
+# Shiftbound
+
+> Shiftbound is a first-person gravity puzzle that runs in the browser. Levers turn gravity onto any of six directions, and each chamber is solved by finding the order of shifts that leads to the exit.
+
+It is a static web app with no backend: keyboard and mouse, touch and gamepad are supported, and it works offline once loaded. Progress is stored in the browser's localStorage.
+
+## Play
+
+- [Shiftbound](https://aaboyles.github.io/XanderPuzzle/): the game itself; click to begin.
+
+## Optional
+
+- [Source code](https://github.com/AABoyles/XanderPuzzle): the repository, with a README describing the mechanic, controls and chambers.
