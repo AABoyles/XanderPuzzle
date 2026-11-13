@@ -77,12 +77,12 @@ export const MORE_HINTS: Record<string, [string, string]> = {
     'Throw the lever behind the screen first. Then walk to the white lever on the far wall.',
   ],
   grate: [
-    'Only the grate lets a crate through. The glass holds it.',
+    "One hole in the glass floor, at the far end of the crate's lane. Get the crate there.",
     'Throw the middle lever first. Then throw the other one, further along the same row.',
   ],
   sieve: [
-    'The field stops short of the ceiling. Look at the gap above it.',
-    "Throw the low lever on the field's near face first. Then the one near the exit.",
+    'The glass partition stops short of the ceiling. Look at the gap above it.',
+    'Throw the lever in the doorway first. Then the one near the exit.',
   ],
   surplus: [
     'The door wants one crate on its plate, not two. The RELEASE APERTURE can take one.',

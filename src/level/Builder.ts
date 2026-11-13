@@ -1,4 +1,4 @@
-import { Color3, Color4 } from '@babylonjs/core/Maths/math.color';
+import { Color3 } from '@babylonjs/core/Maths/math.color';
 import { Material } from '@babylonjs/core/Materials/material';
 import { Mesh } from '@babylonjs/core/Meshes/mesh';
 import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder';
@@ -8,7 +8,6 @@ import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 import { SubMesh } from '@babylonjs/core/Meshes/subMesh';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { VertexBuffer } from '@babylonjs/core/Buffers/buffer';
-import { GridMaterial } from '@babylonjs/materials/grid/gridMaterial';
 import { GravitySequencer } from '../gravity/axes';
 import { GravityAxis } from '../gravity/GravitySystem';
 import { Door, DynamicsEvents, LevelDynamics, PressurePlate } from './Dynamics';
@@ -50,7 +49,7 @@ export interface BuiltLevel {
    */
   reclaimer?: Reclaimer;
   dynamics: LevelDynamics;
-  /** The static boxes crates collide with (shell, features, glass, barriers; not grates). Used by the headless tests. */
+  /** The static boxes crates collide with (shell, features and glass: everything is glass or solid). Used by the headless tests. */
   solids: Aabb[];
   /** The box enclosing all of the level's geometry; a player well outside it has fallen out. */
   bounds: Aabb;
@@ -439,20 +438,6 @@ export class Builder {
     return m;
   }
 
-  /** A grate: the player stands on it and cannot pass, but crates fall straight through. */
-  public grate(min: Vector3, max: Vector3): void {
-    const mat = this.ownMaterial(new GridMaterial(`grateMat_${this.n}`, this.scene));
-    mat.mainColor = new Color3(0.05, 0.05, 0.06);
-    mat.lineColor = new Color3(0.85, 0.85, 0.9);
-    mat.gridRatio = 0.35;
-    mat.majorUnitFrequency = 1;
-    mat.opacity = 0.75;
-    mat.backFaceCulling = false;
-    const m = this.plainBox('grate', min, max, mat);
-    m.checkCollisions = true;
-    // Deliberately not in `solids`: crate physics never sees it.
-  }
-
   /** Glass: you can see through it, but neither the player nor crates can pass. */
   public glass(min: Vector3, max: Vector3): void {
     const mat = this.ownMaterial(new StandardMaterial(`glassMat_${this.n}`, this.scene));
@@ -466,25 +451,6 @@ export class Builder {
     m.enableEdgesRendering();
     m.edgesWidth = 2;
     m.edgesColor.set(0.6, 0.85, 1, 0.8);
-    this.solids.push({ min: [min.x, min.y, min.z], max: [max.x, max.y, max.z] });
-  }
-
-  /**
-   * A crate barrier: a see-through field that stops crates but the player walks straight through. Its edges are
-   * outlined so the field reads as a thing even in the dark skins.
-   */
-  public barrier(min: Vector3, max: Vector3): void {
-    const mat = this.ownMaterial(new StandardMaterial(`barrierMat_${this.n}`, this.scene));
-    mat.diffuseColor = new Color3(1, 0.6, 0.2);
-    mat.emissiveColor = new Color3(0.8, 0.42, 0.12);
-    mat.alpha = 0.32;
-    mat.backFaceCulling = false;
-    const m = this.plainBox('barrier', min, max, mat);
-    m.checkCollisions = false;
-    m.isPickable = false;
-    m.enableEdgesRendering();
-    m.edgesWidth = 2;
-    m.edgesColor = new Color4(1, 0.6, 0.2, 0.9);
     this.solids.push({ min: [min.x, min.y, min.z], max: [max.x, max.y, max.z] });
   }
 

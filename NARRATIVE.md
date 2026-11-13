@@ -172,7 +172,7 @@ Cubes in this act show their age: Monolith-style wear can bleed into the other s
 
 - **The Lockout:** the one-shot lever. A Margin note near it: "Someone threw this one first. I found them." It points nowhere, because they fell.
 - **The Grate:** "You cannot go down there. The crate can." The hint already works as both an instruction and a threat.
-- **The Sieve:** the Grate's mirror. A field that stops the mass and lets the attendant through. The Margin connects the lights on the planet to the dark cubes.
+- **The Sieve:** the Grate's mirror. A glass door the attendant fits through and the mass does not. The Margin connects the lights on the planet to the dark cubes.
 - **The Surplus:** the attendant throws ballast out of a trap hole on purpose. The log line, `BALLAST MASS RELEASED. REPLACEMENT NOT SCHEDULED.`, is the recovery line's opposite: attendants are replaced, masses are not.
 - **The Tide:** the lever starts the cube turning on its own. It's the first time the machine moves without you. The Stencil calls it `AUTOMATIC TRIM`.
 - **The Pendulum:** the cycle now swings a crate, and the door answers to the crate, not to you. The partition is low enough to be carried over, so the rule is when the field turns east, anything above it goes with it. The Margin reaches its conclusion: they didn't fall, they left, and a dark cube prints no one back.
@@ -246,8 +246,8 @@ The second line points at the thing to notice (which lever, which surface, what 
 | XII · The Deadman | Something has to hold the gate for it. The crate can't be the one. | The gate has its own plate out in the room. It holds only while you stand on it. | Throw the tunnel lever first. Stand on the gate plate until the crate is through. |
 | XIII · The Turnstile | A white lever turns gravity clockwise, as you face it. Same lever, different floor, different turn. | A black gap sits in view of the floor lever, in the wall you came in by. | Throw the lever beside the entrance from the floor, then again from the new floor. |
 | XIV · The Lockout | Levers burn out after one use. Someone threw this one first. | The white lever with a ring burns out when thrown. Look behind the screen on your left. | Throw the lever behind the screen first. Then walk to the white lever on the far wall. |
-| XV · The Grate | You cannot go down there. The crate can. | Only the grate lets a crate through. The glass holds it. | Throw the middle lever first. Then throw the other one, further along the same row. |
-| XVI · The Sieve | You can go through there. The crate cannot. It can go over. | The field stops short of the ceiling. Look at the gap above it. | Throw the low lever on the field's near face first. Then the one near the exit. |
+| XV · The Grate | You cannot go down there. The crate can. | One hole in the glass floor, at the far end of the crate's lane. Get the crate there. | Throw the middle lever first. Then throw the other one, further along the same row. |
+| XVI · The Sieve | You can go through there. The crate cannot. It can go over. | The glass partition stops short of the ceiling. Look at the gap above it. | Throw the lever in the doorway first. Then the one near the exit. |
 | XVII · The Surplus | One mass too many. There is a way to be rid of it. Choose with care. | The door wants one crate on its plate, not two. The RELEASE APERTURE can take one. | Throw the pane lever nearer the exit first. Leave the one nearer the entrance alone. |
 | XVIII · The Tide | The cube turns itself now. Be where the next shift needs you. | The pillar and the tall wall each become a floor for one shift. Look at both. | Get into the pillar's lane before the first sideways shift, then climb its face. |
 | XIX · The Pendulum | Watch the crate. The door keeps its time, not yours. | When the sideways shift comes, the partition stops whatever is at or below its top. | Stay low on the dais side of the partition for the next swing. Then climb the steps. |
